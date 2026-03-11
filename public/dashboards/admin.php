@@ -74,6 +74,53 @@ require __DIR__ . '/../partials/header.php';
   </div>
 </div>
 
+<div class="bg-white p-5 rounded shadow mt-6">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div>
+      <div class="text-sm text-slate-500">Reports</div>
+      <div class="text-lg font-semibold">Administrative Summary</div>
+      <p class="text-sm text-slate-500 mt-1">Quick printable overview of key program highlights.</p>
+    </div>
+    <button class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow" onclick="window.print()">Print Report</button>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div class="text-xs uppercase tracking-widest text-slate-400">Coverage</div>
+      <div class="text-xl font-semibold mt-1">Immunization</div>
+      <p class="text-slate-500 text-sm mt-1">Monitor completion rates and missed schedules.</p>
+    </div>
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div class="text-xs uppercase tracking-widest text-slate-400">Care</div>
+      <div class="text-xl font-semibold mt-1">Maternal Health</div>
+      <p class="text-slate-500 text-sm mt-1">Track prenatal and postnatal visit consistency.</p>
+    </div>
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div class="text-xs uppercase tracking-widest text-slate-400">Monitoring</div>
+      <div class="text-xl font-semibold mt-1">TB Follow-ups</div>
+      <p class="text-slate-500 text-sm mt-1">Review adherence and open follow-up tasks.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
+      <div class="text-xl font-semibold mt-1">Stock Health</div>
+      <p class="text-slate-500 text-sm mt-1">Identify low-stock and expiring medicines.</p>
+    </div>
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div class="text-xs uppercase tracking-widest text-slate-400">Outreach</div>
+      <div class="text-xl font-semibold mt-1">Reminders</div>
+      <p class="text-slate-500 text-sm mt-1">Upcoming tasks and overdue follow-ups.</p>
+    </div>
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div class="text-xs uppercase tracking-widest text-slate-400">Forecast</div>
+      <div class="text-xl font-semibold mt-1">Next 30 Days</div>
+      <p class="text-slate-500 text-sm mt-1">Projected demand for planning resources.</p>
+    </div>
+  </div>
+</div>
+
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
   <div class="bg-white p-5 rounded shadow">
     <div class="text-sm text-slate-500">Alerts</div>

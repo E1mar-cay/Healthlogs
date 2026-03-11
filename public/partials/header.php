@@ -168,6 +168,13 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       font-size: 12px;
       font-weight: 600;
     }
+    @media print {
+      body.app-body { background: #fff; }
+      .app-sidebar, .app-topbar, #appOverlay { display: none !important; }
+      .app-main { margin: 0 !important; }
+      .app-content { padding: 0 !important; }
+      .bg-white { box-shadow: none !important; }
+    }
   </style>
 </head>
 <body class="app-body">
@@ -201,13 +208,15 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           <span class="nav-icon">IN</span> Medicine Inventory
         </a>
 
-        <div class="nav-section">Insights</div>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php">
-          <span class="nav-icon">RM</span> Reminders
-        </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/forecast') ? 'active' : '' ?>" href="/HealthLogs/public/forecast.php">
-          <span class="nav-icon">FC</span> Forecasting
-        </a>
+        <?php if (in_array($_SESSION['role'] ?? 'health_worker', ['admin', 'superadmin'], true)): ?>
+          <div class="nav-section">Insights</div>
+          <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php">
+            <span class="nav-icon">RM</span> Reminders
+          </a>
+          <a class="nav-link <?= $isActive('/HealthLogs/public/forecast') ? 'active' : '' ?>" href="/HealthLogs/public/forecast.php">
+            <span class="nav-icon">FC</span> Forecasting
+          </a>
+        <?php endif; ?>
       </nav>
       <div class="px-4 pb-6 mt-auto pt-2 border-t border-slate-700/40">
         <a class="nav-link" href="/HealthLogs/public/logout.php">
