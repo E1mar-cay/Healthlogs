@@ -38,12 +38,27 @@ $error = $_GET['error'] ?? '';
         radial-gradient(1000px 500px at 100% 0%, var(--bg-2), transparent 55%),
         #f8fafc;
       margin: 0;
+      overflow-x: hidden;
     }
     .login-card {
       background: var(--card);
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
       border-radius: 18px;
+    }
+    .hero-orb {
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, rgba(37,99,235,0.25), transparent 60%),
+        radial-gradient(circle at 60% 60%, rgba(14,165,164,0.2), transparent 65%);
+      filter: blur(0);
+      opacity: 0.9;
+    }
+    .login-shell {
+      position: relative;
+      isolation: isolate;
     }
     .brand {
       font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
@@ -58,11 +73,17 @@ $error = $_GET['error'] ?? '';
       outline: 2px solid rgba(14,165,164,0.25);
       border-color: rgba(14,165,164,0.6);
     }
+    .login-card label {
+      font-weight: 500;
+    }
   </style>
 </head>
 <body class="app-body">
-  <div class="min-h-screen flex items-center justify-center px-4 py-10">
-    <div class="login-card w-full max-w-4xl overflow-hidden">
+  <div class="min-h-screen flex items-center justify-center px-4 py-10 login-shell">
+    <span class="hero-orb -left-24 -top-32"></span>
+    <span class="hero-orb -right-32 top-32"></span>
+
+    <div class="login-card w-full max-w-5xl overflow-hidden relative">
       <div class="grid grid-cols-1 md:grid-cols-2">
         <div class="p-8 md:p-10">
           <div class="brand text-3xl font-semibold">HealthLogs</div>
@@ -81,7 +102,7 @@ $error = $_GET['error'] ?? '';
               <label class="block text-sm text-slate-600">Password</label>
               <input name="password" type="password" required class="mt-1 w-full border rounded px-4 py-3" placeholder="Enter password" />
             </div>
-            <button class="bg-slate-900 text-white px-4 py-3 rounded w-full" type="submit">Login</button>
+            <button class="bg-slate-900 text-white px-4 py-3 rounded-xl w-full shadow" type="submit">Login</button>
           </form>
 
           <div class="mt-6 text-xs text-slate-500">
