@@ -8,6 +8,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,6 +18,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
     :root {
       --bg-1: #eef2ff;
       --bg-2: #f0fdf4;
@@ -28,7 +30,14 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       --line: rgba(15, 23, 42, 0.08);
       --shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
     }
-    html, body { height: 100%; padding: 0; margin: 0; }
+
+    html,
+    body {
+      height: 100%;
+      padding: 0;
+      margin: 0;
+    }
+
     body.app-body {
       font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
       color: var(--ink);
@@ -38,17 +47,26 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         #f8fafc;
       margin: 0;
     }
-    .app-shell { min-height: 100vh; display: flex; align-items: stretch; width: 100%; margin: 0; }
+
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      margin: 0;
+    }
+
     .app-sidebar {
       background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
       color: #e2e8f0;
-      border-right: 1px solid rgba(255,255,255,0.08);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
       height: 100vh;
       top: 0;
       left: 0;
       margin-top: 0;
       padding-top: 0;
     }
+
     .app-sidebar::before {
       content: "";
       position: absolute;
@@ -59,21 +77,44 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       background: #0f172a;
       z-index: 1;
     }
-    .app-sidebar > * { position: relative; z-index: 2; }
-    .app-main { flex: 1; }
-    @media (min-width: 768px) {
-      .app-sidebar { position: fixed; }
-      .app-main { margin-left: 18rem; }
-      .app-topbar { padding-left: 18rem; }
+
+    .app-sidebar>* {
+      position: relative;
+      z-index: 2;
     }
-    .app-topbar { position: sticky; top: 0; z-index: 20; }
+
+    .app-main {
+      flex: 1;
+    }
+
+    @media (min-width: 768px) {
+      .app-sidebar {
+        position: fixed;
+      }
+
+      .app-main {
+        margin-left: 18rem;
+      }
+
+      .app-topbar {
+        padding-left: 18rem;
+      }
+    }
+
+    .app-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
     .app-brand {
       font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
       letter-spacing: 0.02em;
     }
+
     .app-brand-badge {
-      background: linear-gradient(120deg, rgba(14,165,164,0.2), rgba(37,99,235,0.2));
-      border: 1px solid rgba(255,255,255,0.15);
+      background: linear-gradient(120deg, rgba(14, 165, 164, 0.2), rgba(37, 99, 235, 0.2));
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 999px;
       padding: 4px 10px;
       font-size: 11px;
@@ -81,6 +122,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       letter-spacing: 0.18em;
       color: #cbd5f5;
     }
+
     .nav-link {
       display: flex;
       gap: 10px;
@@ -90,12 +132,18 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       color: #cbd5f5;
       transition: all .15s ease;
     }
-    .nav-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
     .nav-link.active {
-      background: linear-gradient(120deg, rgba(14,165,164,0.22), rgba(37,99,235,0.25));
+      background: linear-gradient(120deg, rgba(14, 165, 164, 0.22), rgba(37, 99, 235, 0.25));
       color: #fff;
       box-shadow: 0 12px 30px rgba(15, 23, 42, 0.3);
     }
+
     .nav-link .nav-icon {
       width: 22px;
       height: 22px;
@@ -108,11 +156,13 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       border-radius: 8px;
       background: rgba(148, 163, 184, 0.18);
     }
+
     .nav-link.active .nav-icon,
     .nav-link:hover .nav-icon {
       color: #fff;
       background: rgba(255, 255, 255, 0.18);
     }
+
     .nav-section {
       text-transform: uppercase;
       letter-spacing: 0.2em;
@@ -120,30 +170,45 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       color: rgba(226, 232, 240, 0.45);
       padding: 10px 12px 4px;
     }
+
     .app-topbar {
-      background: rgba(255,255,255,0.7);
+      background: rgba(255, 255, 255, 0.7);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--line);
     }
+
     .app-title {
       font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
       font-weight: 600;
       letter-spacing: 0.01em;
     }
+
     .app-content .bg-white {
       background: var(--card);
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
     }
-    .app-content table { border-collapse: collapse; width: 100%; }
-    .app-content thead { background: rgba(148, 163, 184, 0.15); }
+
+    .app-content table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .app-content thead {
+      background: rgba(148, 163, 184, 0.15);
+    }
+
     .app-content th {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       color: var(--muted);
     }
-    .app-content td { color: #0f172a; }
+
+    .app-content td {
+      color: #0f172a;
+    }
+
     .app-content input,
     .app-content select,
     .app-content textarea {
@@ -151,32 +216,52 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       border: 1px solid var(--line);
       border-radius: 12px;
     }
+
     .app-content input:focus,
     .app-content select:focus,
     .app-content textarea:focus {
-      outline: 2px solid rgba(14,165,164,0.25);
-      border-color: rgba(14,165,164,0.6);
+      outline: 2px solid rgba(14, 165, 164, 0.25);
+      border-color: rgba(14, 165, 164, 0.6);
     }
+
     .app-chip {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(37,99,235,0.12);
+      background: rgba(37, 99, 235, 0.12);
       color: #1d4ed8;
       padding: 4px 10px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 600;
     }
+
     @media print {
-      body.app-body { background: #fff; }
-      .app-sidebar, .app-topbar, #appOverlay { display: none !important; }
-      .app-main { margin: 0 !important; }
-      .app-content { padding: 0 !important; }
-      .bg-white { box-shadow: none !important; }
+      body.app-body {
+        background: #fff;
+      }
+
+      .app-sidebar,
+      .app-topbar,
+      #appOverlay {
+        display: none !important;
+      }
+
+      .app-main {
+        margin: 0 !important;
+      }
+
+      .app-content {
+        padding: 0 !important;
+      }
+
+      .bg-white {
+        box-shadow: none !important;
+      }
     }
   </style>
 </head>
+
 <body class="app-body">
   <div class="app-shell">
     <div id="appOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition md:hidden z-30"></div>
@@ -209,7 +294,12 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         </a>
 
         <?php if (in_array($_SESSION['role'] ?? 'health_worker', ['admin', 'superadmin'], true)): ?>
-          <div class="nav-section">Insights</div>
+          <div class="nav-section">Administration</div>
+          <?php if (in_array($_SESSION['role'] ?? 'health_worker', ['admin', 'superadmin'], true)): ?>
+            <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php">
+              <span class="nav-icon">US</span> User Management
+            </a>
+          <?php endif; ?>
           <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php">
             <span class="nav-icon">RM</span> Reminders
           </a>

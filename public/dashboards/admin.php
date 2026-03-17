@@ -67,9 +67,18 @@ require __DIR__ . '/../partials/header.php';
     <div class="text-sm text-slate-500">Quick Actions</div>
     <div class="text-lg font-semibold">Administrator Tools</div>
     <div class="mt-4 space-y-2">
-      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700" href="/HealthLogs/public/inventory.php">Review Inventory</a>
-      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700" href="/HealthLogs/public/reminders.php">Review Reminders</a>
-      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700" href="/HealthLogs/public/forecast.php">Run Forecast</a>
+      <a class="block px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors" href="/HealthLogs/public/users.php">
+        <i class="fas fa-users mr-2"></i>Manage Users
+      </a>
+      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors" href="/HealthLogs/public/inventory.php">
+        <i class="fas fa-pills mr-2"></i>Review Inventory
+      </a>
+      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors" href="/HealthLogs/public/reminders.php">
+        <i class="fas fa-bell mr-2"></i>Review Reminders
+      </a>
+      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors" href="/HealthLogs/public/forecast.php">
+        <i class="fas fa-chart-line mr-2"></i>Run Forecast
+      </a>
     </div>
   </div>
 </div>

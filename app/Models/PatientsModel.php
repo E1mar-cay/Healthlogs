@@ -92,7 +92,28 @@ class PatientsModel
 
     public function delete(int $id): void
     {
-        $stmt = $this->db->prepare("DELETE FROM patients WHERE id = ?");
-        $stmt->execute([$id]);
+        $this->db->beginTransaction();
+        try {
+            // Delete child records first (in correct order)
+            $this->db->prepare("DELETE pv FROM prenatal_visits pv INNER JOIN pregnancies p ON pv.pregnancy_id = p.id WHERE p.patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE pv FROM postnatal_visits pv INNER JOIN pregnancies p ON pv.pregnancy_id = p.id WHERE p.patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE tf FROM tb_followups tf INNER JOIN tb_cases tc ON tf.tb_case_id = tc.id WHERE tc.patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM immunization_records WHERE patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM immunization_schedule WHERE patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM patient_allergies WHERE patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM patient_conditions WHERE patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM pregnancies WHERE patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM reminders WHERE patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM tb_cases WHERE patient_id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM visits WHERE patient_id = ?")->execute([$id]);
+            
+            // Finally delete the patient
+            $this->db->prepare("DELETE FROM patients WHERE id = ?")->execute([$id]);
+            
+            $this->db->commit();
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 }
