@@ -78,19 +78,6 @@ if (table_count($pdo, 'prenatal_visits') === 0) {
     echo "Seeded prenatal visit\n";
 }
 
-// Seed TB case and follow-up
-if (table_count($pdo, 'tb_cases') === 0) {
-    $stmt = $pdo->prepare("INSERT INTO tb_cases (patient_id, case_no, diagnosis_date, case_type, status, treatment_start, treatment_end, notes) VALUES (?,?,?,?,?,?,?,?)");
-    $stmt->execute([$patientId, 'TB-001', date('Y-m-d', strtotime('-60 days')), 'drug_susceptible', 'active', date('Y-m-d', strtotime('-55 days')), null, 'On treatment']);
-    echo "Seeded TB case\n";
-}
-$tbId = (int)$pdo->query("SELECT id FROM tb_cases ORDER BY id DESC LIMIT 1")->fetch()['id'];
-if (table_count($pdo, 'tb_followups') === 0) {
-    $stmt = $pdo->prepare("INSERT INTO tb_followups (tb_case_id, followup_datetime, adherence, weight_kg, symptoms, notes) VALUES (?,?,?,?,?,?)");
-    $stmt->execute([$tbId, date('Y-m-d H:i:s', strtotime('-3 days')), 'good', 54.2, 'Mild cough', 'Improving']);
-    echo "Seeded TB follow-up\n";
-}
-
 // Seed medicine batch + transactions
 if (table_count($pdo, 'medicine_batches') === 0) {
     $stmt = $pdo->prepare("INSERT INTO medicine_batches (medicine_id, batch_no, expiry_date, received_date, quantity_received) VALUES (?,?,?,?,?)");

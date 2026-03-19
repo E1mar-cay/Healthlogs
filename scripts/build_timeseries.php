@@ -17,8 +17,8 @@ $stmt = $pdo->prepare($sqlVisits);
 $stmt->execute([$start, $end]);
 $visits = $stmt->fetchAll();
 
-// Medicine demand: daily sum of dispensed quantity
-$sqlMed = "SELECT DATE(transaction_datetime) AS d, SUM(quantity) AS qty
+// Medicine demand: daily sum of ABS(dispensed quantity)
+$sqlMed = "SELECT DATE(transaction_datetime) AS d, SUM(ABS(quantity)) AS qty
     FROM medicine_transactions
     WHERE transaction_type = 'dispensed'
       AND transaction_datetime >= ? AND transaction_datetime < DATE_ADD(?, INTERVAL 1 DAY)

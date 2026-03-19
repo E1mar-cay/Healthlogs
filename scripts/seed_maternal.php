@@ -8,6 +8,13 @@ require_once __DIR__ . '/../config/db.php';
 
 echo "Seeding maternal health module...\n";
 
+// Get users for recorded_by fields
+$users = $pdo->query("SELECT id FROM users WHERE status = 'active'")->fetchAll(PDO::FETCH_COLUMN);
+if (empty($users)) {
+    echo "No users found. Please run seed_users.php first.\n";
+    exit(1);
+}
+
 // Get female patients of childbearing age (15-45 years)
 $minDate = date('Y-m-d', strtotime('-45 years'));
 $maxDate = date('Y-m-d', strtotime('-15 years'));
@@ -122,8 +129,8 @@ try {
                     ];
                     
                     $stmt = $pdo->prepare("
-                        INSERT INTO prenatal_visits (pregnancy_id, visit_datetime, gestational_age_weeks, bp_systolic, bp_diastolic, weight_kg, notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO prenatal_visits (pregnancy_id, visit_datetime, gestational_age_weeks, bp_systolic, bp_diastolic, weight_kg, notes, recorded_by)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     $stmt->execute([
                         $pregnancyId,
@@ -132,9 +139,21 @@ try {
                         $bpSystolic,
                         $bpDiastolic,
                         $weight,
-                        $notes[array_rand($notes)]
+                        $notes[array_rand($notes)],
+                        $users[array_rand($users)]
                     ]);
                     $prenatalCount++;
+                    
+                    // Create visit record
+                    $pdo->prepare("INSERT INTO visits (patient_id, visit_datetime, visit_type, reason, notes, recorded_by) VALUES (?, ?, ?, ?, ?, ?)")
+                        ->execute([
+                            $female['id'],
+                            $visitDate->format('Y-m-d H:i:s'),
+                            'maternal',
+                            'Prenatal checkup - ' . $visitWeek . ' weeks',
+                            'Prenatal visit',
+                            $users[array_rand($users)]
+                        ]);
                 }
             }
             
@@ -169,17 +188,29 @@ try {
                             ];
                             
                             $stmt = $pdo->prepare("
-                                INSERT INTO postnatal_visits (pregnancy_id, visit_datetime, mother_condition, baby_condition, notes)
-                                VALUES (?, ?, ?, ?, ?)
+                                INSERT INTO postnatal_visits (pregnancy_id, visit_datetime, mother_condition, baby_condition, notes, recorded_by)
+                                VALUES (?, ?, ?, ?, ?, ?)
                             ");
                             $stmt->execute([
                                 $pregnancyId,
                                 $visitDate->format('Y-m-d H:i:s'),
                                 $motherConditions[array_rand($motherConditions)],
                                 $babyConditions[array_rand($babyConditions)],
-                                'Routine postnatal checkup'
+                                'Routine postnatal checkup',
+                                $users[array_rand($users)]
                             ]);
                             $postnatalCount++;
+                            
+                            // Create visit record
+                            $pdo->prepare("INSERT INTO visits (patient_id, visit_datetime, visit_type, reason, notes, recorded_by) VALUES (?, ?, ?, ?, ?, ?)")
+                                ->execute([
+                                    $female['id'],
+                                    $visitDate->format('Y-m-d H:i:s'),
+                                    'maternal',
+                                    'Postnatal checkup - ' . $daysAfter . ' days postpartum',
+                                    'Postnatal visit',
+                                    $users[array_rand($users)]
+                                ]);
                         }
                     }
                 }

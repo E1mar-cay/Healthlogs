@@ -9,8 +9,20 @@ if ($id) {
     $rec = $stmt->fetch();
 }
 
+$displayQuantity = $rec ? abs((int)$rec['quantity']) : '';
+$adjustmentMode = ($rec && ($rec['transaction_type'] ?? '') === 'adjustment' && (int)$rec['quantity'] < 0)
+    ? 'decrease'
+    : 'increase';
+
 $meds = $pdo->query("SELECT id, name FROM medicines ORDER BY name ASC")->fetchAll();
-$batches = $pdo->query("SELECT id, batch_no FROM medicine_batches ORDER BY id DESC")->fetchAll();
+$batches = $pdo->query("
+    SELECT b.id, b.batch_no, m.name AS medicine_name, COALESCE(SUM(t.quantity), 0) AS on_hand
+    FROM medicine_batches b
+    JOIN medicines m ON m.id = b.medicine_id
+    LEFT JOIN medicine_transactions t ON t.batch_id = b.id
+    GROUP BY b.id
+    ORDER BY b.id DESC
+")->fetchAll();
 
 $pageTitle = $rec ? 'Edit Transaction' : 'New Transaction';
 require __DIR__ . '/../../partials/header.php';
@@ -37,7 +49,7 @@ require __DIR__ . '/../../partials/header.php';
         <option value="">-- none --</option>
         <?php foreach ($batches as $b): ?>
           <?php $sel = ($rec['batch_id'] ?? '') == $b['id'] ? 'selected' : ''; ?>
-          <option value="<?= (int)$b['id'] ?>" <?= $sel ?>><?= h($b['batch_no']) ?></option>
+          <option value="<?= (int)$b['id'] ?>" <?= $sel ?>><?= h($b['medicine_name'] . ' - ' . $b['batch_no'] . ' (On hand: ' . $b['on_hand'] . ')') ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -54,7 +66,16 @@ require __DIR__ . '/../../partials/header.php';
     </div>
     <div>
       <label class="block text-sm text-slate-600">Quantity</label>
-      <input name="quantity" type="number" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['quantity'] ?? '') ?>" />
+      <input name="quantity" type="number" min="1" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($displayQuantity) ?>" />
+      <p class="mt-1 text-xs text-slate-500">Enter a positive number. The system will apply stock in or stock out automatically based on the type.</p>
+    </div>
+    <div>
+      <label class="block text-sm text-slate-600">Adjustment Direction</label>
+      <select name="adjustment_mode" class="mt-1 w-full border rounded px-3 py-2">
+        <option value="increase" <?= $adjustmentMode === 'increase' ? 'selected' : '' ?>>Add stock</option>
+        <option value="decrease" <?= $adjustmentMode === 'decrease' ? 'selected' : '' ?>>Reduce stock</option>
+      </select>
+      <p class="mt-1 text-xs text-slate-500">Used only when the type is Adjustment.</p>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Transaction Date/Time</label>

@@ -19,8 +19,6 @@ $validator
     ->validate('email', ['email'], 'Email')
     ->validate('contact_no', ['phone'], 'Contact number')
     ->validate('barangay', ['required', 'max' => 120], 'Barangay')
-    ->validate('city_municipality', ['required', 'max' => 120], 'City/Municipality')
-    ->validate('province', ['required', 'max' => 120], 'Province')
     ->validate('status', ['required', 'in' => ['active', 'inactive', 'deceased']], 'Status');
 
 if ($validator->fails()) {
@@ -41,8 +39,6 @@ $philhealth_no = sanitize_string(field('philhealth_no'));
 $national_id = sanitize_string(field('national_id'));
 $address_line = sanitize_string(field('address_line'));
 $barangay = sanitize_string(field('barangay', ''));
-$city_municipality = sanitize_string(field('city_municipality', ''));
-$province = sanitize_string(field('province', ''));
 $blood_type = sanitize_string(field('blood_type'));
 
 // Normalize household_id to avoid FK errors
@@ -75,8 +71,6 @@ $data = [
     'email' => $email,
     'address_line' => $address_line,
     'barangay' => $barangay,
-    'city_municipality' => $city_municipality,
-    'province' => $province,
     'status' => field('status', 'active'),
 ];
 
@@ -88,8 +82,7 @@ try {
                     household_id = ?, philhealth_no = ?, national_id = ?,
                     first_name = ?, middle_name = ?, last_name = ?, suffix = ?,
                     sex = ?, birth_date = ?, blood_type = ?,
-                    contact_no = ?, email = ?, address_line = ?, barangay = ?,
-                    city_municipality = ?, province = ?, status = ?
+                    contact_no = ?, email = ?, address_line = ?, barangay = ?, status = ?
                 WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -107,8 +100,6 @@ try {
             $data['email'],
             $data['address_line'],
             $data['barangay'],
-            $data['city_municipality'],
-            $data['province'],
             $data['status'],
             $id,
         ]);
@@ -117,9 +108,8 @@ try {
                     household_id, philhealth_no, national_id,
                     first_name, middle_name, last_name, suffix,
                     sex, birth_date, blood_type,
-                    contact_no, email, address_line, barangay,
-                    city_municipality, province, status
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    contact_no, email, address_line, barangay, status
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             $data['household_id'],
@@ -136,8 +126,6 @@ try {
             $data['email'],
             $data['address_line'],
             $data['barangay'],
-            $data['city_municipality'],
-            $data['province'],
             $data['status'],
         ]);
     }

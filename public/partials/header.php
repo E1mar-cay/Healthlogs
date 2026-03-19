@@ -16,6 +16,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
@@ -286,9 +287,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         <a class="nav-link <?= $isActive('/HealthLogs/public/maternal') ? 'active' : '' ?>" href="/HealthLogs/public/maternal.php">
           <span class="nav-icon">MH</span> Maternal Health
         </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/tb') ? 'active' : '' ?>" href="/HealthLogs/public/tb.php">
-          <span class="nav-icon">TB</span> TB Monitoring
-        </a>
+
         <a class="nav-link <?= $isActive('/HealthLogs/public/inventory') ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php">
           <span class="nav-icon">IN</span> Medicine Inventory
         </a>

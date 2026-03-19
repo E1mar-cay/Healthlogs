@@ -9,10 +9,6 @@ TRUNCATE TABLE medicine_transactions;
 TRUNCATE TABLE medicine_batches;
 TRUNCATE TABLE medicines;
 
--- Clear TB monitoring data
-TRUNCATE TABLE tb_followups;
-TRUNCATE TABLE tb_cases;
-
 -- Clear maternal health data
 TRUNCATE TABLE postnatal_visits;
 TRUNCATE TABLE prenatal_visits;

@@ -1,5 +1,7 @@
-﻿<?php
+<?php
 require __DIR__ . '/../../partials/bootstrap.php';
+
+$unitOptions = ['tablet', 'capsule', 'bottle', 'vial', 'ampule', 'sachet', 'tube', 'drop', 'ml', 'mg', 'g', 'piece'];
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $rec = null;
@@ -20,28 +22,34 @@ require __DIR__ . '/../../partials/header.php';
     <?php endif; ?>
 
     <div>
-      <label class="block text-sm text-slate-600">Name</label>
+      <label class="block text-sm text-slate-600">Medicine Name</label>
       <input name="name" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['name'] ?? '') ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Generic Name</label>
+      <label class="block text-sm text-slate-600">Generic Name (Optional)</label>
       <input name="generic_name" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['generic_name'] ?? '') ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Formulation</label>
+      <label class="block text-sm text-slate-600">Medicine Type</label>
       <input name="formulation" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['formulation'] ?? '') ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Strength</label>
+      <label class="block text-sm text-slate-600">Dose / Strength</label>
       <input name="strength" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['strength'] ?? '') ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Unit</label>
-      <input name="unit" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['unit'] ?? '') ?>" />
+      <label class="block text-sm text-slate-600">Stock Unit</label>
+      <select name="unit" required class="mt-1 w-full border rounded px-3 py-2">
+        <option value="">Select unit</option>
+        <?php foreach ($unitOptions as $unitOption): ?>
+          <option value="<?= h($unitOption) ?>" <?= (($rec['unit'] ?? '') === $unitOption) ? 'selected' : '' ?>><?= h(ucfirst($unitOption)) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Reorder Level</label>
+      <label class="block text-sm text-slate-600">Low Stock Alert</label>
       <input name="reorder_level" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['reorder_level'] ?? '') ?>" />
+      <div class="mt-1 text-xs text-slate-500">Show a warning when stock reaches this number or lower.</div>
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

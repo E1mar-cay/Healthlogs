@@ -2,15 +2,40 @@
 $pageTitle = 'Patient Record Management';
 require __DIR__ . '/../partials/header.php';
 
+$q = trim($_GET['q'] ?? '');
+$statusFilter = $_GET['status'] ?? '';
+$sexFilter = $_GET['sex'] ?? '';
+
+$whereParts = [];
+$params = [];
+
+if ($q !== '') {
+    $whereParts[] = "(first_name LIKE ? OR last_name LIKE ? OR middle_name LIKE ? OR barangay LIKE ? OR COALESCE(contact_no, '') LIKE ?)";
+    $like = '%' . $q . '%';
+    array_push($params, $like, $like, $like, $like, $like);
+}
+if (in_array($statusFilter, ['active', 'inactive', 'deceased'], true)) {
+    $whereParts[] = "status = ?";
+    $params[] = $statusFilter;
+}
+if (in_array($sexFilter, ['male', 'female'], true)) {
+    $whereParts[] = "sex = ?";
+    $params[] = $sexFilter;
+}
+
+$whereSql = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
+
 // Get total count
-$totalRecords = $pdo->query("SELECT COUNT(*) FROM patients")->fetchColumn();
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM patients $whereSql");
+$countStmt->execute($params);
+$totalRecords = (int)$countStmt->fetchColumn();
 
 // Create paginator
 $paginator = paginate($totalRecords, 20);
 
 // Get patients with pagination
-$stmt = $pdo->prepare("SELECT * FROM patients ORDER BY id DESC " . $paginator->getLimitSql());
-$stmt->execute();
+$stmt = $pdo->prepare("SELECT * FROM patients $whereSql ORDER BY id DESC " . $paginator->getLimitSql());
+$stmt->execute($params);
 $patients = $stmt->fetchAll();
 
 // Calculate statistics
@@ -39,6 +64,25 @@ $stats = $pdo->query("
     </div>
   </div>
 </div>
+
+<form method="get" class="mt-6 bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+  <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2 md:col-span-2" placeholder="Search name, barangay, or contact" />
+  <select name="status" class="w-full border rounded px-3 py-2">
+    <option value="">All statuses</option>
+    <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Active</option>
+    <option value="inactive" <?= $statusFilter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+    <option value="deceased" <?= $statusFilter === 'deceased' ? 'selected' : '' ?>>Deceased</option>
+  </select>
+  <select name="sex" class="w-full border rounded px-3 py-2">
+    <option value="">All sexes</option>
+    <option value="male" <?= $sexFilter === 'male' ? 'selected' : '' ?>>Male</option>
+    <option value="female" <?= $sexFilter === 'female' ? 'selected' : '' ?>>Female</option>
+  </select>
+  <div class="md:col-span-4 flex gap-2">
+    <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Apply</button>
+    <a class="px-4 py-2 rounded border border-slate-300 text-slate-700" href="/HealthLogs/public/patients/index.php">Clear</a>
+  </div>
+</form>
 
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
   <div class="bg-white p-5 rounded shadow">

@@ -42,6 +42,13 @@ $error = $_GET['error'] ?? '';
         #f8fafc;
       margin: 0;
       overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
     }
     
     .login-card {
@@ -65,6 +72,8 @@ $error = $_GET['error'] ?? '';
     .login-shell {
       position: relative;
       isolation: isolate;
+      width: 100%;
+      min-height: 100vh;
     }
     
     .brand {
@@ -101,14 +110,72 @@ $error = $_GET['error'] ?? '';
         top: 0;
       }
     }
+
+    @media (max-width: 640px) {
+      html,
+      body.app-body {
+        height: 100dvh;
+        min-height: 100dvh;
+        overflow: hidden;
+      }
+
+      .login-shell {
+        height: 100dvh;
+        min-height: 100dvh;
+        padding-top: 12px;
+        padding-bottom: 12px;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      .login-card {
+        border-radius: 16px;
+        width: min(100%, 420px);
+        max-height: calc(100dvh - 24px);
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .login-card > .grid {
+        display: block;
+      }
+
+      .login-card > .grid > :last-child {
+        display: none !important;
+      }
+
+      .hero-orb {
+        width: 220px;
+        height: 220px;
+        opacity: 0.65;
+      }
+
+      .hero-orb:first-of-type {
+        left: -120px;
+        top: -120px;
+      }
+
+      .hero-orb:last-of-type {
+        right: -120px;
+        top: 24px;
+      }
+
+      .login-card .p-6 {
+        padding: 1.25rem;
+      }
+
+      .login-card form {
+        margin-bottom: 0;
+      }
+    }
   </style>
 </head>
 <body class="app-body">
-  <div class="min-h-screen flex items-center justify-center px-4 py-8 sm:py-10 login-shell">
+  <div class="min-h-screen flex items-center justify-center px-3 py-3 sm:px-4 sm:py-10 login-shell">
     <span class="hero-orb -left-24 -top-32"></span>
     <span class="hero-orb -right-32 top-32"></span>
 
-    <div class="login-card w-full max-w-5xl overflow-hidden relative">
+    <div class="login-card w-full max-w-md md:max-w-5xl overflow-hidden relative">
       <div class="grid grid-cols-1 md:grid-cols-2">
         <!-- Left Side: Login Form -->
         <div class="p-6 sm:p-8 md:p-10">
@@ -159,7 +226,7 @@ $error = $_GET['error'] ?? '';
             <div class="text-xs uppercase tracking-widest text-slate-600 font-semibold">Health Insights</div>
             <div class="text-2xl font-bold text-slate-900 mt-3">Connected BHU Care</div>
             <p class="text-sm text-slate-700 mt-3 leading-relaxed">
-              Track immunization, maternal health, TB monitoring, and medicine inventory in one centralized dashboard.
+              Track immunization, maternal health, and medicine inventory in one centralized dashboard.
             </p>
             <div class="mt-6 space-y-3">
               <div class="flex items-start gap-3">

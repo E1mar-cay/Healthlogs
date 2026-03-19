@@ -8,6 +8,13 @@ require_once __DIR__ . '/../config/db.php';
 
 echo "Seeding medicine inventory module...\n";
 
+// Get user IDs for recorded_by field
+$users = $pdo->query("SELECT id FROM users WHERE status = 'active'")->fetchAll(PDO::FETCH_COLUMN);
+if (empty($users)) {
+    echo "No users found. Please run seed_users.php first.\n";
+    exit(1);
+}
+
 // Common medicines in Philippine BHUs
 $medicines = [
     // Antibiotics
@@ -134,8 +141,8 @@ try {
             
             // Create received transaction
             $stmt = $pdo->prepare("
-                INSERT INTO medicine_transactions (medicine_id, batch_id, transaction_datetime, transaction_type, quantity, reference, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO medicine_transactions (medicine_id, batch_id, transaction_datetime, transaction_type, quantity, reference, notes, recorded_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $medicineId,
@@ -144,7 +151,8 @@ try {
                 'received',
                 $quantityReceived,
                 'PO-' . date('Y', strtotime($receivedDate)) . '-' . rand(1000, 9999),
-                'Stock received from supplier'
+                'Stock received from supplier',
+                $users[array_rand($users)]
             ]);
             $transactionCount++;
             
@@ -177,8 +185,8 @@ try {
                 }
                 
                 $stmt = $pdo->prepare("
-                    INSERT INTO medicine_transactions (medicine_id, batch_id, transaction_datetime, transaction_type, quantity, reference, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO medicine_transactions (medicine_id, batch_id, transaction_datetime, transaction_type, quantity, reference, notes, recorded_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
                     $medicineId,
@@ -187,7 +195,8 @@ try {
                     'dispensed',
                     -$qtyToDispense, // Negative for dispensed
                     'RX-' . $currentDate->format('Ymd') . '-' . rand(100, 999),
-                    'Dispensed to patients'
+                    'Dispensed to patients',
+                    $users[array_rand($users)]
                 ]);
                 $transactionCount++;
                 
@@ -211,8 +220,8 @@ try {
                 ];
                 
                 $stmt = $pdo->prepare("
-                    INSERT INTO medicine_transactions (medicine_id, batch_id, transaction_datetime, transaction_type, quantity, reference, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO medicine_transactions (medicine_id, batch_id, transaction_datetime, transaction_type, quantity, reference, notes, recorded_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
                     $medicineId,
@@ -221,7 +230,8 @@ try {
                     $adjustmentType,
                     $adjustmentQty,
                     strtoupper($adjustmentType) . '-' . rand(1000, 9999),
-                    $notes[$adjustmentType]
+                    $notes[$adjustmentType],
+                    $users[array_rand($users)]
                 ]);
                 $transactionCount++;
             }

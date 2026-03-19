@@ -7,7 +7,6 @@ A comprehensive health management system for Barangay Health Units (BHU) to trac
 - **Patient Records Management** - Complete demographic and health information tracking
 - **Immunization Tracking** - Vaccine schedules, records, and reminders
 - **Maternal Health** - Pregnancy tracking, prenatal and postnatal visits
-- **TB Monitoring** - TB case management and follow-up tracking
 - **Medicine Inventory** - Stock management with batch tracking and expiry monitoring
 - **Automated Reminders** - SMS/Email notifications for upcoming appointments
 - **Forecasting** - ARIMA-based predictive analytics for demand planning
@@ -64,7 +63,6 @@ php scripts/seed_all.php
 php scripts/seed_patients.php
 php scripts/seed_immunization.php
 php scripts/seed_maternal.php
-php scripts/seed_tb.php
 php scripts/seed_inventory.php
 
 # Optional: Seed time series data for forecasting
@@ -165,7 +163,6 @@ HealthLogs/
 │   ├── maternal/        # Maternal health module
 │   ├── patients/        # Patient records module
 │   ├── reminders/       # Reminders module
-│   ├── tb/             # TB monitoring module
 │   └── partials/       # Shared components (header, footer, bootstrap)
 ├── schema/
 │   └── healthlogs.sql   # Database schema
@@ -294,7 +291,6 @@ For issues and questions, please create an issue in the repository.
 - Patient records management
 - Immunization tracking
 - Maternal health monitoring
-- TB case management
 - Medicine inventory
 - ARIMA forecasting
 - Reminder system

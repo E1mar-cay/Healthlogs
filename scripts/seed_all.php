@@ -12,11 +12,13 @@ $startTime = microtime(true);
 
 // Define seeders in order of execution
 $seeders = [
-    'seed_patients.php' => 'Patient Records',
+    'seed_users.php' => 'User Accounts & Roles',
+    'seed_patients.php' => 'Patient Records & Households',
+    'seed_visits.php' => 'General Visits',
     'seed_immunization.php' => 'Immunization Module',
     'seed_maternal.php' => 'Maternal Health Module',
-    'seed_tb.php' => 'TB Monitoring Module',
     'seed_inventory.php' => 'Medicine Inventory Module',
+    'build_timeseries.php' => 'Time Series Data',
 ];
 
 $success = 0;
@@ -77,8 +79,11 @@ if ($failed === 0) {
     echo "🎉 All seeders completed successfully!\n\n";
     echo "You can now:\n";
     echo "  1. Login to the system at: http://localhost/HealthLogs/public/login.php\n";
-    echo "  2. Use credentials: admin / admin123\n";
-    echo "  3. Explore the populated modules\n\n";
+    echo "  2. Use default credentials:\n";
+    echo "     - Superadmin: superadmin / superadmin123\n";
+    echo "     - Admin: admin / admin123\n";
+    echo "     - Health Worker: bhw / bhw123\n";
+    echo "  3. Explore the populated modules with realistic data\n\n";
 } else {
     echo "⚠️  Some seeders failed. Please check the errors above.\n\n";
     exit(1);

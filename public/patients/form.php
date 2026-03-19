@@ -55,14 +55,6 @@ require __DIR__ . '/../partials/header.php';
       <input name="barangay" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($patient['barangay'] ?? '') ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">City/Municipality</label>
-      <input name="city_municipality" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($patient['city_municipality'] ?? '') ?>" />
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">Province</label>
-      <input name="province" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($patient['province'] ?? '') ?>" />
-    </div>
-    <div>
       <label class="block text-sm text-slate-600">Contact No</label>
       <input name="contact_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($patient['contact_no'] ?? '') ?>" />
     </div>

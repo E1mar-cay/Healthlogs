@@ -29,6 +29,11 @@ class ForecastController extends Controller
             return;
         }
 
+        if (!empty($data['error'])) {
+            $this->json(['error' => $data['error']], 500);
+            return;
+        }
+
         $this->json($data);
     }
 }

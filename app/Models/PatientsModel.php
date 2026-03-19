@@ -29,9 +29,8 @@ class PatientsModel
                     household_id, philhealth_no, national_id,
                     first_name, middle_name, last_name, suffix,
                     sex, birth_date, blood_type,
-                    contact_no, email, address_line, barangay,
-                    city_municipality, province, status
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    contact_no, email, address_line, barangay, status
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
@@ -49,9 +48,7 @@ class PatientsModel
             $data['email'],
             $data['address_line'],
             $data['barangay'],
-            $data['city_municipality'],
-            $data['province'],
-            $data['status'],
+            $data['status'] ?? 'active',
         ]);
 
         return (int)$this->db->lastInsertId();
@@ -63,8 +60,7 @@ class PatientsModel
                     household_id = ?, philhealth_no = ?, national_id = ?,
                     first_name = ?, middle_name = ?, last_name = ?, suffix = ?,
                     sex = ?, birth_date = ?, blood_type = ?,
-                    contact_no = ?, email = ?, address_line = ?, barangay = ?,
-                    city_municipality = ?, province = ?, status = ?
+                    contact_no = ?, email = ?, address_line = ?, barangay = ?, status = ?
                 WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -83,8 +79,6 @@ class PatientsModel
             $data['email'],
             $data['address_line'],
             $data['barangay'],
-            $data['city_municipality'],
-            $data['province'],
             $data['status'],
             $id,
         ]);
@@ -97,14 +91,12 @@ class PatientsModel
             // Delete child records first (in correct order)
             $this->db->prepare("DELETE pv FROM prenatal_visits pv INNER JOIN pregnancies p ON pv.pregnancy_id = p.id WHERE p.patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE pv FROM postnatal_visits pv INNER JOIN pregnancies p ON pv.pregnancy_id = p.id WHERE p.patient_id = ?")->execute([$id]);
-            $this->db->prepare("DELETE tf FROM tb_followups tf INNER JOIN tb_cases tc ON tf.tb_case_id = tc.id WHERE tc.patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE FROM immunization_records WHERE patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE FROM immunization_schedule WHERE patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE FROM patient_allergies WHERE patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE FROM patient_conditions WHERE patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE FROM pregnancies WHERE patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE FROM reminders WHERE patient_id = ?")->execute([$id]);
-            $this->db->prepare("DELETE FROM tb_cases WHERE patient_id = ?")->execute([$id]);
             $this->db->prepare("DELETE FROM visits WHERE patient_id = ?")->execute([$id]);
             
             // Finally delete the patient

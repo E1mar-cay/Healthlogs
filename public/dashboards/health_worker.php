@@ -6,7 +6,7 @@ require __DIR__ . '/../partials/header.php';
 <div class="bg-white p-6 rounded shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500">BHU Operations</div>
+      <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
       <div class="text-2xl font-semibold">Health Worker Dashboard</div>
       <p class="text-sm text-slate-500 mt-1">Daily intake, priority programs, and care follow-ups.</p>
     </div>
@@ -42,14 +42,14 @@ require __DIR__ . '/../partials/header.php';
   </div>
   <div class="bg-white p-5 rounded shadow border border-slate-100">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-semibold">TB</span>
+      <span class="h-12 w-12 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold">MD</span>
       <div>
-        <div class="text-xs uppercase tracking-widest text-slate-400">Monitoring</div>
-        <div class="text-2xl font-semibold mt-1">TB Follow-ups</div>
+        <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
+        <div class="text-2xl font-semibold mt-1">Medicine</div>
       </div>
     </div>
-    <div class="text-sm text-slate-500 mt-3">Track adherence and symptoms.</div>
-    <a class="inline-flex items-center justify-center mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm shadow" href="/HealthLogs/public/tb.php">Open TB Module</a>
+    <div class="text-sm text-slate-500 mt-3">Dispense and track stock.</div>
+    <a class="inline-flex items-center justify-center mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm shadow" href="/HealthLogs/public/inventory.php">Open Inventory</a>
   </div>
 </div>
 
@@ -78,11 +78,7 @@ require __DIR__ . '/../partials/header.php';
         <div class="text-xl font-semibold mt-1">Dispense</div>
         <p class="text-slate-500 text-sm mt-1">Update dispensed medicines.</p>
       </div>
-      <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">TB</div>
-        <div class="text-xl font-semibold mt-1">Follow-ups</div>
-        <p class="text-slate-500 text-sm mt-1">Log adherence updates.</p>
-      </div>
+
     </div>
   </div>
   <div class="bg-white p-5 rounded shadow">
@@ -105,10 +101,7 @@ require __DIR__ . '/../partials/header.php';
         <span class="mt-1 h-2 w-2 rounded-full bg-emerald-400"></span>
         <div class="text-sm text-slate-600">Check immunization schedules due today.</div>
       </div>
-      <div class="flex items-start gap-3">
-        <span class="mt-1 h-2 w-2 rounded-full bg-amber-400"></span>
-        <div class="text-sm text-slate-600">Follow-up TB patients scheduled this week.</div>
-      </div>
+
       <div class="flex items-start gap-3">
         <span class="mt-1 h-2 w-2 rounded-full bg-indigo-400"></span>
         <div class="text-sm text-slate-600">Record prenatal visit outcomes.</div>

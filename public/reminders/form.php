@@ -37,7 +37,6 @@ require __DIR__ . '/../partials/header.php';
         <option value="immunization" <?= $type === 'immunization' ? 'selected' : '' ?>>Immunization</option>
         <option value="prenatal" <?= $type === 'prenatal' ? 'selected' : '' ?>>Prenatal</option>
         <option value="postnatal" <?= $type === 'postnatal' ? 'selected' : '' ?>>Postnatal</option>
-        <option value="tb" <?= $type === 'tb' ? 'selected' : '' ?>>TB</option>
         <option value="general" <?= $type === 'general' ? 'selected' : '' ?>>General</option>
       </select>
     </div>

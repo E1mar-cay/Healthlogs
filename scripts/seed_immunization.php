@@ -8,6 +8,13 @@ require_once __DIR__ . '/../config/db.php';
 
 echo "Seeding immunization module...\n";
 
+// Get users for administered_by and recorded_by fields
+$users = $pdo->query("SELECT id FROM users WHERE status = 'active'")->fetchAll(PDO::FETCH_COLUMN);
+if (empty($users)) {
+    echo "No users found. Please run seed_users.php first.\n";
+    exit(1);
+}
+
 // First, ensure vaccines exist
 echo "Checking vaccines...\n";
 $vaccineCount = $pdo->query("SELECT COUNT(*) FROM vaccines")->fetchColumn();
@@ -50,7 +57,7 @@ if (empty($children)) {
     $lastNames = ['Dela Cruz', 'Garcia', 'Reyes', 'Santos', 'Gonzales', 'Flores', 'Ramos', 'Mendoza', 'Torres', 'Rivera'];
     $barangays = ['Alinguigan', 'Bagong Bayan', 'Centro', 'Maligaya', 'San Isidro'];
     
-    $stmt = $pdo->prepare("INSERT INTO patients (first_name, middle_name, last_name, sex, birth_date, barangay, city_municipality, province, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO patients (first_name, middle_name, last_name, sex, birth_date, barangay, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
     
     for ($i = 0; $i < 30; $i++) {
         $sex = rand(0, 1) ? 'male' : 'female';
@@ -69,8 +76,6 @@ if (empty($children)) {
             $sex,
             $birthDate,
             $barangays[array_rand($barangays)],
-            'Ilagan',
-            'Isabela',
             'active'
         ]);
     }
@@ -113,7 +118,8 @@ try {
                             // Completed - create record
                             $administeredDate = $scheduledDate->modify('+' . rand(0, 14) . ' days');
                             
-                            $pdo->prepare("INSERT INTO immunization_records (patient_id, vaccine_id, dose_no, administered_on, administered_at, lot_no, notes) VALUES (?, ?, ?, ?, ?, ?, ?)")
+                            // Create immunization record
+                            $pdo->prepare("INSERT INTO immunization_records (patient_id, vaccine_id, dose_no, administered_on, administered_at, lot_no, notes, administered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
                                 ->execute([
                                     $child['id'],
                                     $vaccine['id'],
@@ -121,9 +127,21 @@ try {
                                     $administeredDate->format('Y-m-d'),
                                     $administeredDate->format('Y-m-d H:i:s'),
                                     'LOT-' . rand(1000, 9999),
-                                    'Routine immunization'
+                                    'Routine immunization',
+                                    $users[array_rand($users)]
                                 ]);
                             $recordCount++;
+                            
+                            // Create visit record
+                            $pdo->prepare("INSERT INTO visits (patient_id, visit_datetime, visit_type, reason, notes, recorded_by) VALUES (?, ?, ?, ?, ?, ?)")
+                                ->execute([
+                                    $child['id'],
+                                    $administeredDate->format('Y-m-d H:i:s'),
+                                    'immunization',
+                                    $vaccine['name'] . ' dose ' . $dose,
+                                    'Immunization visit',
+                                    $users[array_rand($users)]
+                                ]);
                             
                             // Also create schedule as completed
                             $pdo->prepare("INSERT INTO immunization_schedule (patient_id, vaccine_id, dose_no, scheduled_date, status) VALUES (?, ?, ?, ?, ?)")

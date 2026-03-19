@@ -18,6 +18,48 @@ $bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', null, null];
 $barangays = ['Alinguigan', 'Bagong Bayan', 'Centro', 'Maligaya', 'San Isidro', 'San Jose', 'Santa Cruz', 'Santo Niño', 'Poblacion', 'Riverside'];
 $streets = ['Rizal St.', 'Bonifacio Ave.', 'Mabini St.', 'Luna St.', 'Del Pilar St.', 'Aguinaldo Ave.', 'Quezon Blvd.', 'Roxas St.', 'Osmena Ave.', 'Magsaysay St.'];
 
+// Generate 20 households first
+echo "Creating households...\n";
+$households = [];
+
+// Check existing households to avoid duplicates
+$existingCount = $pdo->query("SELECT COUNT(*) FROM households")->fetchColumn();
+$startIndex = $existingCount;
+
+for ($i = 0; $i < 20; $i++) {
+    $householdCode = 'HH-' . date('Y') . '-' . str_pad($startIndex + $i + 1, 4, '0', STR_PAD_LEFT);
+    
+    // Check if household code already exists
+    $exists = $pdo->prepare("SELECT id FROM households WHERE household_code = ?");
+    $exists->execute([$householdCode]);
+    $existingHousehold = $exists->fetch();
+    if ($existingHousehold) {
+        // Skip if exists, use existing ID
+        $households[] = $existingHousehold['id'];
+        continue;
+    }
+    
+    $headName = ($i % 2 ? $firstNamesMale[array_rand($firstNamesMale)] : $firstNamesFemale[array_rand($firstNamesFemale)]) . ' ' . $lastNames[array_rand($lastNames)];
+    
+    $stmt = $pdo->prepare("INSERT INTO households (household_code, head_name, address_line, barangay, city_municipality, province) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([
+        $householdCode,
+        $headName,
+        $streets[array_rand($streets)] . ' ' . rand(1, 500),
+        $barangays[array_rand($barangays)],
+        'Ilagan',
+        'Isabela'
+    ]);
+    $households[] = $pdo->lastInsertId();
+}
+
+// If no new households were created, get existing ones
+if (empty($households)) {
+    $households = $pdo->query("SELECT id FROM households LIMIT 20")->fetchAll(PDO::FETCH_COLUMN);
+}
+
+echo "✓ Available households: " . count($households) . "\n";
+
 // Generate 100 patients
 $patients = [];
 for ($i = 0; $i < 100; $i++) {
@@ -50,8 +92,10 @@ for ($i = 0; $i < 100; $i++) {
         $status = 'deceased';
     }
     
+    // 60% chance of being assigned to a household
+    $householdId = (rand(1, 100) <= 60 && !empty($households)) ? $households[array_rand($households)] : null;
     $patients[] = [
-        'household_id' => null,
+        'household_id' => $householdId,
         'philhealth_no' => $philhealth,
         'national_id' => null,
         'first_name' => $firstName,
@@ -65,8 +109,6 @@ for ($i = 0; $i < 100; $i++) {
         'email' => $email,
         'address_line' => $streets[array_rand($streets)] . ' ' . rand(1, 500),
         'barangay' => $barangays[array_rand($barangays)],
-        'city_municipality' => 'Ilagan',
-        'province' => 'Isabela',
         'status' => $status
     ];
 }
@@ -76,9 +118,8 @@ $sql = "INSERT INTO patients (
     household_id, philhealth_no, national_id,
     first_name, middle_name, last_name, suffix,
     sex, birth_date, blood_type,
-    contact_no, email, address_line, barangay,
-    city_municipality, province, status
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    contact_no, email, address_line, barangay, status
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 $stmt = $pdo->prepare($sql);
 
@@ -100,8 +141,6 @@ try {
             $patient['email'],
             $patient['address_line'],
             $patient['barangay'],
-            $patient['city_municipality'],
-            $patient['province'],
             $patient['status']
         ]);
     }

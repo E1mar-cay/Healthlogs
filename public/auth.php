@@ -6,7 +6,7 @@ session_start();
 $username = trim($_POST['username'] ?? '');
 $password = $_POST['password'] ?? '';
 
-$stmt = $pdo->prepare("SELECT u.id, u.username, u.password_hash, u.status, r.name AS role_name
+$stmt = $pdo->prepare("SELECT u.id, u.username, u.full_name, u.password_hash, u.status, r.name AS role_name
     FROM users u
     JOIN roles r ON r.id = u.role_id
     WHERE u.username = ?
@@ -21,6 +21,7 @@ if (!$user || $user['status'] !== 'active' || !password_verify($password, $user[
 
 $_SESSION['user_id'] = (int)$user['id'];
 $_SESSION['username'] = $user['username'];
+$_SESSION['full_name'] = $user['full_name'];
 $_SESSION['role'] = $user['role_name'];
 
 header('Location: /HealthLogs/public/index.php');

@@ -27,6 +27,5 @@ $tomorrow = date('Y-m-d', strtotime('+1 day'));
 $seed = $pdo->prepare("INSERT INTO reminders (patient_id, reminder_type, due_date, message, status) VALUES (?,?,?,?,?)");
 $seed->execute([$patientId, 'immunization', $today, 'Vaccination due today.', 'pending']);
 $seed->execute([$patientId, 'prenatal', $tomorrow, 'Prenatal checkup tomorrow.', 'pending']);
-$seed->execute([$patientId, 'tb', $today, 'TB follow-up today.', 'pending']);
 
 echo "Seeded reminders for patient ID {$patientId}\n";

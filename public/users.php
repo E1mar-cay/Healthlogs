@@ -183,14 +183,18 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="/HealthLogs/public/users/form.php?id=<?= $user['id'] ?>" 
-                                           class="text-blue-600 hover:text-blue-900 transition-colors">
-                                            <i class="fas fa-edit"></i>
+                                           class="text-blue-600 hover:text-blue-900 transition-colors px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
+                                           title="Edit User">
+                                            <i class="fas fa-edit mr-1"></i>Edit
                                         </a>
                                         <?php if ($user['id'] != $_SESSION['user_id']): ?>
                                             <button onclick="deleteUser(<?= $user['id'] ?>, '<?= h($user['username']) ?>')" 
-                                                    class="text-red-600 hover:text-red-900 transition-colors ml-3">
-                                                <i class="fas fa-trash"></i>
+                                                    class="text-red-600 hover:text-red-900 transition-colors px-2 py-1 border border-red-300 rounded hover:bg-red-50"
+                                                    title="Delete User">
+                                                <i class="fas fa-trash mr-1"></i>Delete
                                             </button>
+                                        <?php else: ?>
+                                            <span class="text-gray-400 px-2 py-1 text-xs">Current User</span>
                                         <?php endif; ?>
                                     </div>
                                 </td>

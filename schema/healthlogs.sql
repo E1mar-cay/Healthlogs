@@ -92,7 +92,7 @@ CREATE TABLE visits (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   patient_id BIGINT UNSIGNED NOT NULL,
   visit_datetime DATETIME NOT NULL,
-  visit_type ENUM('general','immunization','maternal','tb','other') NOT NULL DEFAULT 'general',
+  visit_type ENUM('general','immunization','maternal','other') NOT NULL DEFAULT 'general',
   reason VARCHAR(255) NULL,
   notes TEXT NULL,
   recorded_by INT UNSIGNED NULL,
@@ -191,37 +191,7 @@ CREATE TABLE postnatal_visits (
   INDEX idx_postnatal_datetime (visit_datetime)
 ) ENGINE=InnoDB;
 
--- Tuberculosis
-CREATE TABLE tb_cases (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  patient_id BIGINT UNSIGNED NOT NULL,
-  case_no VARCHAR(60) NULL,
-  diagnosis_date DATE NOT NULL,
-  case_type ENUM('drug_susceptible','drug_resistant') NOT NULL DEFAULT 'drug_susceptible',
-  status ENUM('active','completed','defaulted','failed','died') NOT NULL DEFAULT 'active',
-  treatment_start DATE NOT NULL,
-  treatment_end DATE NULL,
-  notes TEXT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_tb_patient FOREIGN KEY (patient_id) REFERENCES patients(id),
-  INDEX idx_tb_diagnosis (diagnosis_date)
-) ENGINE=InnoDB;
 
-CREATE TABLE tb_followups (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tb_case_id BIGINT UNSIGNED NOT NULL,
-  followup_datetime DATETIME NOT NULL,
-  adherence ENUM('good','poor','missed') NOT NULL,
-  weight_kg DECIMAL(5,2) NULL,
-  symptoms TEXT NULL,
-  notes TEXT NULL,
-  recorded_by INT UNSIGNED NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_tb_followup_case FOREIGN KEY (tb_case_id) REFERENCES tb_cases(id),
-  CONSTRAINT fk_tb_followup_user FOREIGN KEY (recorded_by) REFERENCES users(id),
-  INDEX idx_tb_followup_datetime (followup_datetime)
-) ENGINE=InnoDB;
 
 -- Medicine inventory
 CREATE TABLE medicines (
@@ -271,7 +241,7 @@ CREATE TABLE medicine_transactions (
 CREATE TABLE reminders (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   patient_id BIGINT UNSIGNED NOT NULL,
-  reminder_type ENUM('immunization','prenatal','postnatal','tb','general') NOT NULL,
+  reminder_type ENUM('immunization','prenatal','postnatal','general') NOT NULL,
   due_date DATE NOT NULL,
   message VARCHAR(255) NOT NULL,
   status ENUM('pending','sent','failed','cancelled') NOT NULL DEFAULT 'pending',

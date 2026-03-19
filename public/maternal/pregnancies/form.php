@@ -22,7 +22,7 @@ require __DIR__ . '/../../partials/header.php';
     <?php endif; ?>
 
     <div>
-      <label class="block text-sm text-slate-600">Patient</label>
+      <label class="block text-sm text-slate-600">Mother / Patient</label>
       <select name="patient_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($patients as $p): ?>
           <?php $sel = ($rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
@@ -31,23 +31,26 @@ require __DIR__ . '/../../partials/header.php';
       </select>
     </div>
     <div>
-      <label class="block text-sm text-slate-600">LMP Date</label>
+      <label class="block text-sm text-slate-600">Last Menstrual Period</label>
       <input name="lmp_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['lmp_date'] ?? '') ?>" />
+      <div class="mt-1 text-xs text-slate-500">Start date of the last menstrual period.</div>
     </div>
     <div>
-      <label class="block text-sm text-slate-600">EDD Date</label>
+      <label class="block text-sm text-slate-600">Expected Delivery Date</label>
       <input name="edd_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['edd_date'] ?? '') ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Gravida</label>
+      <label class="block text-sm text-slate-600">Total Pregnancies</label>
       <input name="gravida" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['gravida'] ?? '') ?>" />
+      <div class="mt-1 text-xs text-slate-500">How many times the patient has been pregnant.</div>
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Para</label>
+      <label class="block text-sm text-slate-600">Births</label>
       <input name="para" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['para'] ?? '') ?>" />
+      <div class="mt-1 text-xs text-slate-500">Number of pregnancies that reached delivery.</div>
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Status</label>
+      <label class="block text-sm text-slate-600">Pregnancy Status</label>
       <?php $status = $rec['status'] ?? 'ongoing'; ?>
       <select name="status" class="mt-1 w-full border rounded px-3 py-2">
         <option value="ongoing" <?= $status === 'ongoing' ? 'selected' : '' ?>>Ongoing</option>

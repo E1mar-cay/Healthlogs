@@ -1,5 +1,8 @@
-﻿<?php
+<?php
 require __DIR__ . '/../../partials/bootstrap.php';
+
+$motherConditionOptions = ['Stable', 'Recovering Well', 'Needs Follow-Up', 'With Warning Signs', 'Referred'];
+$babyConditionOptions = ['Healthy', 'Stable', 'Needs Follow-Up', 'Low Birth Weight', 'With Warning Signs', 'Referred'];
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $rec = null;
@@ -10,6 +13,16 @@ if ($id) {
 }
 
 $pregs = $pdo->query("SELECT pr.id, p.first_name, p.last_name, pr.lmp_date FROM pregnancies pr JOIN patients p ON p.id = pr.patient_id ORDER BY pr.id DESC")->fetchAll();
+
+$selectedMotherCondition = trim((string)($rec['mother_condition'] ?? ''));
+if ($selectedMotherCondition !== '' && !in_array($selectedMotherCondition, $motherConditionOptions, true)) {
+    $motherConditionOptions[] = $selectedMotherCondition;
+}
+
+$selectedBabyCondition = trim((string)($rec['baby_condition'] ?? ''));
+if ($selectedBabyCondition !== '' && !in_array($selectedBabyCondition, $babyConditionOptions, true)) {
+    $babyConditionOptions[] = $selectedBabyCondition;
+}
 
 $pageTitle = $rec ? 'Edit Postnatal Visit' : 'New Postnatal Visit';
 require __DIR__ . '/../../partials/header.php';
@@ -36,11 +49,21 @@ require __DIR__ . '/../../partials/header.php';
     </div>
     <div>
       <label class="block text-sm text-slate-600">Mother Condition</label>
-      <input name="mother_condition" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['mother_condition'] ?? '') ?>" />
+      <select name="mother_condition" class="mt-1 w-full border rounded px-3 py-2">
+        <option value="">Select mother condition</option>
+        <?php foreach ($motherConditionOptions as $option): ?>
+          <option value="<?= h($option) ?>" <?= (($rec['mother_condition'] ?? '') === $option) ? 'selected' : '' ?>><?= h($option) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Baby Condition</label>
-      <input name="baby_condition" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['baby_condition'] ?? '') ?>" />
+      <select name="baby_condition" class="mt-1 w-full border rounded px-3 py-2">
+        <option value="">Select baby condition</option>
+        <?php foreach ($babyConditionOptions as $option): ?>
+          <option value="<?= h($option) ?>" <?= (($rec['baby_condition'] ?? '') === $option) ? 'selected' : '' ?>><?= h($option) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
     <div class="md:col-span-2">
       <label class="block text-sm text-slate-600">Notes</label>

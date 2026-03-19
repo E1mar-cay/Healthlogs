@@ -16,7 +16,7 @@
         <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/patients">Patient Records</a>
         <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/immunization">Immunization</a>
         <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/maternal">Maternal Health</a>
-        <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/tb">TB Monitoring</a>
+
         <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/inventory">Medicine Inventory</a>
         <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/reminders">Reminders</a>
         <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/forecast">Forecasting</a>
