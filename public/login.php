@@ -80,6 +80,24 @@ $error = $_GET['error'] ?? '';
       font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
       letter-spacing: 0.02em;
     }
+
+    .brand-mark {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, rgba(37,99,235,0.16), rgba(14,165,164,0.2));
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .brand-mark svg {
+      width: 28px;
+      height: 28px;
+      color: #0f4ccf;
+    }
     
     .login-card input {
       background: rgba(248, 250, 252, 0.9);
@@ -164,6 +182,17 @@ $error = $_GET['error'] ?? '';
         padding: 1.25rem;
       }
 
+      .brand-mark {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+      }
+
+      .brand-mark svg {
+        width: 24px;
+        height: 24px;
+      }
+
       .login-card form {
         margin-bottom: 0;
       }
@@ -179,6 +208,13 @@ $error = $_GET['error'] ?? '';
       <div class="grid grid-cols-1 md:grid-cols-2">
         <!-- Left Side: Login Form -->
         <div class="p-6 sm:p-8 md:p-10">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 4v16"></path>
+              <path d="M4 12h16"></path>
+              <path d="M7 7h10v10H7z"></path>
+            </svg>
+          </div>
           <div class="brand text-2xl sm:text-3xl font-semibold text-slate-900">HealthLogs</div>
           <p class="text-xs sm:text-sm text-slate-600 mt-2">Secure access for Barangay Health Units.</p>
 
