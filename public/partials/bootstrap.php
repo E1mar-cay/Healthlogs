@@ -31,10 +31,6 @@ require_login();
 if (!function_exists('rbac_enforce')) {
     function rbac_enforce(): void {
         $role = $_SESSION['role'] ?? 'health_worker';
-        if ($role === 'superadmin') {
-            return;
-        }
-
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
 
         // Public endpoints (already handled by require_login)
@@ -47,7 +43,6 @@ if (!function_exists('rbac_enforce')) {
             '/HealthLogs/public/forecast.php' => ['admin'],
             '/HealthLogs/public/forecast_run.php' => ['admin'],
             '/HealthLogs/public/reminders/run_cron.php' => ['admin'],
-            '/HealthLogs/public/dashboards/superadmin.php' => ['superadmin'],
             '/HealthLogs/public/dashboards/admin.php' => ['admin'],
         ];
 

@@ -308,13 +308,11 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Insert default data
 INSERT INTO roles (id, name) VALUES 
 (1, 'admin'),
-(2, 'superadmin'),
-(3, 'health_worker');
+(2, 'health_worker');
 
 INSERT INTO users (role_id, username, password_hash, full_name) VALUES
-(2, 'superadmin', '$2y$10$yqbSQnQV7lYdQ8eiHaMot.AkSGWLMP.p/pMkKzpn0cvYSWcQNn8Aa', 'System Administrator'),
 (1, 'admin', '$2y$10$0mvIR7AT0u9y4q.FMLpg8.tJ77mPD7zrZCdAuTjl78r2g4UYteO22', 'System Admin'),
-(3, 'bhw', '$2y$10$5jqcR2FrgaMsuOPxeWkofeIZdrzsKFSufD5InCtLJGQ2Hi.oQR/ua', 'Barangay Health Worker');
+(2, 'bhw', '$2y$10$5jqcR2FrgaMsuOPxeWkofeIZdrzsKFSufD5InCtLJGQ2Hi.oQR/ua', 'Barangay Health Worker');
 
 INSERT INTO vaccines (name, code, recommended_min_age_months, recommended_max_age_months, doses_required) VALUES
 ('BCG', 'BCG', 0, 1, 1),

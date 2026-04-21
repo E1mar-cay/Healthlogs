@@ -2,7 +2,7 @@
 $pageTitle = 'User Management Test';
 require __DIR__ . '/partials/bootstrap.php';
 
-if (!in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+if (($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: /HealthLogs/public/login.php');
     exit;
 }

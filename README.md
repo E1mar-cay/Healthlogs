@@ -10,7 +10,7 @@ A comprehensive health management system for Barangay Health Units (BHU) to trac
 - **Medicine Inventory** - Stock management with batch tracking and expiry monitoring
 - **Automated Reminders** - SMS/Email notifications for upcoming appointments
 - **Forecasting** - ARIMA-based predictive analytics for demand planning
-- **Role-Based Access Control** - Superadmin, Admin, and Health Worker roles
+- **Role-Based Access Control** - Admin and Health Worker roles
 - **Dashboard Analytics** - Real-time insights and reporting
 
 ## Tech Stack
@@ -141,7 +141,6 @@ http://localhost/HealthLogs/public/login.php
 
 **Development Only** (remove in production):
 
-- **Superadmin:** `superadmin` / `superadmin123`
 - **Admin:** `admin` / `admin123`
 - **Health Worker:** `bhw` / `bhw123`
 
@@ -193,7 +192,7 @@ HealthLogs/
 
 ### Forecasting
 
-1. Navigate to **Forecasting** (Admin/Superadmin only)
+1. Navigate to **Forecasting** (Admin only)
 2. Select series (visits or medicine demand)
 3. Set forecast horizon (days)
 4. Click **Run Forecast** to generate predictions

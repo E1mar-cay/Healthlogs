@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/db.php';
 
 // Ensure roles exist
-$roles = ['superadmin', 'admin', 'health_worker'];
+$roles = ['admin', 'health_worker'];
 $roleIds = [];
 foreach ($roles as $r) {
     $row = $pdo->prepare("SELECT id FROM roles WHERE name = ? LIMIT 1");
@@ -31,6 +31,5 @@ function upsert_user(PDO $pdo, int $roleId, string $username, string $password, 
     echo "Created {$username} ({$fullName})\n";
 }
 
-upsert_user($pdo, $roleIds['superadmin'], 'superadmin', 'superadmin123', 'System Administrator');
 upsert_user($pdo, $roleIds['admin'], 'admin', 'admin123', 'Barangay Health Administrator');
 upsert_user($pdo, $roleIds['health_worker'], 'bhw', 'bhw123', 'Barangay Health Worker');

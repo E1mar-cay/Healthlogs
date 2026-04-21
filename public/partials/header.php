@@ -292,13 +292,11 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           <span class="nav-icon">IN</span> Medicine Inventory
         </a>
 
-        <?php if (in_array($_SESSION['role'] ?? 'health_worker', ['admin', 'superadmin'], true)): ?>
+        <?php if (($_SESSION['role'] ?? 'health_worker') === 'admin'): ?>
           <div class="nav-section">Administration</div>
-          <?php if (in_array($_SESSION['role'] ?? 'health_worker', ['admin', 'superadmin'], true)): ?>
-            <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php">
-              <span class="nav-icon">US</span> User Management
-            </a>
-          <?php endif; ?>
+          <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php">
+            <span class="nav-icon">US</span> User Management
+          </a>
           <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php">
             <span class="nav-icon">RM</span> Reminders
           </a>

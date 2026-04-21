@@ -2,8 +2,7 @@
 $pageTitle = 'User Management';
 require __DIR__ . '/partials/bootstrap.php';
 
-// Check if user is superadmin or admin
-if (!in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+if (($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: /HealthLogs/public/login.php');
     exit;
 }
@@ -44,7 +43,7 @@ $stmt->execute($searchParams);
 $users = $stmt->fetchAll();
 
 // Get roles for dropdown
-$rolesStmt = $pdo->query("SELECT * FROM roles ORDER BY name");
+$rolesStmt = $pdo->query("SELECT * FROM roles WHERE name <> 'superadmin' ORDER BY name");
 $roles = $rolesStmt->fetchAll();
 
 // Calculate pagination
@@ -156,7 +155,6 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <?php
                                     $roleColors = [
-                                        'superadmin' => 'bg-red-100 text-red-800',
                                         'admin' => 'bg-blue-100 text-blue-800',
                                         'health_worker' => 'bg-green-100 text-green-800'
                                     ];

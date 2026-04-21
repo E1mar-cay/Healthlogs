@@ -80,7 +80,6 @@ if ($failed === 0) {
     echo "You can now:\n";
     echo "  1. Login to the system at: http://localhost/HealthLogs/public/login.php\n";
     echo "  2. Use default credentials:\n";
-    echo "     - Superadmin: superadmin / superadmin123\n";
     echo "     - Admin: admin / admin123\n";
     echo "     - Health Worker: bhw / bhw123\n";
     echo "  3. Explore the populated modules with realistic data\n\n";

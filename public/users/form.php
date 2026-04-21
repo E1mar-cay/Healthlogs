@@ -2,7 +2,7 @@
 $pageTitle = 'User Form';
 require __DIR__ . '/../partials/bootstrap.php';
 
-if (!in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+if (($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: /HealthLogs/public/login.php');
     exit;
 }
@@ -22,7 +22,7 @@ if ($isEdit) {
     }
 }
 
-$rolesStmt = $pdo->query("SELECT * FROM roles ORDER BY name");
+$rolesStmt = $pdo->query("SELECT * FROM roles WHERE name <> 'superadmin' ORDER BY name");
 $roles = $rolesStmt->fetchAll();
 
 require __DIR__ . '/../partials/header.php';

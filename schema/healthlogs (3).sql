@@ -1921,7 +1921,7 @@ CREATE TABLE `roles` (
 INSERT INTO `roles` (`id`, `name`) VALUES
 (1, 'admin'),
 (3, 'health_worker'),
-(2, 'superadmin');
+(2, 'health_worker');
 
 -- --------------------------------------------------------
 
@@ -2434,8 +2434,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `role_id`, `username`, `password_hash`, `full_name`, `email`, `phone`, `status`, `created_at`, `updated_at`) VALUES
-(1, 2, 'superadmin', '$2y$10$yqbSQnQV7lYdQ8eiHaMot.AkSGWLMP.p/pMkKzpn0cvYSWcQNn8Aa', 'System Administrator', NULL, NULL, 'active', '2026-03-18 10:08:37', NULL),
-(2, 1, 'admin', '$2y$10$0mvIR7AT0u9y4q.FMLpg8.tJ77mPD7zrZCdAuTjl78r2g4UYteO22', 'System Admin', NULL, NULL, 'active', '2026-03-18 10:08:37', NULL),
+(1, 1, 'admin', '$2y$10$0mvIR7AT0u9y4q.FMLpg8.tJ77mPD7zrZCdAuTjl78r2g4UYteO22', 'System Admin', NULL, NULL, 'active', '2026-03-18 10:08:37', NULL),
+(2, 2, 'bhw', '$2y$10$5jqcR2FrgaMsuOPxeWkofeIZdrzsKFSufD5InCtLJGQ2Hi.oQR/ua', 'Barangay Health Worker', NULL, NULL, 'active', '2026-03-18 10:08:37', NULL),
 (3, 3, 'bhw', '$2y$10$5jqcR2FrgaMsuOPxeWkofeIZdrzsKFSufD5InCtLJGQ2Hi.oQR/ua', 'Barangay Health Worker', NULL, NULL, 'active', '2026-03-18 10:08:37', NULL),
 (4, 3, 'Elmar', '$2y$10$yE721LEyDxfh4NtJr.H8k.tvKE3tLIo6BIc/E0QsH6w4yW.oYhgkO', 'Elmar Cayaba', 'elmarcayaba39@gmail.com', NULL, 'active', '2026-03-18 10:34:30', NULL);
 

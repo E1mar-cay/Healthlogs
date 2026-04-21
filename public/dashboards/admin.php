@@ -6,6 +6,9 @@ $adminStats = [
     'total_patients' => 0,
     'monthly_visits' => 0,
     'low_stock_items' => 0,
+    'active_users' => 0,
+    'pending_reminders' => 0,
+    'ongoing_pregnancies' => 0,
 ];
 
 try {
@@ -30,6 +33,21 @@ try {
              HAVING COALESCE(SUM(mt.quantity), 0) <= COALESCE(m.reorder_level, 0)
          ) low_stock"
     )->fetchColumn();
+
+    $adminStats['active_users'] = (int)$pdo->query(
+        "SELECT COUNT(*) FROM users WHERE status = 'active'"
+    )->fetchColumn();
+
+    $adminStats['pending_reminders'] = (int)$pdo->query(
+        "SELECT COUNT(*)
+         FROM reminders
+         WHERE status = 'pending'
+           AND due_date <= CURDATE()"
+    )->fetchColumn();
+
+    $adminStats['ongoing_pregnancies'] = (int)$pdo->query(
+        "SELECT COUNT(*) FROM pregnancies WHERE status = 'ongoing'"
+    )->fetchColumn();
 } catch (Throwable $e) {
     // Keep dashboard usable even if a summary query fails.
 }
@@ -38,9 +56,9 @@ try {
 <div class="bg-white p-6 rounded shadow mb-6">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
+    <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
       <div class="text-2xl font-semibold">Administrator Dashboard</div>
-      <p class="text-sm text-slate-500 mt-1">System overview, user management, and program analytics.</p>
+      <p class="text-sm text-slate-500 mt-1">System overview, user management, program analytics, and operational controls.</p>
     </div>
     <div class="flex items-center gap-2">
       <span class="app-chip">Admin Access</span>
@@ -64,6 +82,24 @@ try {
     <div class="text-xs uppercase tracking-widest text-slate-400">Low Stock</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['low_stock_items'])) ?></div>
     <div class="text-sm text-slate-500">Items below reorder</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Accounts</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['active_users'])) ?></div>
+    <div class="text-sm text-slate-500">Active user accounts</div>
+  </div>
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Reminders</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['pending_reminders'])) ?></div>
+    <div class="text-sm text-slate-500">Pending and due now</div>
+  </div>
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Maternal</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['ongoing_pregnancies'])) ?></div>
+    <div class="text-sm text-slate-500">Ongoing pregnancies</div>
   </div>
 </div>
 
@@ -92,6 +128,11 @@ try {
         <div class="text-xs uppercase tracking-widest text-slate-400">Medicine Demand</div>
         <div class="text-xl font-semibold mt-1">Rising</div>
         <p class="text-slate-500 text-sm mt-1">Expect higher demand next month.</p>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div class="text-xs uppercase tracking-widest text-slate-400">Roles</div>
+        <div class="text-xl font-semibold mt-1">2 Active</div>
+        <p class="text-slate-500 text-sm mt-1">Admin and Health Worker access levels.</p>
       </div>
     </div>
   </div>
@@ -166,7 +207,7 @@ try {
     <ul class="mt-3 text-sm text-slate-600 space-y-2">
       <li>3 vaccines expiring within 60 days.</li>
       <li>5 patients overdue for immunization follow-up.</li>
-
+      <li>Review inactive accounts and reminder backlog.</li>
     </ul>
   </div>
   <div class="bg-white p-5 rounded shadow">

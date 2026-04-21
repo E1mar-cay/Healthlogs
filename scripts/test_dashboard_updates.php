@@ -16,8 +16,7 @@ foreach ($users as $user) {
 echo "\nDashboard files updated:\n";
 $dashboards = [
     'health_worker.php' => 'Health Worker Dashboard',
-    'admin.php' => 'Administrator Dashboard', 
-    'superadmin.php' => 'Superadmin Dashboard'
+    'admin.php' => 'Administrator Dashboard'
 ];
 
 foreach ($dashboards as $file => $title) {

@@ -248,7 +248,6 @@ $error = $_GET['error'] ?? '';
               Sample Accounts (Dev Only)
             </div>
             <div class="space-y-1 font-mono text-amber-800 text-xs">
-              <div><span class="font-semibold">Superadmin:</span> superadmin / superadmin123</div>
               <div><span class="font-semibold">Admin:</span> admin / admin123</div>
               <div><span class="font-semibold">Health Worker:</span> bhw / bhw123</div>
             </div>

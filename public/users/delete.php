@@ -1,8 +1,7 @@
 <?php
 require __DIR__ . '/../partials/bootstrap.php';
 
-// Check if user is superadmin or admin
-if (!in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+if (($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: /HealthLogs/public/login.php');
     exit;
 }

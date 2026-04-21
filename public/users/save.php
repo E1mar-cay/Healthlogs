@@ -1,8 +1,7 @@
 <?php
 require __DIR__ . '/../partials/bootstrap.php';
 
-// Check if user is superadmin or admin
-if (!in_array($_SESSION['role'], ['superadmin', 'admin'])) {
+if (($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: /HealthLogs/public/login.php');
     exit;
 }
@@ -52,7 +51,7 @@ if (!$validator->hasErrors('username')) {
 
 // Custom validation: Check if role exists
 if (!$validator->hasErrors('role_id')) {
-    $roleStmt = $pdo->prepare("SELECT id FROM roles WHERE id = ?");
+    $roleStmt = $pdo->prepare("SELECT id FROM roles WHERE id = ? AND name <> 'superadmin'");
     $roleStmt->execute([$_POST['role_id']]);
     
     if (!$roleStmt->fetch()) {
