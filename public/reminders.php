@@ -17,6 +17,8 @@ if (!empty($rows)) {
 }
 ?>
 
+<?php display_flash_messages(); ?>
+
 <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
   <div>
     <div class="text-sm text-slate-500">Follow-up scheduling</div>
@@ -25,7 +27,7 @@ if (!empty($rows)) {
   </div>
   <div class="flex items-center gap-2">
     <span class="app-chip">Active Queue</span>
-    <a href="/HealthLogs/public/reminders/form.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Reminder</a>
+    <button type="button" id="reminderModalOpenNew" data-embed-url="/HealthLogs/public/reminders/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Reminder</button>
   </div>
 </div>
 
@@ -88,7 +90,7 @@ if (!empty($rows)) {
               </span>
             </td>
             <td class="px-4 py-2">
-              <a class="text-blue-600 font-medium" href="/HealthLogs/public/reminders/form.php?id=<?= (int)$r['id'] ?>">Edit</a>
+              <button type="button" class="reminder-modal-edit text-blue-600 font-medium" data-embed-url="/HealthLogs/public/reminders/form_embed.php?id=<?= (int)$r['id'] ?>">Edit</button>
               <form
                 method="post"
                 action="/HealthLogs/public/reminders/delete.php"
@@ -123,6 +125,19 @@ if (!empty($rows)) {
   >
     <button class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">Run Now</button>
   </form>
+</div>
+
+<div id="reminderFormModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
+  <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/50 backdrop-blur-sm border-0 cursor-default" aria-label="Close modal" id="reminderFormModalBackdrop"></button>
+  <div class="relative z-10 mx-auto mt-10 max-w-5xl px-4">
+    <div class="rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-5rem)]">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50">
+        <div class="text-sm font-semibold text-slate-800">Reminder form</div>
+        <button type="button" id="reminderFormModalClose" class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 hover:bg-slate-100">Close</button>
+      </div>
+      <iframe id="reminderFormModalFrame" class="w-full min-h-[70vh] border-0 flex-1" title="Reminder form"></iframe>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -161,6 +176,47 @@ if (!empty($rows)) {
     searchInput.addEventListener('input', applyFilters);
     statusSelect.addEventListener('change', applyFilters);
     applyFilters();
+  })();
+
+  (function () {
+    var modal = document.getElementById('reminderFormModal');
+    var frame = document.getElementById('reminderFormModalFrame');
+    var backdrop = document.getElementById('reminderFormModalBackdrop');
+    var closeBtn = document.getElementById('reminderFormModalClose');
+
+    function openModal(url) {
+      if (!modal || !frame || !url) return;
+      frame.src = url;
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      if (closeBtn) closeBtn.focus();
+    }
+
+    function closeModal() {
+      if (!modal || !frame) return;
+      frame.src = 'about:blank';
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    var newBtn = document.getElementById('reminderModalOpenNew');
+    if (newBtn) {
+      newBtn.addEventListener('click', function () {
+        openModal(newBtn.getAttribute('data-embed-url') || '');
+      });
+    }
+
+    document.querySelectorAll('.reminder-modal-edit').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openModal(btn.getAttribute('data-embed-url') || '');
+      });
+    });
+
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeModal();
+    });
   })();
 </script>
 

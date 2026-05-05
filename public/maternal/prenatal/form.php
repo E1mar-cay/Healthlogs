@@ -7,6 +7,11 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM prenatal_visits WHERE id = ?");
     $stmt->execute([$id]);
     $rec = $stmt->fetch();
+    if (!$rec) {
+        $_SESSION['error_message'] = 'Prenatal visit not found';
+        header('Location: /HealthLogs/public/maternal/prenatal/index.php');
+        exit;
+    }
 }
 
 $pregs = $pdo->query("SELECT pr.id, p.first_name, p.last_name, pr.lmp_date FROM pregnancies pr JOIN patients p ON p.id = pr.patient_id ORDER BY pr.id DESC")->fetchAll();
@@ -16,6 +21,7 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <div class="bg-white p-6 rounded shadow">
+  <?php display_flash_messages(true, true); ?>
   <form method="post" action="/HealthLogs/public/maternal/prenatal/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php if ($rec): ?>
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
@@ -25,34 +31,34 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-sm text-slate-600">Pregnancy</label>
       <select name="pregnancy_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($pregs as $p): ?>
-          <?php $sel = ($rec['pregnancy_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
+          <?php $sel = old('pregnancy_id', $rec['pregnancy_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?> (LMP: <?= h($p['lmp_date']) ?>)</option>
         <?php endforeach; ?>
       </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Visit Date/Time</label>
-      <input name="visit_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(str_replace(' ', 'T', $rec['visit_datetime'] ?? '')) ?>" />
+      <input name="visit_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('visit_datetime', str_replace(' ', 'T', $rec['visit_datetime'] ?? ''))) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Gestational Age (weeks)</label>
-      <input name="gestational_age_weeks" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['gestational_age_weeks'] ?? '') ?>" />
+      <input name="gestational_age_weeks" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('gestational_age_weeks', $rec['gestational_age_weeks'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">BP Systolic</label>
-      <input name="bp_systolic" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['bp_systolic'] ?? '') ?>" />
+      <input name="bp_systolic" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('bp_systolic', $rec['bp_systolic'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">BP Diastolic</label>
-      <input name="bp_diastolic" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['bp_diastolic'] ?? '') ?>" />
+      <input name="bp_diastolic" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('bp_diastolic', $rec['bp_diastolic'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Weight (kg)</label>
-      <input name="weight_kg" type="number" step="0.01" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['weight_kg'] ?? '') ?>" />
+      <input name="weight_kg" type="number" step="0.01" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('weight_kg', $rec['weight_kg'] ?? '')) ?>" />
     </div>
     <div class="md:col-span-2">
       <label class="block text-sm text-slate-600">Notes</label>
-      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h($rec['notes'] ?? '') ?></textarea>
+      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h(old('notes', $rec['notes'] ?? '')) ?></textarea>
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

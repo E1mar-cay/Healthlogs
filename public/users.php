@@ -52,6 +52,8 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
 ?>
 
 <div class="flex flex-col gap-6">
+    <?php display_flash_messages(); ?>
+
     <!-- Header -->
     <div class="bg-white p-6 rounded-lg shadow">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -63,10 +65,12 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
                 <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
                     <?= $totalRecords ?> Total Users
                 </span>
-                <a href="/HealthLogs/public/users/form.php" 
-                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                <button type="button"
+                        id="userModalOpenNew"
+                        data-embed-url="/HealthLogs/public/users/form_embed.php"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                     <i class="fas fa-plus mr-2"></i>Add User
-                </a>
+                </button>
             </div>
         </div>
     </div>
@@ -180,17 +184,25 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
-                                        <a href="/HealthLogs/public/users/form.php?id=<?= $user['id'] ?>" 
-                                           class="text-blue-600 hover:text-blue-900 transition-colors px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
-                                           title="Edit User">
+                                        <button type="button"
+                                                class="user-modal-edit text-blue-600 hover:text-blue-900 transition-colors px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
+                                                data-embed-url="/HealthLogs/public/users/form_embed.php?id=<?= (int)$user['id'] ?>"
+                                                title="Edit User">
                                             <i class="fas fa-edit mr-1"></i>Edit
-                                        </a>
+                                        </button>
                                         <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                            <button onclick="deleteUser(<?= $user['id'] ?>, '<?= h($user['username']) ?>')" 
-                                                    class="text-red-600 hover:text-red-900 transition-colors px-2 py-1 border border-red-300 rounded hover:bg-red-50"
-                                                    title="Delete User">
-                                                <i class="fas fa-trash mr-1"></i>Delete
-                                            </button>
+                                            <form method="POST"
+                                                  action="/HealthLogs/public/users/delete.php"
+                                                  class="inline"
+                                                  data-confirm-title="Delete user"
+                                                  data-confirm="Are you sure you want to delete user &quot;<?= h($user['username']) ?>&quot;? This action cannot be undone."
+                                                  data-confirm-cta="Yes, delete user">
+                                                <input type="hidden" name="id" value="<?= (int)$user['id'] ?>">
+                                                <button class="text-red-600 hover:text-red-900 transition-colors px-2 py-1 border border-red-300 rounded hover:bg-red-50"
+                                                        title="Delete User">
+                                                    <i class="fas fa-trash mr-1"></i>Delete
+                                                </button>
+                                            </form>
                                         <?php else: ?>
                                             <span class="text-gray-400 px-2 py-1 text-xs">Current User</span>
                                         <?php endif; ?>
@@ -212,35 +224,60 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
     </div>
 </div>
 
+<div id="userFormModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
+    <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/50 backdrop-blur-sm border-0 cursor-default" aria-label="Close modal" id="userFormModalBackdrop"></button>
+    <div class="relative z-10 mx-auto mt-10 max-w-5xl px-4">
+        <div class="rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-5rem)]">
+            <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <div class="text-sm font-semibold text-slate-800">User form</div>
+                <button type="button" id="userFormModalClose" class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 hover:bg-slate-100">Close</button>
+            </div>
+            <iframe id="userFormModalFrame" class="w-full min-h-[70vh] border-0 flex-1" title="User form"></iframe>
+        </div>
+    </div>
+</div>
+
 <script>
-function deleteUser(userId, username) {
-    Swal.fire({
-        title: 'Delete User?',
-        text: `Are you sure you want to delete user "${username}"? This action cannot be undone.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc2626',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, delete user',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Create form and submit
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/HealthLogs/public/users/delete.php';
-            
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'id';
-            input.value = userId;
-            
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-        }
+(function () {
+    var modal = document.getElementById('userFormModal');
+    var frame = document.getElementById('userFormModalFrame');
+    var backdrop = document.getElementById('userFormModalBackdrop');
+    var closeBtn = document.getElementById('userFormModalClose');
+
+    function openModal(url) {
+        if (!modal || !frame || !url) return;
+        frame.src = url;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        if (closeBtn) closeBtn.focus();
+    }
+
+    function closeModal() {
+        if (!modal || !frame) return;
+        frame.src = 'about:blank';
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    var newBtn = document.getElementById('userModalOpenNew');
+    if (newBtn) {
+        newBtn.addEventListener('click', function () {
+            openModal(newBtn.getAttribute('data-embed-url') || '');
+        });
+    }
+
+    document.querySelectorAll('.user-modal-edit').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            openModal(btn.getAttribute('data-embed-url') || '');
+        });
     });
-}
+
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+    });
+})();
 </script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

@@ -7,12 +7,18 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM medicine_transactions WHERE id = ?");
     $stmt->execute([$id]);
     $rec = $stmt->fetch();
+
+    if (!$rec) {
+        $_SESSION['error_message'] = 'Transaction not found';
+        header('Location: /HealthLogs/public/inventory/transactions/index.php');
+        exit;
+    }
 }
 
-$displayQuantity = $rec ? abs((int)$rec['quantity']) : '';
-$adjustmentMode = ($rec && ($rec['transaction_type'] ?? '') === 'adjustment' && (int)$rec['quantity'] < 0)
+$displayQuantity = old('quantity', $rec ? abs((int)$rec['quantity']) : '');
+$adjustmentMode = old('adjustment_mode', ($rec && ($rec['transaction_type'] ?? '') === 'adjustment' && (int)$rec['quantity'] < 0)
     ? 'decrease'
-    : 'increase';
+    : 'increase');
 
 $meds = $pdo->query("SELECT id, name FROM medicines ORDER BY name ASC")->fetchAll();
 $batches = $pdo->query("
@@ -29,6 +35,7 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <div class="bg-white p-6 rounded shadow">
+  <?php display_flash_messages(true, true); ?>
   <form method="post" action="/HealthLogs/public/inventory/transactions/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php if ($rec): ?>
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
@@ -38,7 +45,7 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-sm text-slate-600">Medicine</label>
       <select name="medicine_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($meds as $m): ?>
-          <?php $sel = ($rec['medicine_id'] ?? 0) == $m['id'] ? 'selected' : ''; ?>
+          <?php $sel = old('medicine_id', $rec['medicine_id'] ?? 0) == $m['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$m['id'] ?>" <?= $sel ?>><?= h($m['name']) ?></option>
         <?php endforeach; ?>
       </select>
@@ -48,14 +55,14 @@ require __DIR__ . '/../../partials/header.php';
       <select name="batch_id" class="mt-1 w-full border rounded px-3 py-2">
         <option value="">-- none --</option>
         <?php foreach ($batches as $b): ?>
-          <?php $sel = ($rec['batch_id'] ?? '') == $b['id'] ? 'selected' : ''; ?>
+          <?php $sel = (string)old('batch_id', $rec['batch_id'] ?? '') === (string)$b['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$b['id'] ?>" <?= $sel ?>><?= h($b['medicine_name'] . ' - ' . $b['batch_no'] . ' (On hand: ' . $b['on_hand'] . ')') ?></option>
         <?php endforeach; ?>
       </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Type</label>
-      <?php $type = $rec['transaction_type'] ?? 'received'; ?>
+      <?php $type = old('transaction_type', $rec['transaction_type'] ?? 'received'); ?>
       <select name="transaction_type" class="mt-1 w-full border rounded px-3 py-2">
         <option value="received" <?= $type === 'received' ? 'selected' : '' ?>>Received</option>
         <option value="dispensed" <?= $type === 'dispensed' ? 'selected' : '' ?>>Dispensed</option>
@@ -79,15 +86,15 @@ require __DIR__ . '/../../partials/header.php';
     </div>
     <div>
       <label class="block text-sm text-slate-600">Transaction Date/Time</label>
-      <input name="transaction_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(str_replace(' ', 'T', $rec['transaction_datetime'] ?? '')) ?>" />
+      <input name="transaction_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('transaction_datetime', str_replace(' ', 'T', $rec['transaction_datetime'] ?? ''))) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Reference</label>
-      <input name="reference" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['reference'] ?? '') ?>" />
+      <input name="reference" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('reference', $rec['reference'] ?? '')) ?>" />
     </div>
     <div class="md:col-span-2">
       <label class="block text-sm text-slate-600">Notes</label>
-      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h($rec['notes'] ?? '') ?></textarea>
+      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h(old('notes', $rec['notes'] ?? '')) ?></textarea>
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

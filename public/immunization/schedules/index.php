@@ -31,7 +31,7 @@ $stats = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'schedule
 <div class="bg-white p-6 rounded shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div><div class="text-sm text-slate-500">Immunization Module</div><div class="text-2xl font-semibold">Immunization Schedules</div><p class="text-sm text-slate-500 mt-1">Track and manage vaccination schedules for all patients.</p></div>
-    <a href="/HealthLogs/public/immunization/schedules/form.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Schedule</a>
+    <button type="button" id="scheduleModalOpenNew" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Schedule</button>
   </div>
 </div>
 <form method="get" class="mt-6 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">
@@ -65,7 +65,7 @@ $stats = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'schedule
             <td class="px-4 py-3">Dose <?= h($s['dose_no']) ?></td>
             <td class="px-4 py-3"><?= h($s['scheduled_date']) ?></td>
             <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?= $statusColor ?>"><?= h(ucfirst($s['status'])) ?></span></td>
-            <td class="px-4 py-3"><a class="text-blue-600 hover:text-blue-800 font-medium" href="/HealthLogs/public/immunization/schedules/form.php?id=<?= (int)$s['id'] ?>">Edit</a><form method="post" action="/HealthLogs/public/immunization/schedules/delete.php" class="inline" data-confirm="Delete this schedule?"><input type="hidden" name="id" value="<?= (int)$s['id'] ?>" /><button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button></form></td>
+            <td class="px-4 py-3"><button type="button" class="schedule-modal-edit text-blue-600 hover:text-blue-800 font-medium" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php?id=<?= (int)$s['id'] ?>">Edit</button><form method="post" action="/HealthLogs/public/immunization/schedules/delete.php" class="inline" data-confirm="Delete this schedule?" data-confirm-title="Delete schedule" data-confirm-cta="Yes, delete"><input type="hidden" name="id" value="<?= (int)$s['id'] ?>" /><button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button></form></td>
           </tr>
         <?php endforeach; ?>
       <?php endif; ?>
@@ -73,4 +73,45 @@ $stats = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'schedule
   </table></div>
   <?= $paginator->render() ?>
 </div>
+<div id="scheduleFormModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
+  <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/50 backdrop-blur-sm border-0 cursor-default" aria-label="Close modal" id="scheduleFormModalBackdrop"></button>
+  <div class="relative z-10 mx-auto mt-10 max-w-4xl px-4">
+    <div class="rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-5rem)]">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50">
+        <div class="text-sm font-semibold text-slate-800">Immunization schedule form</div>
+        <button type="button" id="scheduleFormModalClose" class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 hover:bg-slate-100">Close</button>
+      </div>
+      <iframe id="scheduleFormModalFrame" class="w-full min-h-[72vh] border-0 flex-1" title="Immunization schedule form"></iframe>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById('scheduleFormModal');
+  var frame = document.getElementById('scheduleFormModalFrame');
+  var backdrop = document.getElementById('scheduleFormModalBackdrop');
+  var closeBtn = document.getElementById('scheduleFormModalClose');
+  function openModal(url) {
+    if (!modal || !frame || !url) return;
+    frame.src = url;
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    if (closeBtn) closeBtn.focus();
+  }
+  function closeModal() {
+    if (!modal || !frame) return;
+    frame.src = 'about:blank';
+    modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  }
+  var newBtn = document.getElementById('scheduleModalOpenNew');
+  if (newBtn) newBtn.addEventListener('click', function () { openModal(newBtn.getAttribute('data-embed-url') || ''); });
+  document.querySelectorAll('.schedule-modal-edit').forEach(function (btn) {
+    btn.addEventListener('click', function () { openModal(btn.getAttribute('data-embed-url') || ''); });
+  });
+  if (backdrop) backdrop.addEventListener('click', closeModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+})();
+</script>
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

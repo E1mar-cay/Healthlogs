@@ -15,7 +15,7 @@ $userId = (int)$_POST['id'];
 
 // Prevent users from deleting themselves
 if ($userId == $_SESSION['user_id']) {
-    $_SESSION['error'] = 'You cannot delete your own account';
+    $_SESSION['error_message'] = 'You cannot delete your own account';
     header('Location: /HealthLogs/public/users.php');
     exit;
 }
@@ -29,7 +29,7 @@ try {
     $user = $checkStmt->fetch();
     
     if (!$user) {
-        $_SESSION['error'] = 'User not found';
+        $_SESSION['error_message'] = 'User not found';
         header('Location: /HealthLogs/public/users.php');
         exit;
     }
@@ -40,12 +40,12 @@ try {
     
     $pdo->commit();
     
-    $_SESSION['success'] = "User '{$user['username']}' deleted successfully";
+    $_SESSION['success_message'] = "User '{$user['username']}' deleted successfully";
     
 } catch (Exception $e) {
     $pdo->rollBack();
     error_log("User delete error: " . $e->getMessage());
-    $_SESSION['error'] = 'An error occurred while deleting the user. Please try again.';
+    $_SESSION['error_message'] = 'An error occurred while deleting the user. Please try again.';
 }
 
 header('Location: /HealthLogs/public/users.php');

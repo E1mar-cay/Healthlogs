@@ -48,6 +48,7 @@ $summary = $result['summary'] ?? null;
 $forecastRows = $result['forecast'] ?? [];
 $historyRows = $result['history'] ?? [];
 $unitLabel = $seriesUnits[$seriesKey] ?? 'items';
+$forecastGenerated = $_SERVER['REQUEST_METHOD'] === 'POST' && $result !== null;
 
 // Report 1: Admission / Consultation forecasting inputs (last 16 weeks)
 $consultationWeekly = [];
@@ -203,6 +204,8 @@ if ($summary) {
 }
 ?>
 
+<?php display_flash_messages(); ?>
+
 <div class="bg-white p-6 rounded shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
@@ -233,11 +236,6 @@ if ($summary) {
     </div>
   </form>
 
-  <?php if ($error): ?>
-    <div class="mt-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-      <?= h($error) ?>
-    </div>
-  <?php endif; ?>
 </div>
 
 <div class="mt-6 bg-white p-5 rounded shadow">
@@ -523,6 +521,62 @@ if ($summary) {
     });
   </script>
 <?php endif; ?>
+
+<script>
+  (function () {
+    if (typeof Swal === 'undefined') return;
+
+    var forecastForm = document.querySelector('form[method="post"]');
+    if (!forecastForm) return;
+
+    forecastForm.addEventListener('submit', function () {
+      Swal.fire({
+        title: 'Generating forecast',
+        text: 'Please wait while the forecasting model runs.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: function () {
+          Swal.showLoading();
+        }
+      });
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    if (typeof Swal === 'undefined') return;
+
+    var forecastError = <?= json_encode($error) ?>;
+    var forecastGenerated = <?= json_encode($forecastGenerated) ?>;
+    var seriesLabel = <?= json_encode($seriesOptions[$seriesKey] ?? $seriesKey) ?>;
+    var horizonValue = <?= json_encode($horizon) ?>;
+
+    if (forecastError) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Forecast failed',
+        text: forecastError
+      });
+      return;
+    }
+
+    if (forecastGenerated) {
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3500,
+        timerProgressBar: true
+      });
+      Toast.fire({
+        icon: 'success',
+        title: `Forecast ready: ${seriesLabel} for ${horizonValue} days`
+      });
+    }
+  })();
+</script>
 
 <script>
   const snapshotSeriesLabelMap = <?= json_encode($seriesOptions) ?>;

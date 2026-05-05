@@ -7,6 +7,11 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM vaccines WHERE id = ?");
     $stmt->execute([$id]);
     $rec = $stmt->fetch();
+    if (!$rec) {
+        $_SESSION['error_message'] = 'Vaccine not found';
+        header('Location: /HealthLogs/public/immunization/vaccines/index.php');
+        exit;
+    }
 }
 
 $pageTitle = $rec ? 'Edit Vaccine' : 'New Vaccine';
@@ -14,6 +19,7 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <div class="bg-white p-6 rounded shadow">
+  <?php display_flash_messages(true, true); ?>
   <form method="post" action="/HealthLogs/public/immunization/vaccines/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php if ($rec): ?>
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
@@ -21,23 +27,23 @@ require __DIR__ . '/../../partials/header.php';
 
     <div>
       <label class="block text-sm text-slate-600">Name</label>
-      <input name="name" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['name'] ?? '') ?>" />
+      <input name="name" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('name', $rec['name'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Code</label>
-      <input name="code" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['code'] ?? '') ?>" />
+      <input name="code" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('code', $rec['code'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Min Age (months)</label>
-      <input name="recommended_min_age_months" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['recommended_min_age_months'] ?? '') ?>" />
+      <input name="recommended_min_age_months" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('recommended_min_age_months', $rec['recommended_min_age_months'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Max Age (months)</label>
-      <input name="recommended_max_age_months" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['recommended_max_age_months'] ?? '') ?>" />
+      <input name="recommended_max_age_months" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('recommended_max_age_months', $rec['recommended_max_age_months'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Doses Required</label>
-      <input name="doses_required" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['doses_required'] ?? '') ?>" />
+      <input name="doses_required" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('doses_required', $rec['doses_required'] ?? '')) ?>" />
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

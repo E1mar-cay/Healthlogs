@@ -10,16 +10,21 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM postnatal_visits WHERE id = ?");
     $stmt->execute([$id]);
     $rec = $stmt->fetch();
+    if (!$rec) {
+        $_SESSION['error_message'] = 'Postnatal visit not found';
+        header('Location: /HealthLogs/public/maternal/postnatal/index.php');
+        exit;
+    }
 }
 
 $pregs = $pdo->query("SELECT pr.id, p.first_name, p.last_name, pr.lmp_date FROM pregnancies pr JOIN patients p ON p.id = pr.patient_id ORDER BY pr.id DESC")->fetchAll();
 
-$selectedMotherCondition = trim((string)($rec['mother_condition'] ?? ''));
+$selectedMotherCondition = trim((string)old('mother_condition', $rec['mother_condition'] ?? ''));
 if ($selectedMotherCondition !== '' && !in_array($selectedMotherCondition, $motherConditionOptions, true)) {
     $motherConditionOptions[] = $selectedMotherCondition;
 }
 
-$selectedBabyCondition = trim((string)($rec['baby_condition'] ?? ''));
+$selectedBabyCondition = trim((string)old('baby_condition', $rec['baby_condition'] ?? ''));
 if ($selectedBabyCondition !== '' && !in_array($selectedBabyCondition, $babyConditionOptions, true)) {
     $babyConditionOptions[] = $selectedBabyCondition;
 }
@@ -29,6 +34,7 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <div class="bg-white p-6 rounded shadow">
+  <?php display_flash_messages(true, true); ?>
   <form method="post" action="/HealthLogs/public/maternal/postnatal/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php if ($rec): ?>
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
@@ -38,21 +44,21 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-sm text-slate-600">Pregnancy</label>
       <select name="pregnancy_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($pregs as $p): ?>
-          <?php $sel = ($rec['pregnancy_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
+          <?php $sel = old('pregnancy_id', $rec['pregnancy_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?> (LMP: <?= h($p['lmp_date']) ?>)</option>
         <?php endforeach; ?>
       </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Visit Date/Time</label>
-      <input name="visit_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(str_replace(' ', 'T', $rec['visit_datetime'] ?? '')) ?>" />
+      <input name="visit_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('visit_datetime', str_replace(' ', 'T', $rec['visit_datetime'] ?? ''))) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Mother Condition</label>
       <select name="mother_condition" class="mt-1 w-full border rounded px-3 py-2">
         <option value="">Select mother condition</option>
         <?php foreach ($motherConditionOptions as $option): ?>
-          <option value="<?= h($option) ?>" <?= (($rec['mother_condition'] ?? '') === $option) ? 'selected' : '' ?>><?= h($option) ?></option>
+          <option value="<?= h($option) ?>" <?= $selectedMotherCondition === $option ? 'selected' : '' ?>><?= h($option) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -61,13 +67,13 @@ require __DIR__ . '/../../partials/header.php';
       <select name="baby_condition" class="mt-1 w-full border rounded px-3 py-2">
         <option value="">Select baby condition</option>
         <?php foreach ($babyConditionOptions as $option): ?>
-          <option value="<?= h($option) ?>" <?= (($rec['baby_condition'] ?? '') === $option) ? 'selected' : '' ?>><?= h($option) ?></option>
+          <option value="<?= h($option) ?>" <?= $selectedBabyCondition === $option ? 'selected' : '' ?>><?= h($option) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
     <div class="md:col-span-2">
       <label class="block text-sm text-slate-600">Notes</label>
-      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h($rec['notes'] ?? '') ?></textarea>
+      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h(old('notes', $rec['notes'] ?? '')) ?></textarea>
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

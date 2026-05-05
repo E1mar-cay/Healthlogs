@@ -7,6 +7,11 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM immunization_records WHERE id = ?");
     $stmt->execute([$id]);
     $rec = $stmt->fetch();
+    if (!$rec) {
+        $_SESSION['error_message'] = 'Immunization record not found';
+        header('Location: /HealthLogs/public/immunization/records/index.php');
+        exit;
+    }
 }
 
 $patients = $pdo->query("SELECT id, first_name, last_name FROM patients ORDER BY last_name ASC")->fetchAll();
@@ -17,6 +22,7 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <div class="bg-white p-6 rounded shadow">
+  <?php display_flash_messages(true, true); ?>
   <form method="post" action="/HealthLogs/public/immunization/records/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php if ($rec): ?>
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
@@ -26,7 +32,7 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-sm text-slate-600">Patient</label>
       <select name="patient_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($patients as $p): ?>
-          <?php $sel = ($rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
+          <?php $sel = old('patient_id', $rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?></option>
         <?php endforeach; ?>
       </select>
@@ -35,30 +41,30 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-sm text-slate-600">Vaccine</label>
       <select name="vaccine_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($vaccines as $v): ?>
-          <?php $sel = ($rec['vaccine_id'] ?? 0) == $v['id'] ? 'selected' : ''; ?>
+          <?php $sel = old('vaccine_id', $rec['vaccine_id'] ?? 0) == $v['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$v['id'] ?>" <?= $sel ?>><?= h($v['name']) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Dose No</label>
-      <input name="dose_no" type="number" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['dose_no'] ?? 1) ?>" />
+      <input name="dose_no" type="number" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('dose_no', $rec['dose_no'] ?? 1)) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Administered On</label>
-      <input name="administered_on" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['administered_on'] ?? '') ?>" />
+      <input name="administered_on" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('administered_on', $rec['administered_on'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Administered At</label>
-      <input name="administered_at" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(str_replace(' ', 'T', $rec['administered_at'] ?? '')) ?>" />
+      <input name="administered_at" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('administered_at', str_replace(' ', 'T', $rec['administered_at'] ?? ''))) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Lot No</label>
-      <input name="lot_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['lot_no'] ?? '') ?>" />
+      <input name="lot_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('lot_no', $rec['lot_no'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Notes</label>
-      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h($rec['notes'] ?? '') ?></textarea>
+      <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h(old('notes', $rec['notes'] ?? '')) ?></textarea>
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

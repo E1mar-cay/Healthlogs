@@ -7,6 +7,12 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM medicine_batches WHERE id = ?");
     $stmt->execute([$id]);
     $rec = $stmt->fetch();
+
+    if (!$rec) {
+        $_SESSION['error_message'] = 'Batch not found';
+        header('Location: /HealthLogs/public/inventory/batches/index.php');
+        exit;
+    }
 }
 
 $meds = $pdo->query("SELECT id, name FROM medicines ORDER BY name ASC")->fetchAll();
@@ -18,8 +24,8 @@ foreach ($existingBatchRows as $row) {
     $batchNumbersByMedicine[$medicineId][] = (string)$row['batch_no'];
 }
 
-$selectedMedicineId = (int)($rec['medicine_id'] ?? ($meds[0]['id'] ?? 0));
-$selectedBatchNo = (string)($rec['batch_no'] ?? '');
+$selectedMedicineId = (int)old('medicine_id', $rec['medicine_id'] ?? ($meds[0]['id'] ?? 0));
+$selectedBatchNo = (string)old('batch_no', $rec['batch_no'] ?? '');
 
 $buildBatchOptions = static function (array $usedBatchNumbers, string $currentBatchNo = ''): array {
     $usedLookup = array_fill_keys($usedBatchNumbers, true);
@@ -49,6 +55,7 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <div class="bg-white p-6 rounded shadow">
+  <?php display_flash_messages(true, true); ?>
   <form method="post" action="/HealthLogs/public/inventory/batches/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php if ($rec): ?>
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
@@ -58,7 +65,7 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-sm text-slate-600">Medicine</label>
       <select id="medicine_id" name="medicine_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($meds as $m): ?>
-          <?php $sel = ($rec['medicine_id'] ?? $selectedMedicineId) == $m['id'] ? 'selected' : ''; ?>
+          <?php $sel = $selectedMedicineId == $m['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$m['id'] ?>" <?= $sel ?>><?= h($m['name']) ?></option>
         <?php endforeach; ?>
       </select>
@@ -74,15 +81,15 @@ require __DIR__ . '/../../partials/header.php';
     </div>
     <div>
       <label class="block text-sm text-slate-600">Expiry Date</label>
-      <input name="expiry_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['expiry_date'] ?? '') ?>" />
+      <input name="expiry_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('expiry_date', $rec['expiry_date'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Received Date</label>
-      <input name="received_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['received_date'] ?? '') ?>" />
+      <input name="received_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('received_date', $rec['received_date'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Quantity Received</label>
-      <input name="quantity_received" type="number" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['quantity_received'] ?? '') ?>" />
+      <input name="quantity_received" type="number" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('quantity_received', $rec['quantity_received'] ?? '')) ?>" />
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

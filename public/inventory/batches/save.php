@@ -1,6 +1,8 @@
 ﻿<?php
 require __DIR__ . '/../../partials/bootstrap.php';
 
+$isEdit = !empty($_POST['id']);
+$isEmbed = ($_POST['form_context'] ?? '') === 'embed';
 $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
 $medicine_id = (int)($_POST['medicine_id'] ?? 0);
@@ -41,10 +43,19 @@ try {
     }
 
     $pdo->commit();
+    $_SESSION['success_message'] = $id ? 'Batch updated successfully' : 'Batch created successfully';
 } catch (Throwable $e) {
     $pdo->rollBack();
-    throw $e;
+    error_log("Batch save error: " . $e->getMessage());
+    $_SESSION['error_message'] = 'An error occurred while saving the batch. Please try again.';
+    $_SESSION['old_input'] = $_POST;
+    $redirectUrl = $isEdit
+        ? ($isEmbed ? "/HealthLogs/public/inventory/batches/form_embed.php?id=$id" : "/HealthLogs/public/inventory/batches/form.php?id=$id")
+        : ($isEmbed ? "/HealthLogs/public/inventory/batches/form_embed.php" : "/HealthLogs/public/inventory/batches/form.php");
+    header("Location: $redirectUrl");
+    exit;
 }
 
+unset($_SESSION['old_input']);
 header('Location: /HealthLogs/public/inventory/batches/index.php');
 exit;

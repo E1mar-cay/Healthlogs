@@ -7,6 +7,11 @@ if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM pregnancies WHERE id = ?");
     $stmt->execute([$id]);
     $rec = $stmt->fetch();
+    if (!$rec) {
+        $_SESSION['error_message'] = 'Pregnancy record not found';
+        header('Location: /HealthLogs/public/maternal/pregnancies/index.php');
+        exit;
+    }
 }
 
 $patients = $pdo->query("SELECT id, first_name, last_name FROM patients ORDER BY last_name ASC")->fetchAll();
@@ -16,6 +21,7 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <div class="bg-white p-6 rounded shadow">
+  <?php display_flash_messages(true, true); ?>
   <form method="post" action="/HealthLogs/public/maternal/pregnancies/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php if ($rec): ?>
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
@@ -25,33 +31,33 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-sm text-slate-600">Mother / Patient</label>
       <select name="patient_id" required class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($patients as $p): ?>
-          <?php $sel = ($rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
+          <?php $sel = old('patient_id', $rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Last Menstrual Period</label>
-      <input name="lmp_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['lmp_date'] ?? '') ?>" />
+      <input name="lmp_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('lmp_date', $rec['lmp_date'] ?? '')) ?>" />
       <div class="mt-1 text-xs text-slate-500">Start date of the last menstrual period.</div>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Expected Delivery Date</label>
-      <input name="edd_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['edd_date'] ?? '') ?>" />
+      <input name="edd_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('edd_date', $rec['edd_date'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Total Pregnancies</label>
-      <input name="gravida" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['gravida'] ?? '') ?>" />
+      <input name="gravida" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('gravida', $rec['gravida'] ?? '')) ?>" />
       <div class="mt-1 text-xs text-slate-500">How many times the patient has been pregnant.</div>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Births</label>
-      <input name="para" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h($rec['para'] ?? '') ?>" />
+      <input name="para" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('para', $rec['para'] ?? '')) ?>" />
       <div class="mt-1 text-xs text-slate-500">Number of pregnancies that reached delivery.</div>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Pregnancy Status</label>
-      <?php $status = $rec['status'] ?? 'ongoing'; ?>
+      <?php $status = old('status', $rec['status'] ?? 'ongoing'); ?>
       <select name="status" class="mt-1 w-full border rounded px-3 py-2">
         <option value="ongoing" <?= $status === 'ongoing' ? 'selected' : '' ?>>Ongoing</option>
         <option value="delivered" <?= $status === 'delivered' ? 'selected' : '' ?>>Delivered</option>

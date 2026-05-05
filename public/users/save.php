@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $isEdit = !empty($_POST['id']);
 $userId = $isEdit ? (int)$_POST['id'] : null;
+$isEmbed = ($_POST['form_context'] ?? '') === 'embed';
 
 // Validation rules
 $rules = [
@@ -65,8 +66,8 @@ if ($validator->hasErrors()) {
     $_SESSION['old_input'] = $_POST;
     
     $redirectUrl = $isEdit 
-        ? "/HealthLogs/public/users/form.php?id=$userId"
-        : "/HealthLogs/public/users/form.php";
+        ? ($isEmbed ? "/HealthLogs/public/users/form_embed.php?id=$userId" : "/HealthLogs/public/users/form.php?id=$userId")
+        : ($isEmbed ? "/HealthLogs/public/users/form_embed.php" : "/HealthLogs/public/users/form.php");
     
     header("Location: $redirectUrl");
     exit;
@@ -113,7 +114,7 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         
-        $_SESSION['success'] = 'User updated successfully';
+        $_SESSION['success_message'] = 'User updated successfully';
         
     } else {
         // Create new user
@@ -132,7 +133,7 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         
-        $_SESSION['success'] = 'User created successfully';
+        $_SESSION['success_message'] = 'User created successfully';
     }
     
     $pdo->commit();
@@ -140,11 +141,11 @@ try {
 } catch (Exception $e) {
     $pdo->rollBack();
     error_log("User save error: " . $e->getMessage());
-    $_SESSION['error'] = 'An error occurred while saving the user. Please try again.';
+    $_SESSION['error_message'] = 'An error occurred while saving the user. Please try again.';
     
     $redirectUrl = $isEdit 
-        ? "/HealthLogs/public/users/form.php?id=$userId"
-        : "/HealthLogs/public/users/form.php";
+        ? ($isEmbed ? "/HealthLogs/public/users/form_embed.php?id=$userId" : "/HealthLogs/public/users/form.php?id=$userId")
+        : ($isEmbed ? "/HealthLogs/public/users/form_embed.php" : "/HealthLogs/public/users/form.php");
     
     header("Location: $redirectUrl");
     exit;
