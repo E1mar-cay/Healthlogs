@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require __DIR__ . '/bootstrap.php';
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
 $isActive = function (string $prefix) use ($currentPath): bool {
@@ -294,6 +294,9 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
 
         <?php if (($_SESSION['role'] ?? 'health_worker') === 'admin'): ?>
           <div class="nav-section">Administration</div>
+          <a class="nav-link <?= $isActive('/HealthLogs/public/reports') ? 'active' : '' ?>" href="/HealthLogs/public/reports.php">
+            <span class="nav-icon">RP</span> Reports
+          </a>
           <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php">
             <span class="nav-icon">US</span> User Management
           </a>

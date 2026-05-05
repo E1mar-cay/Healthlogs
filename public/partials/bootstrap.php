@@ -44,6 +44,7 @@ if (!function_exists('rbac_enforce')) {
         }
 
         $rules = [
+            '/HealthLogs/public/reports.php' => ['admin'],
             '/HealthLogs/public/forecast.php' => ['admin'],
             '/HealthLogs/public/forecast_run.php' => ['admin'],
             '/HealthLogs/public/reminders/run_cron.php' => ['admin'],
