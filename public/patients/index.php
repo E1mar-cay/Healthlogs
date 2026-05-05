@@ -58,9 +58,10 @@ $stats = $pdo->query("
       <div class="text-2xl font-semibold">Patient Records</div>
       <p class="text-sm text-slate-500 mt-1">Maintain core demographics, status, and barangay coverage.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">Patient Intake</span>
-      <a href="/HealthLogs/public/patients/form.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Patient</a>
+      <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Patient</button>
+      <a href="/HealthLogs/public/patients/form.php" class="text-sm text-slate-600 underline underline-offset-2">Open full-page form</a>
     </div>
   </div>
 </div>
@@ -169,8 +170,9 @@ $stats = $pdo->query("
                 </span>
               </td>
               <td class="px-4 py-3">
-                <a class="text-blue-600 hover:text-blue-800 font-medium" href="/HealthLogs/public/patients/form.php?id=<?= (int)$p['id'] ?>">Edit</a>
-                <form method="post" action="/HealthLogs/public/patients/delete.php" class="inline" data-confirm="Delete this patient and all related records?" data-confirm-title="Delete patient">
+                <button type="button" class="patient-modal-edit text-blue-600 hover:text-blue-800 font-medium mr-3" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$p['id'] ?>">Quick edit</button>
+                <a class="text-slate-500 hover:text-slate-800 text-xs" href="/HealthLogs/public/patients/form.php?id=<?= (int)$p['id'] ?>" title="Open full-page editor">Full form</a>
+                <form method="post" action="/HealthLogs/public/patients/delete.php" class="inline ml-2" data-confirm="Delete this patient and all related records?" data-confirm-title="Delete patient">
                   <input type="hidden" name="id" value="<?= (int)$p['id'] ?>" />
                   <button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button>
                 </form>
@@ -184,5 +186,62 @@ $stats = $pdo->query("
   
   <?= $paginator->render() ?>
 </div>
+
+<div id="patientFormModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
+  <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/50 backdrop-blur-sm border-0 cursor-default" aria-label="Close modal" id="patientFormModalBackdrop"></button>
+  <div class="relative z-10 mx-auto mt-10 max-w-6xl px-4">
+    <div class="rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-5rem)]">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50">
+        <div class="text-sm font-semibold text-slate-800">Patient form</div>
+        <button type="button" id="patientFormModalClose" class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 hover:bg-slate-100">Close</button>
+      </div>
+      <iframe id="patientFormModalFrame" class="w-full min-h-[70vh] border-0 flex-1" title="Patient form"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var modal = document.getElementById('patientFormModal');
+  var frame = document.getElementById('patientFormModalFrame');
+  var backdrop = document.getElementById('patientFormModalBackdrop');
+  var closeBtn = document.getElementById('patientFormModalClose');
+
+  function openModal(url) {
+    if (!modal || !frame) return;
+    frame.src = url;
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    closeBtn && closeBtn.focus();
+  }
+
+  function closeModal() {
+    if (!modal || !frame) return;
+    frame.src = 'about:blank';
+    modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  var newBtn = document.getElementById('patientModalOpenNew');
+  if (newBtn) {
+    newBtn.addEventListener('click', function () {
+      var url = newBtn.getAttribute('data-embed-url');
+      openModal(url);
+    });
+  }
+
+  document.querySelectorAll('.patient-modal-edit').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openModal(btn.getAttribute('data-embed-url') || '');
+    });
+  });
+
+  if (backdrop) backdrop.addEventListener('click', closeModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+})();
+</script>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>

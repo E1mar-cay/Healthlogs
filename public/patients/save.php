@@ -6,6 +6,7 @@ function field($key, $default = null) {
 }
 
 $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+$isEmbed = trim((string)field('form_context', '')) === 'embed';
 
 // Validate input using helper functions from app/Core/Validator.php
 $validationErrors = [];
@@ -81,7 +82,10 @@ if (!empty($validationErrors)) {
     }
     $_SESSION['validation_errors'] = $flatErrors;
     $_SESSION['old_input'] = $_POST;
-    header('Location: /HealthLogs/public/patients/form.php' . ($id ? '?id=' . $id : ''));
+    $formLocation = $isEmbed
+        ? '/HealthLogs/public/patients/form_embed.php'
+        : '/HealthLogs/public/patients/form.php';
+    header('Location: ' . $formLocation . ($id ? '?id=' . $id : ''));
     exit;
 }
 
