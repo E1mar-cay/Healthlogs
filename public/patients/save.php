@@ -7,22 +7,79 @@ function field($key, $default = null) {
 
 $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
-// Validate input
-$validator = new Validator($_POST);
-$validator
-    ->validate('first_name', ['required', 'max' => 80], 'First name')
-    ->validate('last_name', ['required', 'max' => 80], 'Last name')
-    ->validate('middle_name', ['max' => 80], 'Middle name')
-    ->validate('sex', ['required', 'sex'], 'Sex')
-    ->validate('birth_date', ['required', 'date'], 'Birth date')
-    ->validate('blood_type', ['blood_type'], 'Blood type')
-    ->validate('email', ['email'], 'Email')
-    ->validate('contact_no', ['phone'], 'Contact number')
-    ->validate('barangay', ['required', 'max' => 120], 'Barangay')
-    ->validate('status', ['required', 'in' => ['active', 'inactive', 'deceased']], 'Status');
+// Validate input using helper functions from app/Core/Validator.php
+$validationErrors = [];
+$firstNameRaw = field('first_name', '');
+$lastNameRaw = field('last_name', '');
+$middleNameRaw = field('middle_name');
+$sexRaw = field('sex');
+$birthDateRaw = field('birth_date');
+$bloodTypeRaw = field('blood_type');
+$emailRaw = field('email');
+$contactNoRaw = field('contact_no');
+$barangayRaw = field('barangay', '');
+$statusRaw = field('status', 'active');
 
-if ($validator->fails()) {
-    $_SESSION['validation_errors'] = $validator->allErrors();
+if (!validate_required($firstNameRaw) || !validate_max_length((string)$firstNameRaw, 80)) {
+    $validationErrors['first_name'][] = 'First name is required and must not exceed 80 characters.';
+}
+if (!validate_required($lastNameRaw) || !validate_max_length((string)$lastNameRaw, 80)) {
+    $validationErrors['last_name'][] = 'Last name is required and must not exceed 80 characters.';
+}
+if (!validate_max_length((string)$middleNameRaw, 80)) {
+    $validationErrors['middle_name'][] = 'Middle name must not exceed 80 characters.';
+}
+if (!validate_sex($sexRaw)) {
+    $validationErrors['sex'][] = 'Sex is required and must be male or female.';
+}
+if (!validate_required($birthDateRaw) || !validate_date($birthDateRaw)) {
+    $validationErrors['birth_date'][] = 'Birth date is required and must be a valid date.';
+}
+if (!validate_blood_type($bloodTypeRaw)) {
+    $validationErrors['blood_type'][] = 'Blood type is invalid.';
+}
+if (!validate_email($emailRaw)) {
+    $validationErrors['email'][] = 'Email must be a valid email address.';
+}
+if (!validate_phone($contactNoRaw)) {
+    $validationErrors['contact_no'][] = 'Contact number format is invalid.';
+}
+if (!validate_required($barangayRaw) || !validate_max_length((string)$barangayRaw, 120)) {
+    $validationErrors['barangay'][] = 'Barangay is required and must not exceed 120 characters.';
+}
+if (!validate_in_array($statusRaw, ['active', 'inactive', 'deceased'])) {
+    $validationErrors['status'][] = 'Status value is invalid.';
+}
+
+$conditionName = sanitize_string(field('condition_name'));
+$diagnosedOn = field('diagnosed_on');
+$conditionStatus = field('condition_status', 'active');
+$conditionNotes = sanitize_string(field('condition_notes'));
+
+if ($conditionName !== null && $conditionName !== '') {
+    if (!validate_required($conditionName) || !validate_max_length($conditionName, 120)) {
+        $validationErrors['condition_name'][] = 'Condition name is required and must not exceed 120 characters.';
+    }
+    if (!validate_date($diagnosedOn)) {
+        $validationErrors['diagnosed_on'][] = 'Diagnosed on must be a valid date.';
+    }
+    if (!validate_in_array($conditionStatus, ['active', 'resolved', 'chronic'])) {
+        $validationErrors['condition_status'][] = 'Condition status is invalid.';
+    }
+}
+
+if (!empty($validationErrors)) {
+    $flatErrors = [];
+    foreach ($validationErrors as $fieldErrors) {
+        if (is_array($fieldErrors)) {
+            foreach ($fieldErrors as $msg) {
+                $flatErrors[] = (string)$msg;
+            }
+        } else {
+            $flatErrors[] = (string)$fieldErrors;
+        }
+    }
+    $_SESSION['validation_errors'] = $flatErrors;
     $_SESSION['old_input'] = $_POST;
     header('Location: /HealthLogs/public/patients/form.php' . ($id ? '?id=' . $id : ''));
     exit;
@@ -77,6 +134,8 @@ $data = [
 try {
     $pdo->beginTransaction();
     
+    $patientId = $id;
+
     if ($id) {
         $sql = "UPDATE patients SET
                     household_id = ?, philhealth_no = ?, national_id = ?,
@@ -127,6 +186,20 @@ try {
             $data['address_line'],
             $data['barangay'],
             $data['status'],
+        ]);
+        $patientId = (int)$pdo->lastInsertId();
+    }
+
+    if ($patientId > 0 && $conditionName !== null && $conditionName !== '') {
+        $condSql = "INSERT INTO patient_conditions (patient_id, condition_name, status, diagnosed_on, notes)
+                    VALUES (?, ?, ?, ?, ?)";
+        $condStmt = $pdo->prepare($condSql);
+        $condStmt->execute([
+            $patientId,
+            $conditionName,
+            in_array($conditionStatus, ['active', 'resolved', 'chronic'], true) ? $conditionStatus : 'active',
+            ($diagnosedOn !== null && $diagnosedOn !== '') ? $diagnosedOn : null,
+            $conditionNotes,
         ]);
     }
     
