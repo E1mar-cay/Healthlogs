@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../app/Core/Recaptcha.php';
 
 session_start();
 
@@ -9,6 +10,7 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $error = $_GET['error'] ?? '';
+$recaptchaSiteKey = Recaptcha::siteKey();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,6 +19,9 @@ $error = $_GET['error'] ?? '';
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - HealthLogs</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <?php if ($recaptchaSiteKey !== ''): ?>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <?php endif; ?>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
@@ -151,7 +156,7 @@ $error = $_GET['error'] ?? '';
         width: min(100%, 420px);
         max-height: calc(100dvh - 24px);
         min-height: 0;
-        overflow: hidden;
+        overflow-y: auto;
       }
 
       .login-card > .grid {
@@ -221,7 +226,7 @@ $error = $_GET['error'] ?? '';
           <?php if ($error): ?>
             <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center gap-2">
               <i class="fas fa-exclamation-circle flex-shrink-0"></i>
-              <span>Invalid username or password.</span>
+              <span><?= $error === 'captcha' ? 'Please complete the reCAPTCHA verification.' : 'Invalid username or password.' ?></span>
             </div>
           <?php endif; ?>
 
@@ -235,24 +240,19 @@ $error = $_GET['error'] ?? '';
               <label class="block text-sm font-medium text-slate-700">Password</label>
               <input name="password" type="password" required class="mt-2 w-full px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm sm:text-base" placeholder="Enter password" />
             </div>
+
+            <?php if ($recaptchaSiteKey !== ''): ?>
+            <div class="flex justify-center sm:justify-start">
+              <div class="g-recaptcha" data-sitekey="<?= htmlspecialchars($recaptchaSiteKey, ENT_QUOTES, 'UTF-8') ?>"></div>
+            </div>
+            <?php endif; ?>
             
             <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 sm:py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition-all mt-6 text-sm sm:text-base" type="submit">
               <i class="fas fa-sign-in-alt mr-2"></i>Login
             </button>
           </form>
 
-          <?php if (getenv('APP_ENV') === 'development'): ?>
-          <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs sm:text-sm text-amber-900">
-            <div class="font-semibold flex items-center gap-2 mb-2">
-              <i class="fas fa-info-circle flex-shrink-0"></i>
-              Sample Accounts (Dev Only)
-            </div>
-            <div class="space-y-1 font-mono text-amber-800 text-xs">
-              <div><span class="font-semibold">Admin:</span> admin / admin123</div>
-              <div><span class="font-semibold">Health Worker:</span> bhw / bhw123</div>
-            </div>
-          </div>
-          <?php endif; ?>
+
         </div>
 
         <!-- Right Side: Info (Hidden on Mobile) -->
