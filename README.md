@@ -31,7 +31,11 @@ A comprehensive health management system for Barangay Health Units (BHU) to trac
 
 ## Installation
 
-### 1. Clone the Repository
+Follow these steps from start to finish to set up the HealthLogs application:
+
+### Step 1: Clone the Repository
+
+Navigate to your web server root directory (e.g., XAMPP's `htdocs` directory) and clone the repository:
 
 ```bash
 cd C:\xampp\htdocs
@@ -39,110 +43,113 @@ git clone <repository-url> HealthLogs
 cd HealthLogs
 ```
 
-### 2. Database Setup
+### Step 2: Environment Configuration
 
-1. Create a new database:
-```sql
-CREATE DATABASE healthlogs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+1. Copy the template environment file to create your local `.env` file:
+   ```bash
+   copy .env.example .env
+   ```
 
-2. Import the schema:
-```bash
-mysql -u root -p healthlogs < schema/healthlogs.sql
-```
+2. Open the `.env` file and configure your database parameters:
+   ```env
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_NAME=healthlogs
+   DB_USER=root
+   DB_PASS=
+   ```
 
-3. Run seeders:
-```bash
-# Seed user accounts first
-php scripts/seed_users.php
+### Step 3: Database Setup
 
-# Seed all modules with dummy data (recommended for testing)
-php scripts/seed_all.php
+1. Open your XAMPP Control Panel and start **Apache** and **MySQL**.
+2. Create a new database named `healthlogs`. You can do this in phpMyAdmin (`http://localhost/phpmyadmin`) or via MySQL command line:
+   ```sql
+   CREATE DATABASE healthlogs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+3. Import the database schema:
+   ```bash
+   mysql -u root -p healthlogs < schema/healthlogs.sql
+   ```
+4. Seed the database with sample data (required for generating forecasts):
+   ```bash
+   # Seeds users, patients, maternal records, immunization schedules, and inventory
+   php scripts/seed_all.php
+   ```
 
-# OR seed individual modules
-php scripts/seed_patients.php
-php scripts/seed_immunization.php
-php scripts/seed_maternal.php
-php scripts/seed_inventory.php
+### Step 4: Python Setup (for Forecasting)
 
-# Optional: Seed time series data for forecasting
-php scripts/seed_timeseries.php
-```
+The ARIMA forecasting module runs on Python. Set up a local virtual environment to isolate dependencies:
 
-### 3. Environment Configuration
+1. Create a Python virtual environment:
+   ```bash
+   python -m venv .venv
+   ```
+2. Activate the virtual environment:
+   * **PowerShell (Windows):**
+     ```powershell
+     .venv\Scripts\Activate.ps1
+     ```
+   * **Command Prompt (Windows):**
+     ```cmd
+     .venv\Scripts\activate.bat
+     ```
+   * **macOS / Linux:**
+     ```bash
+     source .venv/bin/activate
+     ```
+3. Install the required libraries:
+   ```bash
+   pip install -r scripts/requirements.txt
+   ```
+4. Update your `.env` file to point `PYTHON_PATH` to your newly created virtual environment:
+   * **Windows:**
+     ```env
+     PYTHON_PATH=c:\xampp\htdocs\HealthLogs\.venv\Scripts\python.exe
+     ```
+   * **macOS / Linux:**
+     ```env
+     PYTHON_PATH=/path/to/HealthLogs/.venv/bin/python
+     ```
+5. Verify that the forecasting script is working correctly:
+   ```bash
+   php scripts/test_forecasting.php
+   ```
 
-1. Copy the example environment file:
-```bash
-copy .env.example .env
-```
+### Step 5: Email Configuration (for Reminders)
 
-2. Edit `.env` and update your configuration:
-```env
-DB_HOST=127.0.0.1
-DB_NAME=healthlogs
-DB_USER=root
-DB_PASS=your_password
+PHPMailer is used to send automated appointment reminders.
 
-PYTHON_PATH=C:\Path\To\python.exe
-```
+1. Install Composer dependencies:
+   ```bash
+   composer install
+   ```
+2. Open your `.env` file and enter your Gmail credentials (make sure to use a [Gmail App Password](GMAIL_SETUP_GUIDE.md)):
+   ```env
+   MAIL_ENABLED=true
+   MAIL_USERNAME=your-email@gmail.com
+   MAIL_PASSWORD=your-app-password
+   ```
+3. Run the email test script to confirm email delivery:
+   ```bash
+   php scripts/test_email.php
+   ```
 
-3. Update `config/db.php` to read from `.env` (or keep current configuration)
+### Step 6: Create Storage Directory
 
-### 4. Python Setup (for Forecasting)
-
-1. Install Python dependencies:
-```bash
-cd scripts
-pip install -r requirements.txt
-```
-
-Required packages:
-- pandas
-- pymysql
-- pmdarima
-
-### 5. Email Configuration (for Reminders)
-
-1. Install PHPMailer:
-```bash
-composer install
-```
-
-2. Configure email in `.env`:
-```env
-MAIL_ENABLED=true
-MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-app-password
-```
-
-3. Test email:
-```bash
-php scripts/test_email.php
-```
-
-See `GMAIL_SETUP_GUIDE.md` for detailed Gmail setup instructions.
-
-### 6. File Permissions
-
-Ensure the `storage/` directory is writable:
+Ensure the application has a folder to save logs and reports:
 ```bash
 mkdir storage
-chmod 755 storage
 ```
 
-### 7. Access the Application
+### Step 7: Access the Application
 
-Open your browser and navigate to:
-```
-http://localhost/HealthLogs/public/login.php
-```
-
-## Default Credentials
-
-**Development Only** (remove in production):
-
-- **Admin:** `admin` / `admin123`
-- **Health Worker:** `bhw` / `bhw123`
+1. Open your browser and navigate to:
+   ```
+   http://localhost/HealthLogs/public/login.php
+   ```
+2. Use the default credentials for development:
+   * **Admin (Access to Forecasting):** Username `admin` / Password `admin123`
+   * **Health Worker:** Username `bhw` / Password `bhw123`
 
 ## Project Structure
 
