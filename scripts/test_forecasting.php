@@ -9,7 +9,9 @@ echo "=====================================\n\n";
 
 // Test 1: Direct Python script
 echo "1. Testing Python script directly...\n";
-$python = 'python';
+require_once __DIR__ . '/../app/Core/EnvLoader.php';
+EnvLoader::load(__DIR__ . '/../.env');
+$python = getenv('PYTHON_PATH') ?: $_ENV['PYTHON_PATH'] ?: 'python';
 $script = __DIR__ . '/forecast_arima.py';
 
 // Test visits forecast

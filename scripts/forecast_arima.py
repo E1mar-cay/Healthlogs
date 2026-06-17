@@ -115,8 +115,8 @@ def build_summary(series_key, series, dates, preds, conf_int, model, training_po
     previous_window = min(recent_window, max(len(series) - recent_window, 0))
 
     recent_avg = float(series.tail(recent_window).mean())
-    forecast_avg = float(sum(preds) / len(preds)) if preds else 0.0
-    total_forecast = float(sum(preds))
+    forecast_avg = sum(preds) / len(preds) if preds else 0.0
+    total_forecast = sum(preds)
     peak_value = max(preds) if preds else 0.0
     peak_index = preds.index(peak_value) if preds else 0
     peak_date = dates[peak_index].date().isoformat() if len(dates) else None
@@ -200,6 +200,33 @@ def main():
         model, dates, preds, conf_int, training_points = forecast(series, args.horizon)
         summary = build_summary(args.series_key, series, dates, preds, conf_int, model, training_points)
 
+        # Extract model diagnostics safely
+        aic = float(model.aic())
+        bic = float(model.bic())
+        log_likelihood = float(model.arima_res_.llf) if hasattr(model, 'arima_res_') and hasattr(model.arima_res_, 'llf') else None
+        
+        # Extract sigma2 (residual variance)
+        sigma2 = None
+        if hasattr(model, 'arima_res_') and hasattr(model.arima_res_, 'params'):
+            if 'sigma2' in model.arima_res_.params:
+                sigma2 = float(model.arima_res_.params['sigma2'])
+            elif 'sigma2' in model.arima_res_.param_names:
+                # Find by name index
+                try:
+                    idx = model.arima_res_.param_names.index('sigma2')
+                    sigma2 = float(model.arima_res_.params[idx])
+                except Exception:
+                    pass
+
+        # Extract all parameters/coefficients
+        params = {}
+        if hasattr(model, 'arima_res_') and hasattr(model.arima_res_, 'params') and hasattr(model.arima_res_, 'param_names'):
+            try:
+                for name, val in zip(model.arima_res_.param_names, model.arima_res_.params):
+                    params[name] = float(val)
+            except Exception:
+                pass
+
         output = {
             "series_key": args.series_key,
             "generated_on": date.today().isoformat(),
@@ -223,12 +250,20 @@ def main():
                 "model": summary["model"],
                 "seasonal_model": summary["seasonal_model"],
             },
+            "diagnostics": {
+                "aic": aic,
+                "bic": bic,
+                "log_likelihood": log_likelihood,
+                "sigma2": sigma2,
+                "params": params
+            }
         }
 
         print(json.dumps(output))
     except Exception as exc:
         print(json.dumps({"error": str(exc)}))
         sys.exit(1)
+
 
 
 if __name__ == "__main__":

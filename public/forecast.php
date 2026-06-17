@@ -1,6 +1,7 @@
 <?php
 $pageTitle = 'Forecasting';
 require __DIR__ . '/partials/bootstrap.php';
+require_once __DIR__ . '/../app/Core/ForecastLogger.php';
 require __DIR__ . '/partials/header.php';
 
 $seriesOptions = [
@@ -20,7 +21,10 @@ $result = null;
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $python = 'C:\\Users\\Elmar Cayaba\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+    $startTime = microtime(true);
+    $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
+
+    $python = getenv('PYTHON_PATH') ?: $_ENV['PYTHON_PATH'] ?: 'python';
     $script = __DIR__ . '/../scripts/forecast_arima.py';
     $cmd = escapeshellarg($python) . ' ' . escapeshellarg($script) .
         ' --series-key ' . escapeshellarg($seriesKey) .
@@ -28,18 +32,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ' 2>&1';
     $output = shell_exec($cmd);
 
+    $executionTime = round(microtime(true) - $startTime, 3);
+
     if (!$output) {
         $error = 'No output from forecasting script.';
+        ForecastLogger::logFailure($runId, $error, $executionTime);
     } else {
         $data = json_decode($output, true);
         if (!is_array($data)) {
             $error = 'Forecasting failed. Please try again.';
+            ForecastLogger::logFailure($runId, 'Invalid output from python: ' . substr($output, 0, 500), $executionTime);
         } elseif (!empty($data['error'])) {
             $error = $data['error'];
+            ForecastLogger::logFailure($runId, $error, $executionTime);
         } elseif (!isset($data['forecast'], $data['summary'])) {
             $error = 'Forecast response is incomplete.';
+            ForecastLogger::logFailure($runId, $error, $executionTime);
         } else {
             $result = $data;
+
+            // Extract diagnostics
+            $diagnostics = null;
+            if (isset($data['diagnostics'])) {
+                $diagnostics = $data['diagnostics'];
+                $diagnostics['model_order'] = $data['summary']['model'] ?? null;
+                $diagnostics['seasonal_order'] = $data['summary']['seasonal_model'] ?? null;
+            }
+
+            ForecastLogger::logSuccess(
+                $runId,
+                (int)($data['summary']['history_points'] ?? 0),
+                (int)($data['summary']['training_points'] ?? 0),
+                $executionTime,
+                $data['forecast'],
+                $diagnostics
+            );
         }
     }
 }
@@ -340,6 +367,222 @@ if ($summary) {
   <div class="text-sm text-slate-500">Disease Case Trends</div>
   <div class="text-lg font-semibold">Top Disease Trends (Last 12 Months)</div>
   <canvas id="diseaseTrendChart" height="120" class="mt-4"></canvas>
+</div>
+
+<!-- Model Execution Logs History Section -->
+<?php
+// Query recent runs
+$recentRuns = ForecastLogger::getRecentLogs(10);
+?>
+<div class="mt-6 bg-white p-6 rounded shadow">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div>
+      <div class="text-sm text-slate-500">Analytics History</div>
+      <div class="text-lg font-semibold">Model Execution Logs & ARIMA Parameters</div>
+      <p class="text-sm text-slate-500 mt-1">A historical audit log of recent forecasting runs, training points, and statistical parameters.</p>
+    </div>
+  </div>
+
+  <div class="mt-6 overflow-x-auto">
+    <table class="w-full text-left border-collapse text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 text-slate-400 font-medium">
+          <th class="py-3 px-4">Run Time</th>
+          <th class="py-3 px-4">Series Key</th>
+          <th class="py-3 px-4">Horizon</th>
+          <th class="py-3 px-4">Model Type</th>
+          <th class="py-3 px-4">Fitted Model</th>
+          <th class="py-3 px-4">Status</th>
+          <th class="py-3 px-4 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <?php if (empty($recentRuns)): ?>
+          <tr>
+            <td colspan="7" class="py-4 px-4 text-center text-slate-400">No forecasting logs recorded yet.</td>
+          </tr>
+        <?php else: ?>
+          <?php foreach ($recentRuns as $run): 
+            $seriesLabel = $seriesOptions[$run['series_key']] ?? $run['series_key'];
+            $statusClass = $run['status'] === 'success' 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200';
+            
+            $modelOrderText = 'N/A';
+            if ($run['model_type'] === 'ARIMA') {
+                $order = $run['model_order'] ?? '';
+                $seasonal = $run['seasonal_order'] ?? '';
+                if ($order) {
+                    $modelOrderText = 'ARIMA' . $order;
+                    if ($seasonal && $seasonal !== '(0, 0, 0, 0)' && $seasonal !== '(0, 0, 0, 1)' && $seasonal !== '(0, 0, 0, 7)') {
+                        $modelOrderText .= ' x ' . $seasonal;
+                    }
+                }
+            } else {
+                $modelOrderText = 'Fast Average';
+            }
+          ?>
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="py-3 px-4 whitespace-nowrap">
+                <?= h(date('M d, Y h:i A', strtotime($run['created_at']))) ?>
+              </td>
+              <td class="py-3 px-4 font-medium">
+                <?= h($seriesLabel) ?>
+              </td>
+              <td class="py-3 px-4">
+                <?= h($run['horizon']) ?> days
+              </td>
+              <td class="py-3 px-4">
+                <span class="px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                  <?= h($run['model_type']) ?>
+                </span>
+              </td>
+              <td class="py-3 px-4 text-xs font-semibold text-slate-700">
+                <?= h($modelOrderText === 'N/A' ? 'Auto-fitted model' : $modelOrderText) ?>
+              </td>
+              <td class="py-3 px-4">
+                <span class="px-2 py-0.5 rounded text-xs font-medium <?= $statusClass ?>">
+                  <?= h(ucfirst($run['status'])) ?>
+                </span>
+              </td>
+              <td class="py-3 px-4 text-right">
+                <?php if ($run['status'] === 'success'): ?>
+                  <button type="button" 
+                          class="view-run-details-btn text-teal-600 hover:text-teal-900 border border-teal-200 hover:bg-teal-50 px-3 py-1 rounded transition-colors text-xs font-medium"
+                          data-run-id="<?= (int)$run['id'] ?>">
+                    <i class="fas fa-eye mr-1"></i> View Details
+                  </button>
+                <?php else: ?>
+                  <button type="button" 
+                          class="view-run-error-btn text-red-600 hover:text-red-900 border border-red-200 hover:bg-red-50 px-3 py-1 rounded transition-colors text-xs font-medium"
+                          data-error-msg="<?= h($run['error_message'] ?? 'Unknown script error') ?>">
+                    <i class="fas fa-exclamation-triangle mr-1"></i> View Error
+                  </button>
+                <?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal for Model Log Details -->
+<div id="modelLogModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
+  <!-- Backdrop -->
+  <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/50 backdrop-blur-sm border-0 cursor-default" aria-label="Close modal" id="modelLogModalBackdrop"></button>
+  
+  <div class="flex min-h-screen items-center justify-center p-4">
+    <!-- Modal Card -->
+    <div class="relative bg-white rounded-xl shadow-xl border border-slate-200 max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900" id="modalTitle">Model Details</h3>
+          <p class="text-xs text-slate-500 mt-0.5" id="modalSubtitle">Run ID: --</p>
+        </div>
+        <button type="button" id="modelLogModalClose" class="text-slate-400 hover:text-slate-600 focus:outline-none rounded-lg p-1 hover:bg-slate-100 transition-colors">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto space-y-6 flex-1">
+        
+        <!-- Run Info Summary Card -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider">Model Type</div>
+            <div class="text-sm font-semibold text-slate-800 mt-1" id="modalModelType">--</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider">Execution Time</div>
+            <div class="text-sm font-semibold text-slate-800 mt-1" id="modalExecTime">--</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider">History Size</div>
+            <div class="text-sm font-semibold text-slate-800 mt-1" id="modalHistorySize">--</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider">Training Points</div>
+            <div class="text-sm font-semibold text-slate-800 mt-1" id="modalTrainingPoints">--</div>
+          </div>
+        </div>
+
+        <!-- Key Takeaways & Planning Insights -->
+        <div id="modalSummarySection" class="border border-slate-150 rounded-xl p-5 bg-slate-50/50">
+          <h4 class="text-sm font-semibold text-slate-800 border-b border-slate-150 pb-2 mb-3">
+            <i class="fas fa-lightbulb mr-1.5 text-amber-500"></i> Key Takeaways & Planning Insights
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-3">
+            <div class="space-y-3">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-500">Expected Daily Average</span>
+                <span class="font-bold text-slate-800" id="modalInsightAvg">--</span>
+              </div>
+              <div class="flex justify-between items-center text-sm border-t border-slate-100 pt-2">
+                <span class="text-slate-500">Total Expected Volume</span>
+                <span class="font-bold text-slate-800" id="modalInsightTotal">--</span>
+              </div>
+              <div class="flex justify-between items-center text-sm border-t border-slate-100 pt-2">
+                <span class="text-slate-500">Planning Period (Horizon)</span>
+                <span class="font-semibold text-slate-800" id="modalInsightHorizon">--</span>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-500">Busiest Expected Day</span>
+                <span class="font-bold text-slate-800" id="modalInsightPeak">--</span>
+              </div>
+              <div class="flex justify-between items-center text-sm border-t border-slate-100 pt-2">
+                <span class="text-slate-500">Quietest Expected Day</span>
+                <span class="font-bold text-slate-800" id="modalInsightQuiet">--</span>
+              </div>
+              <div class="flex justify-between items-center text-sm border-t border-slate-100 pt-2">
+                <span class="text-slate-500">Usual Daily Range</span>
+                <span class="font-semibold text-slate-800" id="modalInsightRange">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Forecast Predictions Table -->
+        <div>
+          <h4 class="text-sm font-semibold text-slate-800 border-b border-slate-100 pb-2 mb-3">
+            <i class="fas fa-table mr-1.5 text-blue-500"></i> Forecast Results (Daily Predictions)
+          </h4>
+          <div class="border border-slate-150 rounded-xl overflow-hidden max-h-[40vh] overflow-y-auto">
+            <table class="w-full text-left border-collapse text-xs relative">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-150 text-slate-500 sticky top-0 z-10 shadow-sm">
+                  <th class="py-2.5 px-4">Forecast Date</th>
+                  <th class="py-2.5 px-4 text-right">Expected Amount</th>
+                  <th class="py-2.5 px-4 text-right">Min Expected</th>
+                  <th class="py-2.5 px-4 text-right">Max Expected</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700" id="modalPredictionsBody">
+                <!-- Dynamic rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex justify-end items-center px-6 py-4 border-t border-slate-100 bg-slate-50">
+        <button type="button" id="modelLogModalCloseBtn" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2 rounded-lg font-medium shadow transition-colors">
+          Close Details
+        </button>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <?php if ($summary): ?>
@@ -714,6 +957,149 @@ if ($summary) {
       }
     });
   }
+
+  // Model Log Modal Controls
+  const modelLogModal = document.getElementById('modelLogModal');
+  const modelLogModalBackdrop = document.getElementById('modelLogModalBackdrop');
+  const modelLogModalClose = document.getElementById('modelLogModalClose');
+  const modelLogModalCloseBtn = document.getElementById('modelLogModalCloseBtn');
+  
+  function openModelLogModal() {
+    if (modelLogModal) modelLogModal.classList.remove('hidden');
+  }
+
+  function closeModelLogModal() {
+    if (modelLogModal) modelLogModal.classList.add('hidden');
+  }
+
+  if (modelLogModalBackdrop) modelLogModalBackdrop.addEventListener('click', closeModelLogModal);
+  if (modelLogModalClose) modelLogModalClose.addEventListener('click', closeModelLogModal);
+  if (modelLogModalCloseBtn) modelLogModalCloseBtn.addEventListener('click', closeModelLogModal);
+  
+  // Show error messages using sweetalert
+  document.querySelectorAll('.view-run-error-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const errorMsg = this.getAttribute('data-error-msg') || 'Unknown error occurred.';
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Model Execution Failed',
+          text: errorMsg,
+          confirmButtonColor: '#0f172a'
+        });
+      } else {
+        alert("Model Execution Failed:\n" + errorMsg);
+      }
+    });
+  });
+
+  // Fetch and show run details
+  document.querySelectorAll('.view-run-details-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const runId = this.getAttribute('data-run-id');
+      if (!runId) return;
+      
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Loading Model Details',
+          text: 'Retrieving parameters and results from database...',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          didOpen: () => Swal.showLoading()
+        });
+      }
+      
+      fetch(`/HealthLogs/public/forecast_run_details.php?run_id=${runId}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch details');
+          return res.json();
+        })
+        .then(data => {
+          if (typeof Swal !== 'undefined') Swal.close();
+          
+          // Populate run info
+          const seriesName = data.run.series_key === 'visits_total' ? 'Patient Visits' : 'Medicine Demand';
+          document.getElementById('modalTitle').textContent = `Forecast Details - ${seriesName}`;
+          document.getElementById('modalSubtitle').textContent = `Run ID: #${data.run.id} | Generated on ${data.run.created_at}`;
+          document.getElementById('modalModelType').textContent = data.run.model_type === 'ARIMA' ? 'ARIMA (Auto-fit)' : 'Fast Average';
+          document.getElementById('modalExecTime').textContent = `${data.run.execution_time_seconds || '0.000'} seconds`;
+          document.getElementById('modalHistorySize').textContent = data.run.history_points ? `${data.run.history_points} days` : 'N/A';
+          document.getElementById('modalTrainingPoints').textContent = data.run.training_points ? `${data.run.training_points} days` : 'N/A';
+          
+          // Calculate insights
+          let total = 0;
+          let peakVal = -1;
+          let peakDate = '';
+          let quietVal = Infinity;
+          let quietDate = '';
+          let lowerSum = 0;
+          let upperSum = 0;
+          
+          if (data.results && data.results.length > 0) {
+            data.results.forEach(res => {
+              const val = Number(res.forecast_value);
+              total += val;
+              lowerSum += Number(res.lower_bound);
+              upperSum += Number(res.upper_bound);
+              
+              if (val > peakVal) {
+                peakVal = val;
+                peakDate = res.forecast_date;
+              }
+              if (val < quietVal) {
+                quietVal = val;
+                quietDate = res.forecast_date;
+              }
+            });
+            
+            const avg = total / data.results.length;
+            const avgLower = lowerSum / data.results.length;
+            const avgUpper = upperSum / data.results.length;
+            const unit = data.run.series_key === 'visits_total' ? 'visits' : 'units';
+            
+            document.getElementById('modalInsightAvg').textContent = `${avg.toFixed(1)} ${unit} / day`;
+            document.getElementById('modalInsightTotal').textContent = `${total.toFixed(0)} ${unit}`;
+            document.getElementById('modalInsightHorizon').textContent = `${data.results.length} days`;
+            document.getElementById('modalInsightPeak').textContent = `${peakVal.toFixed(1)} ${unit} (on ${peakDate})`;
+            document.getElementById('modalInsightQuiet').textContent = `${quietVal.toFixed(1)} ${unit} (on ${quietDate})`;
+            document.getElementById('modalInsightRange').textContent = `${avgLower.toFixed(1)} to ${avgUpper.toFixed(1)} ${unit}`;
+          }
+          
+          // Render predictions table
+          const resultsBody = document.getElementById('modalPredictionsBody');
+          resultsBody.innerHTML = '';
+          
+          if (data.results && data.results.length > 0) {
+            data.results.forEach(res => {
+              const row = document.createElement('tr');
+              row.className = 'hover:bg-slate-50/50 transition-colors';
+              row.innerHTML = `
+                <td class="py-2 px-4 font-semibold text-slate-600 font-mono">${res.forecast_date}</td>
+                <td class="py-2 px-4 text-right font-semibold text-slate-900 font-mono">${Number(res.forecast_value).toFixed(1)}</td>
+                <td class="py-2 px-4 text-right text-slate-500 font-mono">${Number(res.lower_bound).toFixed(1)}</td>
+                <td class="py-2 px-4 text-right text-slate-500 font-mono">${Number(res.upper_bound).toFixed(1)}</td>
+              `;
+              resultsBody.appendChild(row);
+            });
+          } else {
+            resultsBody.innerHTML = `<tr><td colspan="4" class="py-4 px-4 text-center text-slate-400">No predictions recorded.</td></tr>`;
+          }
+          
+          openModelLogModal();
+        })
+        .catch(err => {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error Loading Details',
+              text: err.message
+            });
+          } else {
+            alert('Error loading details: ' + err.message);
+          }
+        });
+    });
+  });
 </script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

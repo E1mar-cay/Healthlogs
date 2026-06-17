@@ -1,6 +1,7 @@
 <?php
 ob_start();
 require __DIR__ . '/partials/bootstrap.php';
+require_once __DIR__ . '/../app/Core/ForecastLogger.php';
 
 function load_daily_series(PDO $pdo, string $seriesKey, int $days = 84): array
 {
@@ -155,12 +156,35 @@ header('Content-Type: application/json');
 
 try {
     if ($fast) {
-        $history = load_daily_series($pdo, $seriesKey, 84);
-        echo json_encode(build_fast_forecast($history, $seriesKey, $horizon));
+        $startTime = microtime(true);
+        $runId = ForecastLogger::startRun($seriesKey, $horizon, 'Fast Forecast');
+        
+        try {
+            $history = load_daily_series($pdo, $seriesKey, 180);
+            $result = build_fast_forecast($history, $seriesKey, $horizon);
+            $executionTime = round(microtime(true) - $startTime, 3);
+            
+            ForecastLogger::logSuccess(
+                $runId,
+                (int)($result['summary']['history_points'] ?? 0),
+                (int)($result['summary']['training_points'] ?? 0),
+                $executionTime,
+                $result['forecast']
+            );
+            
+            echo json_encode($result);
+        } catch (Throwable $e) {
+            $executionTime = round(microtime(true) - $startTime, 3);
+            ForecastLogger::logFailure($runId, $e->getMessage(), $executionTime);
+            throw $e;
+        }
         exit;
     }
 
-    $python = 'C:\\Users\\Elmar Cayaba\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+    $startTime = microtime(true);
+    $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
+
+    $python = getenv('PYTHON_PATH') ?: $_ENV['PYTHON_PATH'] ?: 'python';
     $script = __DIR__ . '/../scripts/forecast_arima.py';
     $cmd = escapeshellarg($python) . ' ' . escapeshellarg($script) .
         ' --series-key ' . escapeshellarg($seriesKey) .
@@ -168,7 +192,10 @@ try {
         ' 2>&1';
 
     $output = shell_exec($cmd);
+    $executionTime = round(microtime(true) - $startTime, 3);
+
     if (!$output) {
+        ForecastLogger::logFailure($runId, 'No output from ARIMA script.', $executionTime);
         http_response_code(500);
         echo json_encode(['error' => 'No output from ARIMA script.']);
         exit;
@@ -176,19 +203,39 @@ try {
 
     $data = json_decode($output, true);
     if (!is_array($data)) {
+        ForecastLogger::logFailure($runId, 'Forecasting failed (Invalid JSON from Python).', $executionTime);
         http_response_code(500);
         echo json_encode(['error' => 'Forecasting failed.']);
         exit;
     }
 
     if (!empty($data['error'])) {
+        ForecastLogger::logFailure($runId, $data['error'], $executionTime);
         http_response_code(500);
         echo json_encode(['error' => $data['error']]);
         exit;
     }
+
+    // Extract diagnostic information from Python script output
+    $diagnostics = null;
+    if (isset($data['diagnostics'])) {
+        $diagnostics = $data['diagnostics'];
+        $diagnostics['model_order'] = $data['summary']['model'] ?? null;
+        $diagnostics['seasonal_order'] = $data['summary']['seasonal_model'] ?? null;
+    }
+    
+    ForecastLogger::logSuccess(
+        $runId,
+        (int)($data['summary']['history_points'] ?? 0),
+        (int)($data['summary']['training_points'] ?? 0),
+        $executionTime,
+        $data['forecast'],
+        $diagnostics
+    );
 
     echo json_encode($data);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }
+

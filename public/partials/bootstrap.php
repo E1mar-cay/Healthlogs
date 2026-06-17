@@ -1,4 +1,7 @@
-﻿<?php
+<?php
+require_once __DIR__ . '/../../app/Core/EnvLoader.php';
+EnvLoader::load(__DIR__ . '/../../.env');
+
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../app/Core/Validator.php';
 require_once __DIR__ . '/../../app/Core/FlashHelper.php';
@@ -47,6 +50,7 @@ if (!function_exists('rbac_enforce')) {
             '/HealthLogs/public/reports.php' => ['admin'],
             '/HealthLogs/public/forecast.php' => ['admin'],
             '/HealthLogs/public/forecast_run.php' => ['admin'],
+            '/HealthLogs/public/forecast_run_details.php' => ['admin'],
             '/HealthLogs/public/reminders/run_cron.php' => ['admin'],
             '/HealthLogs/public/dashboards/admin.php' => ['admin'],
         ];

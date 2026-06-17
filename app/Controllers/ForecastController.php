@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 class ForecastController extends Controller
 {
@@ -12,8 +12,9 @@ class ForecastController extends Controller
         $seriesKey = $_POST['series_key'] ?? 'visits_total';
         $horizon = (int)($_POST['horizon'] ?? 30);
 
+        $python = getenv('PYTHON_PATH') ?: $_ENV['PYTHON_PATH'] ?: 'python';
         $script = __DIR__ . '/../../scripts/forecast_arima.py';
-        $cmd = 'python ' . escapeshellarg($script) .
+        $cmd = escapeshellarg($python) . ' ' . escapeshellarg($script) .
             ' --series-key ' . escapeshellarg($seriesKey) .
             ' --horizon ' . escapeshellarg((string)$horizon);
 
