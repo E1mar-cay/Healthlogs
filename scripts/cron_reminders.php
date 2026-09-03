@@ -1,6 +1,6 @@
 <?php
 /**
- * Cron job: Send reminders due today or earlier via email
+ * Cron job: Send reminders due today or earlier via SMS and/or Email
  * 
  * Run this script daily via cron job or Windows Task Scheduler
  * Example: php C:\xampp\htdocs\HealthLogs\scripts\cron_reminders.php
@@ -12,16 +12,14 @@ require_once __DIR__ . '/../app/Core/EnvLoader.php';
 // Load .env file
 EnvLoader::load(__DIR__ . '/../.env');
 
-// Load Composer autoloader for PHPMailer
+// Load Composer autoloader for PHPMailer if available
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once __DIR__ . '/../vendor/autoload.php';
-} else {
-    echo "ERROR: Composer dependencies not installed. Run: composer install\n";
-    exit(1);
 }
 
-// Load EmailHelper
+// Load Helpers
 require_once __DIR__ . '/../app/Core/EmailHelper.php';
+require_once __DIR__ . '/../app/Core/SmsHelper.php';
 
 date_default_timezone_set('Asia/Manila');
 
@@ -53,6 +51,8 @@ if (empty($reminders)) {
 }
 
 $emailHelper = new EmailHelper();
+$smsHelper = new SmsHelper();
+
 $sent = 0;
 $failed = 0;
 $skipped = 0;
@@ -63,11 +63,9 @@ foreach ($reminders as $reminder) {
     
     echo "Processing: {$patientName} - {$reminderType} (Due: {$reminder['due_date']})\n";
     
-    // Check if patient has email
-    if (empty($reminder['email'])) {
-        echo "  ⚠ Skipped: No email address\n";
+    if (empty($reminder['email']) && empty($reminder['contact_no'])) {
+        echo "  ⚠ Skipped: No email or contact number on file\n";
         
-        // Mark as failed with note
         $update = $pdo->prepare("UPDATE reminders SET status = 'failed' WHERE id = ?");
         $update->execute([$reminder['id']]);
         
@@ -75,38 +73,49 @@ foreach ($reminders as $reminder) {
         continue;
     }
     
-    // Prepare patient data
     $patient = [
         'first_name' => $reminder['first_name'],
         'last_name' => $reminder['last_name'],
-        'email' => $reminder['email']
+        'email' => $reminder['email'],
+        'contact_no' => $reminder['contact_no'],
     ];
-    
-    // Send email
-    $emailSent = $emailHelper->sendReminder($reminder, $patient);
-    
-    if ($emailSent) {
-        echo "  ✓ Email sent to: {$reminder['email']}\n";
-        
-        // Mark as sent
+
+    $isSentSuccess = false;
+
+    // Send SMS if contact number is available
+    if (!empty($reminder['contact_no'])) {
+        $smsResult = $smsHelper->sendReminder($reminder, $patient);
+        if ($smsResult) {
+            echo "  ✓ SMS sent to: {$reminder['contact_no']}\n";
+            $isSentSuccess = true;
+        } else {
+            echo "  ✗ SMS dispatch failed or disabled\n";
+        }
+    }
+
+    // Send Email if email address is available
+    if (!empty($reminder['email'])) {
+        $emailResult = $emailHelper->sendReminder($reminder, $patient);
+        if ($emailResult) {
+            echo "  ✓ Email sent to: {$reminder['email']}\n";
+            $isSentSuccess = true;
+        } else {
+            echo "  ✗ Email dispatch failed or disabled\n";
+        }
+    }
+
+    if ($isSentSuccess) {
         $update = $pdo->prepare("UPDATE reminders SET status = 'sent', sent_at = NOW() WHERE id = ?");
         $update->execute([$reminder['id']]);
-        
         $sent++;
     } else {
-        echo "  ✗ Failed to send email\n";
-        
-        // Mark as failed
         $update = $pdo->prepare("UPDATE reminders SET status = 'failed' WHERE id = ?");
         $update->execute([$reminder['id']]);
-        
         $failed++;
     }
     
     echo "\n";
-    
-    // Small delay to avoid overwhelming SMTP server
-    usleep(500000); // 0.5 seconds
+    usleep(500000); // 0.5 sec delay
 }
 
 echo "===========================================\n";
@@ -115,7 +124,7 @@ echo "-------------------------------------------\n";
 echo "Total processed: " . count($reminders) . "\n";
 echo "Successfully sent: {$sent}\n";
 echo "Failed: {$failed}\n";
-echo "Skipped (no email): {$skipped}\n";
+echo "Skipped: {$skipped}\n";
 echo "===========================================\n";
 
 // Log to file
