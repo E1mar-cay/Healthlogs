@@ -36,12 +36,17 @@ class ForecastLogger
         int $trainingPoints,
         float $executionTime,
         array $forecastRows,
-        ?array $diagnostics = null
+        ?array $diagnostics = null,
+        ?array $metrics = null
     ): void {
         $db = self::init();
         
         try {
             $db->beginTransaction();
+
+            $mae = isset($metrics['mae']) ? (float)$metrics['mae'] : (isset($diagnostics['mae']) ? (float)$diagnostics['mae'] : null);
+            $rmse = isset($metrics['rmse']) ? (float)$metrics['rmse'] : (isset($diagnostics['rmse']) ? (float)$diagnostics['rmse'] : null);
+            $mape = isset($metrics['mape']) ? (float)$metrics['mape'] : (isset($diagnostics['mape']) ? (float)$diagnostics['mape'] : null);
 
             // 1. Update forecast_runs log details
             $sql = "UPDATE forecast_runs 
@@ -49,10 +54,13 @@ class ForecastLogger
                         history_points = ?, 
                         training_points = ?, 
                         execution_time_seconds = ?,
+                        mae = ?,
+                        rmse = ?,
+                        mape = ?,
                         error_message = NULL
                     WHERE id = ?";
             $stmt = $db->prepare($sql);
-            $stmt->execute([$historyPoints, $trainingPoints, $executionTime, $runId]);
+            $stmt->execute([$historyPoints, $trainingPoints, $executionTime, $mae, $rmse, $mape, $runId]);
 
             // 2. Save ARIMA parameters if provided
             if ($diagnostics !== null) {
@@ -67,8 +75,8 @@ class ForecastLogger
                 
                 $paramsJson = isset($diagnostics['params']) ? json_encode($diagnostics['params']) : null;
 
-                $sqlParam = "INSERT INTO arima_parameters (run_id, model_order, seasonal_order, aic, bic, log_likelihood, sigma2, parameters_json) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $sqlParam = "INSERT INTO arima_parameters (run_id, model_order, seasonal_order, aic, bic, log_likelihood, sigma2, mae, rmse, mape, parameters_json) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmtParam = $db->prepare($sqlParam);
                 $stmtParam->execute([
                     $runId,
@@ -78,6 +86,9 @@ class ForecastLogger
                     $bic,
                     $logLikelihood,
                     $sigma2,
+                    $mae,
+                    $rmse,
+                    $mape,
                     $paramsJson
                 ]);
             }
@@ -127,16 +138,26 @@ class ForecastLogger
     /**
      * Get recent forecast runs
      */
-    public static function getRecentLogs(int $limit = 10): array
+    public static function getRecentLogs(int $limit = 20, ?string $status = null): array
     {
         $db = self::init();
-        $sql = "SELECT r.*, p.model_order, p.seasonal_order, p.aic, p.bic 
+        $where = $status !== null ? "WHERE r.status = ?" : "";
+        $sql = "SELECT r.*, p.model_order, p.seasonal_order, p.aic, p.bic,
+                       COALESCE(p.mae, r.mae) AS mae,
+                       COALESCE(p.rmse, r.rmse) AS rmse,
+                       COALESCE(p.mape, r.mape) AS mape
                 FROM forecast_runs r
                 LEFT JOIN arima_parameters p ON r.id = p.run_id
+                {$where}
                 ORDER BY r.created_at DESC 
                 LIMIT ?";
         $stmt = $db->prepare($sql);
-        $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+        if ($status !== null) {
+            $stmt->bindValue(1, $status, PDO::PARAM_STR);
+            $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        } else {
+            $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+        }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

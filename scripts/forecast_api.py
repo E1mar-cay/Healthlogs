@@ -1,4 +1,4 @@
-﻿"""Flask API wrapper for HealthLogs ARIMA forecasting.
+"""Flask API wrapper for HealthLogs ARIMA forecasting.
 
 Run:
   python forecast_api.py --host 127.0.0.1 --port 5005
@@ -52,12 +52,32 @@ def load_series(series_key):
     return df["value"].astype(float)
 
 
+import numpy as np
+
+
+def compute_evaluation_metrics(actual, fitted):
+    actual = np.asarray(actual, dtype=float)
+    fitted = np.maximum(0.0, np.asarray(fitted, dtype=float))
+    errors = actual - fitted
+    mae = float(np.mean(np.abs(errors))) if len(actual) > 0 else 0.0
+    rmse = float(np.sqrt(np.mean(errors ** 2))) if len(actual) > 0 else 0.0
+    nz = actual > 0
+    mape = float(np.mean(np.abs(errors[nz] / actual[nz])) * 100.0) if np.any(nz) else (0.0 if np.all(fitted == 0) else 100.0)
+    rating = "High Accuracy" if mape < 10 else ("Good Fit" if mape < 20 else ("Reasonable" if mape < 50 else "High Variance"))
+    return {"mae": round(mae, 4), "rmse": round(rmse, 4), "mape": round(mape, 2), "accuracy_rating": rating}
+
+
 def forecast(series, horizon):
     model = auto_arima(series, seasonal=False, error_action="ignore", suppress_warnings=True)
     preds = model.predict(n_periods=horizon)
     last_date = series.index.max().date()
     future_dates = pd.date_range(last_date, periods=horizon + 1, freq="D")[1:]
-    return future_dates, preds
+    try:
+        in_sample = model.predict_in_sample()
+    except Exception:
+        in_sample = np.full(len(series), float(series.mean()))
+    metrics = compute_evaluation_metrics(series.values, in_sample)
+    return future_dates, preds, metrics
 
 
 @app.post("/forecast")
@@ -71,7 +91,7 @@ def forecast_endpoint():
 
     try:
         series = load_series(series_key)
-        dates, preds = forecast(series, horizon)
+        dates, preds, metrics = forecast(series, horizon)
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -79,6 +99,7 @@ def forecast_endpoint():
         "series_key": series_key,
         "generated_on": date.today().isoformat(),
         "horizon": horizon,
+        "metrics": metrics,
         "forecast": [
             {"date": d.date().isoformat(), "value": float(v)}
             for d, v in zip(dates, preds)

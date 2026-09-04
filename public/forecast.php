@@ -51,12 +51,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $result = $data;
 
-            // Extract diagnostics
+            // Extract diagnostics and metrics
+            $metrics = $data['metrics'] ?? null;
             $diagnostics = null;
             if (isset($data['diagnostics'])) {
                 $diagnostics = $data['diagnostics'];
                 $diagnostics['model_order'] = $data['summary']['model'] ?? null;
                 $diagnostics['seasonal_order'] = $data['summary']['seasonal_model'] ?? null;
+                if ($metrics) {
+                    $diagnostics['mae'] = $metrics['mae'] ?? null;
+                    $diagnostics['rmse'] = $metrics['rmse'] ?? null;
+                    $diagnostics['mape'] = $metrics['mape'] ?? null;
+                }
             }
 
             ForecastLogger::logSuccess(
@@ -65,7 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (int)($data['summary']['training_points'] ?? 0),
                 $executionTime,
                 $data['forecast'],
-                $diagnostics
+                $diagnostics,
+                $metrics
             );
         }
     }
@@ -74,6 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $summary = $result['summary'] ?? null;
 $forecastRows = $result['forecast'] ?? [];
 $historyRows = $result['history'] ?? [];
+$metrics = $result['metrics'] ?? ($summary ? [
+    'mae' => $summary['mae'] ?? null,
+    'rmse' => $summary['rmse'] ?? null,
+    'mape' => $summary['mape'] ?? null,
+    'accuracy_rating' => $summary['accuracy_rating'] ?? null,
+] : null);
 $unitLabel = $seriesUnits[$seriesKey] ?? 'items';
 $forecastGenerated = $_SERVER['REQUEST_METHOD'] === 'POST' && $result !== null;
 
@@ -275,7 +288,7 @@ if ($summary) {
     <div class="text-sm text-slate-500" id="snapshotMeta">Using the selected forecast settings.</div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div class="text-xs uppercase tracking-widest text-slate-400">Average / Day</div>
       <div class="text-2xl font-semibold mt-2" id="snapshotAverage">--</div>
@@ -290,6 +303,14 @@ if ($summary) {
       <div class="text-xs uppercase tracking-widest text-slate-400">Expected Total</div>
       <div class="text-2xl font-semibold mt-2" id="snapshotTotal">--</div>
       <div class="text-sm text-slate-500 mt-1" id="snapshotHorizon">--</div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs uppercase tracking-widest text-slate-400">Model Error (MAE/MAPE)</span>
+        <span id="snapshotRatingBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">Fit</span>
+      </div>
+      <div class="text-2xl font-semibold mt-2 font-mono" id="snapshotMape">--</div>
+      <div class="text-sm text-slate-500 mt-1" id="snapshotMae">--</div>
     </div>
   </div>
 
@@ -372,34 +393,62 @@ if ($summary) {
 <!-- Model Execution Logs History Section -->
 <?php
 // Query recent runs
-$recentRuns = ForecastLogger::getRecentLogs(10);
+$recentRuns = ForecastLogger::getRecentLogs(30);
+$successRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'success'));
+$failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'failed'));
 ?>
-<div class="mt-6 bg-white p-6 rounded shadow">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Analytics History</div>
-      <div class="text-lg font-semibold">Model Execution Logs & ARIMA Parameters</div>
-      <p class="text-sm text-slate-500 mt-1">A historical audit log of recent forecasting runs, training points, and statistical parameters.</p>
+      <div class="text-lg font-semibold">Model Execution Logs &amp; ARIMA Parameters</div>
+      <p class="text-sm text-slate-500 mt-1">Audit log of fitted models, training points, and statistical parameters.</p>
+    </div>
+    
+    <!-- Filter Toggle: Successful (default) | All Runs | Failed -->
+    <div class="flex flex-wrap sm:inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1 text-xs font-medium self-start md:self-auto gap-1 sm:gap-0">
+      <button type="button" class="log-filter-btn px-3 py-1.5 rounded-md transition-all bg-white text-slate-900 shadow-xs font-semibold" data-filter="success">
+        <i class="fas fa-check-circle text-emerald-600 mr-1"></i> Successful
+        <span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold"><?= $successRunsCount ?></span>
+      </button>
+      <button type="button" class="log-filter-btn px-3 py-1.5 rounded-md transition-all text-slate-600 hover:text-slate-900" data-filter="all">
+        All Runs
+        <span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold"><?= count($recentRuns) ?></span>
+      </button>
+      <?php if ($failedRunsCount > 0): ?>
+        <button type="button" class="log-filter-btn px-3 py-1.5 rounded-md transition-all text-slate-600 hover:text-slate-900" data-filter="failed">
+          <i class="fas fa-exclamation-triangle text-amber-600 mr-1"></i> Failed
+          <span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold"><?= $failedRunsCount ?></span>
+        </button>
+      <?php endif; ?>
     </div>
   </div>
 
-  <div class="mt-6 overflow-x-auto">
-    <table class="w-full text-left border-collapse text-sm">
+  <div class="mt-6 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+    <table class="w-full text-left border-collapse text-sm min-w-[760px]">
       <thead>
-        <tr class="border-b border-slate-200 text-slate-400 font-medium">
+        <tr class="border-b border-slate-200 text-slate-400 font-medium text-xs">
           <th class="py-3 px-4">Run Time</th>
           <th class="py-3 px-4">Series Key</th>
           <th class="py-3 px-4">Horizon</th>
           <th class="py-3 px-4">Model Type</th>
           <th class="py-3 px-4">Fitted Model</th>
+          <th class="py-3 px-3">MAE</th>
+          <th class="py-3 px-3">RMSE</th>
+          <th class="py-3 px-3">MAPE</th>
           <th class="py-3 px-4">Status</th>
           <th class="py-3 px-4 text-right">Actions</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100 text-slate-700">
+      <tbody class="divide-y divide-slate-100 text-slate-700" id="logTableBody">
+        <tr id="noFilteredLogsRow" class="hidden">
+          <td colspan="10" class="py-8 px-4 text-center text-slate-400">
+            <i class="fas fa-filter mr-1.5 text-slate-300"></i> No logs match the selected filter.
+          </td>
+        </tr>
         <?php if (empty($recentRuns)): ?>
           <tr>
-            <td colspan="7" class="py-4 px-4 text-center text-slate-400">No forecasting logs recorded yet.</td>
+            <td colspan="10" class="py-4 px-4 text-center text-slate-400">No forecasting logs recorded yet.</td>
           </tr>
         <?php else: ?>
           <?php foreach ($recentRuns as $run): 
@@ -422,7 +471,7 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
                 $modelOrderText = 'Fast Average';
             }
           ?>
-            <tr class="hover:bg-slate-50 transition-colors">
+            <tr class="log-row hover:bg-slate-50 transition-colors" data-status="<?= h($run['status']) ?>">
               <td class="py-3 px-4 whitespace-nowrap">
                 <?= h(date('M d, Y h:i A', strtotime($run['created_at']))) ?>
               </td>
@@ -439,6 +488,25 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
               </td>
               <td class="py-3 px-4 text-xs font-semibold text-slate-700">
                 <?= h($modelOrderText === 'N/A' ? 'Auto-fitted model' : $modelOrderText) ?>
+              </td>
+              <td class="py-3 px-3 font-mono text-xs text-slate-700">
+                <?= $run['mae'] !== null ? h(number_format((float)$run['mae'], 2)) : '<span class="text-slate-300">--</span>' ?>
+              </td>
+              <td class="py-3 px-3 font-mono text-xs text-slate-700">
+                <?= $run['rmse'] !== null ? h(number_format((float)$run['rmse'], 2)) : '<span class="text-slate-300">--</span>' ?>
+              </td>
+              <td class="py-3 px-3 text-xs font-medium">
+                <?php if ($run['mape'] !== null): ?>
+                  <?php
+                    $mVal = (float)$run['mape'];
+                    $mClass = $mVal < 20.0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : ($mVal < 50.0 ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-amber-700 bg-amber-50 border-amber-200');
+                  ?>
+                  <span class="px-2 py-0.5 rounded border text-[11px] font-semibold <?= $mClass ?>">
+                    <?= h(number_format($mVal, 1)) ?>%
+                  </span>
+                <?php else: ?>
+                  <span class="text-slate-300">--</span>
+                <?php endif; ?>
               </td>
               <td class="py-3 px-4">
                 <span class="px-2 py-0.5 rounded text-xs font-medium <?= $statusClass ?>">
@@ -473,14 +541,14 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
   <!-- Backdrop -->
   <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/50 backdrop-blur-sm border-0 cursor-default" aria-label="Close modal" id="modelLogModalBackdrop"></button>
   
-  <div class="flex min-h-screen items-center justify-center p-4">
+  <div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
     <!-- Modal Card -->
-    <div class="relative bg-white rounded-xl shadow-xl border border-slate-200 max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div class="relative bg-white rounded-xl shadow-xl border border-slate-200 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       
       <!-- Modal Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+      <div class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50">
         <div>
-          <h3 class="text-lg font-semibold text-slate-900" id="modalTitle">Model Details</h3>
+          <h3 class="text-base sm:text-lg font-semibold text-slate-900" id="modalTitle">Model Details</h3>
           <p class="text-xs text-slate-500 mt-0.5" id="modalSubtitle">Run ID: --</p>
         </div>
         <button type="button" id="modelLogModalClose" class="text-slate-400 hover:text-slate-600 focus:outline-none rounded-lg p-1 hover:bg-slate-100 transition-colors">
@@ -491,10 +559,10 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
       </div>
 
       <!-- Modal Body (Scrollable) -->
-      <div class="p-6 overflow-y-auto space-y-6 flex-1">
+      <div class="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1">
         
         <!-- Run Info Summary Card -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 border border-slate-100 rounded-xl">
           <div>
             <div class="text-xs text-slate-400 uppercase tracking-wider">Model Type</div>
             <div class="text-sm font-semibold text-slate-800 mt-1" id="modalModelType">--</div>
@@ -510,6 +578,42 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
           <div>
             <div class="text-xs text-slate-400 uppercase tracking-wider">Training Points</div>
             <div class="text-sm font-semibold text-slate-800 mt-1" id="modalTrainingPoints">--</div>
+          </div>
+        </div>
+
+        <!-- Model Evaluation & Accuracy (MAE, RMSE, MAPE) -->
+        <div class="border border-slate-200 rounded-xl p-5 bg-gradient-to-r from-slate-50 to-teal-50/20">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+            <h4 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+              <i class="fas fa-chart-line text-teal-600"></i> Model Accuracy & Error Evaluation
+            </h4>
+            <span id="modalAccuracyRating" class="px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">Statistical Fit</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+            <div class="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <span class="text-xs uppercase tracking-wider text-slate-500 font-medium">MAE</span>
+                <span class="text-[10px] text-slate-400 font-mono">Mean Absolute</span>
+              </div>
+              <div class="text-xl font-bold text-slate-800 mt-1 font-mono" id="modalMae">--</div>
+              <div class="text-xs text-slate-500 mt-1" id="modalMaeDesc">Average deviation per day</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <span class="text-xs uppercase tracking-wider text-slate-500 font-medium">RMSE</span>
+                <span class="text-[10px] text-slate-400 font-mono">Root Mean Sq.</span>
+              </div>
+              <div class="text-xl font-bold text-slate-800 mt-1 font-mono" id="modalRmse">--</div>
+              <div class="text-xs text-slate-500 mt-1">Penalizes large outlier spikes</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <span class="text-xs uppercase tracking-wider text-slate-500 font-medium">MAPE</span>
+                <span class="text-[10px] text-slate-400 font-mono">Percentage Error</span>
+              </div>
+              <div class="text-xl font-bold text-slate-800 mt-1 font-mono" id="modalMape">--</div>
+              <div class="text-xs text-slate-500 mt-1">Relative percentage error</div>
+            </div>
           </div>
         </div>
 
@@ -623,6 +727,98 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
       <div class="text-sm text-slate-500 mt-1">Recent daily average</div>
     </div>
   </div>
+
+  <!-- Model Evaluation & Error Metrics (MAE, RMSE, MAPE) Section -->
+  <?php if ($metrics && (isset($metrics['mae']) || isset($metrics['rmse']) || isset($metrics['mape']))): ?>
+    <div class="mt-6 bg-white p-6 rounded shadow border-l-4 border-teal-600">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-150">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded border border-teal-200">
+              <i class="fas fa-microchip mr-1"></i> Model Evaluation
+            </span>
+            <span class="text-xs text-slate-400">Quantitative Statistical Analysis</span>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mt-1">Forecast Error Metrics: MAE, RMSE &amp; MAPE</h3>
+          <p class="text-sm text-slate-500 mt-0.5">
+            Model fit accuracy evaluated across <?= h($summary['training_points'] ?? 180) ?> daily data points in the training window.
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <?php
+            $mapeVal = (float)($metrics['mape'] ?? 0);
+            $ratingText = $metrics['accuracy_rating'] ?? ($mapeVal < 10.0 ? 'High Accuracy' : ($mapeVal < 20.0 ? 'Good Fit' : ($mapeVal < 50.0 ? 'Reasonable' : 'High Variance')));
+            $badgeBg = $mapeVal < 20.0 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : ($mapeVal < 50.0 ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-amber-50 text-amber-800 border-amber-300');
+          ?>
+          <div class="text-left md:text-right">
+            <div class="text-xs text-slate-400 uppercase tracking-widest font-medium">Model Rating</div>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border mt-0.5 <?= $badgeBg ?>">
+              <span class="h-2 w-2 rounded-full bg-current"></span>
+              <?= h($ratingText) ?>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        <!-- MAE Card -->
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Mean Absolute Error</span>
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAE</span>
+          </div>
+          <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+            <?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?>
+            <span class="text-sm font-normal text-slate-500 font-sans"><?= h($unitLabel) ?></span>
+          </div>
+          <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+            On average, daily predictions deviate from actual activity by <strong>&plusmn;<?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?> <?= h($unitLabel) ?></strong>.
+          </p>
+          <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
+            <span>Formula: &Sigma;|y &minus; &ycirc;| / n</span>
+            <span class="text-teal-600 font-semibold">Linear Penalty</span>
+          </div>
+        </div>
+
+        <!-- RMSE Card -->
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Root Mean Squared Error</span>
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">RMSE</span>
+          </div>
+          <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+            <?= h(number_format((float)($metrics['rmse'] ?? 0), 2)) ?>
+            <span class="text-sm font-normal text-slate-500 font-sans"><?= h($unitLabel) ?></span>
+          </div>
+          <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+            Measures residual spread; penalizes large sudden demand spikes or outlier days more heavily.
+          </p>
+          <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
+            <span>Formula: &radic;(&Sigma;(y &minus; &ycirc;)&sup2; / n)</span>
+            <span class="text-teal-600 font-semibold">Quadratic Penalty</span>
+          </div>
+        </div>
+
+        <!-- MAPE Card -->
+        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Mean Absolute % Error</span>
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAPE</span>
+          </div>
+          <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+            <?= h(number_format((float)($metrics['mape'] ?? 0), 1)) ?><span class="text-xl font-bold text-slate-500 font-sans">%</span>
+          </div>
+          <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+            Relative percentage deviation across non-zero active days (Overall Accuracy: <strong><?= h(number_format(max(0, 100 - (float)($metrics['mape'] ?? 0)), 1)) ?>%</strong>).
+          </p>
+          <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
+            <span>Formula: &Sigma;(|y &minus; &ycirc;| / y) / n</span>
+            <span class="text-teal-600 font-semibold">Scale-Independent</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  <?php endif; ?>
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
     <div class="xl:col-span-2 bg-white p-4 rounded shadow">
@@ -834,6 +1030,9 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
   const snapshotPeakDateEl = document.getElementById('snapshotPeakDate');
   const snapshotTotalEl = document.getElementById('snapshotTotal');
   const snapshotHorizonEl = document.getElementById('snapshotHorizon');
+  const snapshotMapeEl = document.getElementById('snapshotMape');
+  const snapshotMaeEl = document.getElementById('snapshotMae');
+  const snapshotRatingBadgeEl = document.getElementById('snapshotRatingBadge');
   const snapshotDaysEl = document.getElementById('snapshotDays');
   const snapshotSummaryEl = document.getElementById('snapshotSummary');
 
@@ -845,12 +1044,19 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
     snapshotPeakDateEl.textContent = '--';
     snapshotTotalEl.textContent = '--';
     snapshotHorizonEl.textContent = '--';
+    if (snapshotMapeEl) snapshotMapeEl.textContent = '--';
+    if (snapshotMaeEl) snapshotMaeEl.textContent = '--';
+    if (snapshotRatingBadgeEl) {
+      snapshotRatingBadgeEl.textContent = 'Fit';
+      snapshotRatingBadgeEl.className = 'text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200';
+    }
     snapshotDaysEl.innerHTML = '';
     snapshotSummaryEl.innerHTML = '<li>Forecast snapshot is not available right now.</li>';
   }
 
   function renderSnapshot(data, seriesKey, horizon) {
     const summary = data.summary || {};
+    const metrics = data.metrics || summary;
     const rows = (data.forecast || []).slice(0, 6);
     const unit = snapshotUnitMap[seriesKey] || 'items';
     const label = snapshotSeriesLabelMap[seriesKey] || seriesKey;
@@ -863,6 +1069,19 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
     snapshotPeakDateEl.textContent = summary.peak_date || '--';
     snapshotTotalEl.textContent = Number(summary.expected_total || 0).toFixed(1);
     snapshotHorizonEl.textContent = `Across ${horizon} days`;
+
+    if (snapshotMapeEl) {
+      snapshotMapeEl.textContent = (metrics.mape !== undefined && metrics.mape !== null) ? `${Number(metrics.mape).toFixed(1)}%` : '--';
+    }
+    if (snapshotMaeEl) {
+      snapshotMaeEl.textContent = (metrics.mae !== undefined && metrics.mae !== null) ? `MAE: ±${Number(metrics.mae).toFixed(1)} ${unit}` : '--';
+    }
+    if (snapshotRatingBadgeEl && metrics.mape !== undefined && metrics.mape !== null) {
+      const m = Number(metrics.mape);
+      const rating = metrics.accuracy_rating || (m < 10 ? 'High Accuracy' : (m < 20 ? 'Good Fit' : (m < 50 ? 'Reasonable' : 'High Variance')));
+      snapshotRatingBadgeEl.textContent = rating;
+      snapshotRatingBadgeEl.className = `text-[10px] font-bold px-2 py-0.5 rounded border ${m < 20 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (m < 50 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200')}`;
+    }
 
     snapshotDaysEl.innerHTML = rows.map((row) => `
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -1026,6 +1245,33 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
           document.getElementById('modalHistorySize').textContent = data.run.history_points ? `${data.run.history_points} days` : 'N/A';
           document.getElementById('modalTrainingPoints').textContent = data.run.training_points ? `${data.run.training_points} days` : 'N/A';
           
+          // Populate accuracy & error metrics
+          const maeVal = data.run.mae || (data.parameters && data.parameters.mae);
+          const rmseVal = data.run.rmse || (data.parameters && data.parameters.rmse);
+          const mapeVal = data.run.mape || (data.parameters && data.parameters.mape);
+          const metricUnit = data.run.series_key === 'visits_total' ? 'visits' : 'units';
+          
+          const modalMaeEl = document.getElementById('modalMae');
+          const modalRmseEl = document.getElementById('modalRmse');
+          const modalMapeEl = document.getElementById('modalMape');
+          const modalRatingEl = document.getElementById('modalAccuracyRating');
+          
+          if (modalMaeEl) modalMaeEl.textContent = (maeVal !== null && maeVal !== undefined) ? `${Number(maeVal).toFixed(2)} ${metricUnit}` : 'N/A';
+          if (modalRmseEl) modalRmseEl.textContent = (rmseVal !== null && rmseVal !== undefined) ? `${Number(rmseVal).toFixed(2)} ${metricUnit}` : 'N/A';
+          if (modalMapeEl) modalMapeEl.textContent = (mapeVal !== null && mapeVal !== undefined) ? `${Number(mapeVal).toFixed(1)}%` : 'N/A';
+          
+          if (modalRatingEl) {
+            if (mapeVal !== null && mapeVal !== undefined) {
+              const m = Number(mapeVal);
+              const rating = m < 10 ? 'High Accuracy' : (m < 20 ? 'Good Fit' : (m < 50 ? 'Reasonable' : 'High Variance'));
+              modalRatingEl.textContent = rating;
+              modalRatingEl.className = `px-2.5 py-0.5 rounded text-xs font-semibold border ${m < 20 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (m < 50 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200')}`;
+            } else {
+              modalRatingEl.textContent = 'Statistical Fit';
+              modalRatingEl.className = 'px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200';
+            }
+          }
+          
           // Calculate insights
           let total = 0;
           let peakVal = -1;
@@ -1100,6 +1346,52 @@ $recentRuns = ForecastLogger::getRecentLogs(10);
         });
     });
   });
+
+  // Log Filter Tab Switching (Successful by default)
+  const logFilterBtns = document.querySelectorAll('.log-filter-btn');
+  const logRows = document.querySelectorAll('.log-row');
+  const noFilteredLogsRow = document.getElementById('noFilteredLogsRow');
+
+  function applyLogFilter(filter) {
+    let visibleCount = 0;
+    logRows.forEach(row => {
+      const status = row.getAttribute('data-status');
+      if (filter === 'all' || status === filter) {
+        row.classList.remove('hidden');
+        visibleCount++;
+      } else {
+        row.classList.add('hidden');
+      }
+    });
+
+    if (noFilteredLogsRow) {
+      if (visibleCount === 0) {
+        noFilteredLogsRow.classList.remove('hidden');
+      } else {
+        noFilteredLogsRow.classList.add('hidden');
+      }
+    }
+
+    logFilterBtns.forEach(btn => {
+      const isSelected = btn.getAttribute('data-filter') === filter;
+      if (isSelected) {
+        btn.classList.add('bg-white', 'text-slate-900', 'shadow-xs', 'font-semibold');
+        btn.classList.remove('text-slate-600');
+      } else {
+        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-xs', 'font-semibold');
+        btn.classList.add('text-slate-600');
+      }
+    });
+  }
+
+  logFilterBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      applyLogFilter(this.getAttribute('data-filter'));
+    });
+  });
+
+  // Set default view to 'success'
+  applyLogFilter('success');
 </script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

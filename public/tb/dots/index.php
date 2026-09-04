@@ -98,7 +98,7 @@ if ($case_id > 0) {
 }
 ?>
 
-<div class="bg-white p-6 rounded shadow">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Adherence Monitoring</div>
@@ -107,8 +107,8 @@ if ($case_id > 0) {
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <?php if (!empty($activeCases)): ?>
-        <form method="GET" class="flex items-center gap-2">
-          <select name="case_id" onchange="this.form.submit()" class="border rounded px-3 py-1.5 text-sm font-medium">
+        <form method="GET" class="w-full sm:w-auto flex items-center gap-2">
+          <select name="case_id" onchange="this.form.submit()" class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm font-medium bg-white">
             <?php foreach ($activeCases as $ac): ?>
               <option value="<?= $ac['id'] ?>" <?= (int)$ac['id'] === $case_id ? 'selected' : '' ?>>
                 <?= h($ac['case_number']) ?> - <?= h($ac['last_name'] . ', ' . $ac['first_name']) ?>
@@ -117,19 +117,19 @@ if ($case_id > 0) {
           </select>
         </form>
       <?php endif; ?>
-      <a href="/HealthLogs/public/tb.php" class="text-sm text-slate-600 underline">Back to Dashboard</a>
+      <a href="/HealthLogs/public/tb.php" class="text-sm font-medium text-slate-600 hover:text-slate-900 underline ml-1">Back to Dashboard</a>
     </div>
   </div>
 </div>
 
 <?php if (!empty($successMsg)): ?>
-  <div class="mt-6 bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded text-sm">
+  <div class="mt-6 bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl text-sm">
     &check; <?= h($successMsg) ?>
   </div>
 <?php endif; ?>
 
 <?php if (!empty($errors)): ?>
-  <div class="mt-6 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded text-sm space-y-1">
+  <div class="mt-6 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm space-y-1">
     <?php foreach ($errors as $err): ?>
       <p>&bull; <?= h($err) ?></p>
     <?php endforeach; ?>
@@ -137,8 +137,8 @@ if ($case_id > 0) {
 <?php endif; ?>
 
 <?php if ($selectedCase): ?>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-    <div class="bg-white p-5 rounded shadow">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+    <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
       <div class="text-xs uppercase tracking-widest text-slate-500">Patient Details</div>
       <div class="text-xl font-semibold mt-1"><?= h($selectedCase['last_name'] . ', ' . $selectedCase['first_name']) ?></div>
       <div class="text-sm text-slate-500 mt-1">
@@ -147,7 +147,7 @@ if ($case_id > 0) {
       <div class="text-xs text-slate-400 mt-2">Started: <?= h($selectedCase['treatment_start_date']) ?></div>
     </div>
 
-    <div class="bg-white p-5 rounded shadow flex items-center justify-around text-center">
+    <div class="bg-white p-4 sm:p-5 rounded-xl shadow flex items-center justify-around text-center">
       <div>
         <div class="text-xs uppercase tracking-widest text-slate-500">Doses Taken</div>
         <div class="text-2xl font-semibold text-teal-600 mt-1"><?= $totalTaken ?></div>
@@ -162,7 +162,7 @@ if ($case_id > 0) {
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
     <!-- Log Form -->
-    <div class="lg:col-span-1 bg-white p-5 rounded shadow h-fit">
+    <div class="lg:col-span-1 bg-white p-4 sm:p-5 rounded-xl shadow h-fit">
       <div class="text-sm text-slate-500">Daily Entry</div>
       <div class="text-lg font-semibold mb-4">Log Dose Intake</div>
 
@@ -171,12 +171,12 @@ if ($case_id > 0) {
 
         <div>
           <label class="block text-xs font-medium text-slate-700 mb-1">Intake Date</label>
-          <input type="date" name="log_date" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required class="w-full border rounded px-3 py-2 text-sm" />
+          <input type="date" name="log_date" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required class="w-full border rounded-lg px-3 py-2 text-sm" />
         </div>
 
         <div>
           <label class="block text-xs font-medium text-slate-700 mb-1">Dose Status</label>
-          <select name="status" required class="w-full border rounded px-3 py-2 text-sm">
+          <select name="status" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
             <option value="supervised">Supervised (DOTS Observed)</option>
             <option value="taken">Self-Administered / Taken</option>
             <option value="missed">Missed / Untaken</option>
@@ -185,15 +185,15 @@ if ($case_id > 0) {
 
         <div>
           <label class="block text-xs font-medium text-slate-700 mb-1">Remarks</label>
-          <textarea name="remarks" rows="2" placeholder="Clinical notes or side effects..." class="w-full border rounded px-3 py-2 text-sm"></textarea>
+          <textarea name="remarks" rows="2" placeholder="Clinical notes or side effects..." class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
         </div>
 
-        <button type="submit" class="w-full bg-slate-900 text-white py-2 rounded text-sm font-medium hover:bg-slate-800 transition">Save Intake Log</button>
+        <button type="submit" class="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 transition shadow">Save Intake Log</button>
       </form>
     </div>
 
     <!-- History Table -->
-    <div class="lg:col-span-2 bg-white p-5 rounded shadow">
+    <div class="lg:col-span-2 bg-white p-4 sm:p-5 rounded-xl shadow">
       <div class="flex items-center justify-between">
         <div>
           <div class="text-sm text-slate-500">History</div>
@@ -205,8 +205,8 @@ if ($case_id > 0) {
       <?php if (empty($dotLogs)): ?>
         <div class="text-sm text-slate-500 mt-4">No medication logs recorded yet for this case.</div>
       <?php else: ?>
-        <div class="overflow-x-auto mt-4">
-          <table class="w-full text-left text-sm">
+        <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
+          <table class="w-full text-left text-sm min-w-[500px]">
             <thead>
               <tr class="border-b text-slate-500 uppercase text-xs">
                 <th class="py-2.5 px-3">Date</th>
@@ -218,8 +218,8 @@ if ($case_id > 0) {
             <tbody class="divide-y text-slate-700">
               <?php foreach ($dotLogs as $l): ?>
                 <tr>
-                  <td class="py-3 px-3 font-medium text-slate-900"><?= h($l['log_date']) ?></td>
-                  <td class="py-3 px-3">
+                  <td class="py-3 px-3 font-medium text-slate-900 whitespace-nowrap"><?= h($l['log_date']) ?></td>
+                  <td class="py-3 px-3 whitespace-nowrap">
                     <?php if ($l['status'] === 'supervised'): ?>
                       <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Supervised</span>
                     <?php elseif ($l['status'] === 'taken'): ?>
@@ -229,7 +229,7 @@ if ($case_id > 0) {
                     <?php endif; ?>
                   </td>
                   <td class="py-3 px-3 text-xs text-slate-600"><?= h($l['remarks'] ?? '—') ?></td>
-                  <td class="py-3 px-3 text-xs text-slate-500"><?= h($l['recorder_name'] ?? 'System') ?></td>
+                  <td class="py-3 px-3 text-xs text-slate-500 whitespace-nowrap"><?= h($l['recorder_name'] ?? 'System') ?></td>
                 </tr>
               <?php endforeach; ?>
             </tbody>
@@ -239,7 +239,7 @@ if ($case_id > 0) {
     </div>
   </div>
 <?php else: ?>
-  <div class="mt-6 bg-white p-8 rounded shadow text-center text-slate-500">
+  <div class="mt-6 bg-white p-8 rounded-xl shadow text-center text-slate-500">
     <p class="text-sm">No active TB cases available to log DOTS.</p>
     <a href="/HealthLogs/public/tb/cases/create.php" class="mt-2 inline-block text-sm font-medium text-slate-900 underline">Register a new case &rarr;</a>
   </div>

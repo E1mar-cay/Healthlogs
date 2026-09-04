@@ -53,21 +53,21 @@ try {
 }
 ?>
 
-<div class="bg-white p-6 rounded shadow mb-6">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
     <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
       <div class="text-2xl font-semibold">Administrator Dashboard</div>
       <p class="text-sm text-slate-500 mt-1">System overview, user management, program analytics, and operational controls.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">Admin Access</span>
       <span class="app-chip">Full Control</span>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
   <div class="bg-white p-5 rounded shadow">
     <div class="text-xs uppercase tracking-widest text-slate-400">Patients</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['total_patients'])) ?></div>
@@ -157,14 +157,16 @@ try {
   </div>
 </div>
 
-<div class="bg-white p-5 rounded shadow mt-6">
-  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+<div class="bg-white p-4 sm:p-5 rounded-xl shadow mt-6">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <div class="text-sm text-slate-500">Reports</div>
       <div class="text-lg font-semibold">Administrative Summary</div>
       <p class="text-sm text-slate-500 mt-1">Quick printable overview of key program highlights.</p>
     </div>
-    <button class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow" onclick="window.print()">Print Report</button>
+    <button class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow hover:bg-slate-800 transition" onclick="window.print()">
+      <i class="fas fa-print mr-2"></i>Print Report
+    </button>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -178,7 +180,6 @@ try {
       <div class="text-xl font-semibold mt-1">Maternal Health</div>
       <p class="text-slate-500 text-sm mt-1">Track prenatal and postnatal visit consistency.</p>
     </div>
-
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -201,7 +202,7 @@ try {
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
     <div class="text-sm text-slate-500">Alerts</div>
     <div class="text-lg font-semibold">Needs Attention</div>
     <ul class="mt-3 text-sm text-slate-600 space-y-2">
@@ -210,11 +211,11 @@ try {
       <li>Review inactive accounts and reminder backlog.</li>
     </ul>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
     <div class="text-sm text-slate-500">Forecast Snapshot</div>
     <div class="text-lg font-semibold">Patient Visits</div>
     <p class="mt-1 text-sm text-slate-500" id="adminForecastIntro">Loading forecast summary...</p>
-    <div class="grid grid-cols-2 gap-3 mt-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div class="text-xs uppercase tracking-widest text-slate-400">Average / Day</div>
         <div class="mt-1 text-xl font-semibold" id="adminForecastAverage">--</div>
@@ -224,10 +225,12 @@ try {
         <div class="mt-1 text-xl font-semibold" id="adminForecastPeak">--</div>
       </div>
     </div>
-    <div class="mt-4">
+    <div class="mt-4 relative min-h-[160px]">
       <canvas id="adminForecastChart" height="120"></canvas>
     </div>
-    <a class="inline-flex items-center mt-4 text-sm text-blue-700" href="/HealthLogs/public/forecast.php">Open full forecast</a>
+    <a class="inline-flex items-center mt-4 text-sm font-medium text-blue-700 hover:text-blue-900" href="/HealthLogs/public/forecast.php">
+      Open full forecast <i class="fas fa-arrow-right ml-1.5 text-xs"></i>
+    </a>
   </div>
 </div>
 

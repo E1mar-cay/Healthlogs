@@ -335,63 +335,69 @@ if ($exportType !== '') {
 require __DIR__ . '/partials/header.php';
 ?>
 
-<div class="bg-white p-6 rounded shadow">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="text-sm text-slate-500">Admin Reports</div>
   <div class="text-2xl font-semibold">Disease and Activity Reports</div>
   <p class="text-sm text-slate-500 mt-1">Disease values come from patient condition records (`patient_conditions`).</p>
 </div>
 
-<form method="get" class="mt-6 bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-6 gap-3">
-  <input type="date" name="from" value="<?= h($fromDate) ?>" class="w-full border rounded px-3 py-2" />
-  <input type="date" name="to" value="<?= h($toDate) ?>" class="w-full border rounded px-3 py-2" />
-  <select name="barangay" class="w-full border rounded px-3 py-2">
+<form method="get" class="mt-6 bg-white p-4 rounded-xl shadow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+  <input type="date" name="from" value="<?= h($fromDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
+  <input type="date" name="to" value="<?= h($toDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
+  <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All barangays</option>
     <?php foreach ($barangayOptions as $opt): ?>
       <option value="<?= h($opt) ?>" <?= $barangayFilter === $opt ? 'selected' : '' ?>><?= h($opt) ?></option>
     <?php endforeach; ?>
   </select>
-  <select name="sex" class="w-full border rounded px-3 py-2">
+  <select name="sex" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All genders</option>
     <option value="male" <?= $sexFilter === 'male' ? 'selected' : '' ?>>Male</option>
     <option value="female" <?= $sexFilter === 'female' ? 'selected' : '' ?>>Female</option>
   </select>
-  <select name="age_group" class="w-full border rounded px-3 py-2">
+  <select name="age_group" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All age groups</option>
     <?php foreach ($validAgeGroups as $grp): ?>
       <option value="<?= h($grp) ?>" <?= $ageGroupFilter === $grp ? 'selected' : '' ?>><?= h($grp) ?></option>
     <?php endforeach; ?>
   </select>
-  <div class="flex gap-2">
-    <button type="submit" class="bg-slate-900 text-white px-4 py-2 rounded">Apply</button>
-    <a href="/HealthLogs/public/reports.php" class="px-4 py-2 rounded border border-slate-300 text-slate-700">Clear</a>
+  <div class="flex flex-wrap gap-2">
+    <button type="submit" class="flex-1 sm:flex-initial bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition">Apply</button>
+    <a href="/HealthLogs/public/reports.php" class="flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition">Clear</a>
   </div>
 </form>
 
-<div class="mt-6 bg-white p-6 rounded shadow">
-  <div class="flex items-center justify-between gap-3">
-    <div class="text-lg font-semibold">Patient Medical Records</div>
-    <div class="flex items-center gap-3">
-      <button type="button" class="text-sm text-slate-700" onclick="printSection('section-medical-records')">Print/PDF</button>
-      <a class="text-sm text-blue-700" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'medical_records']))) ?>">Export CSV</a>
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <div class="text-lg font-semibold">Patient Medical Records</div>
+      <p class="text-sm text-slate-500 mt-0.5">Latest 20 patients with condition/allergy summary.</p>
+    </div>
+    <div class="flex items-center gap-3 self-end sm:self-auto">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition" onclick="printSection('section-medical-records')">
+        <i class="fas fa-print mr-1.5 text-xs"></i>Print/PDF
+      </button>
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'medical_records']))) ?>">
+        <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
+      </a>
     </div>
   </div>
-  <p class="text-sm text-slate-500 mt-1">Latest 20 patients with condition/allergy summary.</p>
   <div id="section-medical-records">
-    <div class="mt-4 flex items-center justify-between gap-3">
-      <input id="medicalSearch" class="w-full md:w-80 border rounded px-3 py-2 text-sm" placeholder="Search patient, barangay, status..." />
+    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <input id="medicalSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, barangay, status..." />
       <div class="text-xs text-slate-500">10 rows per page</div>
     </div>
-    <div class="overflow-x-auto mt-4">
-      <table class="min-w-full text-sm" id="medicalTable">
+    <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
+      <table class="min-w-full text-sm min-w-[650px]" id="medicalTable">
       <thead>
-        <tr>
-          <th class="text-left px-3 py-2">Patient</th>
-          <th class="text-left px-3 py-2">Sex</th>
-          <th class="text-left px-3 py-2">Birth Date</th>
-          <th class="text-left px-3 py-2">Barangay</th>
-          <th class="text-left px-3 py-2">Conditions</th>
-          <th class="text-left px-3 py-2">Allergies</th>
-          <th class="text-left px-3 py-2">Latest Diagnosis</th>
+        <tr class="border-b text-slate-500 uppercase text-xs">
+          <th class="text-left px-3 py-2.5">Patient</th>
+          <th class="text-left px-3 py-2.5">Sex</th>
+          <th class="text-left px-3 py-2.5">Birth Date</th>
+          <th class="text-left px-3 py-2.5">Barangay</th>
+          <th class="text-left px-3 py-2.5">Conditions</th>
+          <th class="text-left px-3 py-2.5">Allergies</th>
+          <th class="text-left px-3 py-2.5">Latest Diagnosis</th>
         </tr>
       </thead>
       <tbody id="medicalTableBody">
@@ -400,13 +406,13 @@ require __DIR__ . '/partials/header.php';
         <?php else: ?>
           <?php foreach ($medicalRecordsRows as $row): ?>
             <tr class="border-t border-slate-100">
-              <td class="px-3 py-2"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
-              <td class="px-3 py-2"><?= h(ucfirst((string)$row['sex'])) ?></td>
-              <td class="px-3 py-2"><?= h($row['birth_date']) ?></td>
-              <td class="px-3 py-2"><?= h($row['barangay']) ?></td>
-              <td class="px-3 py-2"><?= h((string)$row['conditions_count']) ?></td>
-              <td class="px-3 py-2"><?= h((string)$row['allergies_count']) ?></td>
-              <td class="px-3 py-2"><?= h($row['latest_diagnosis_date'] ?: '-') ?></td>
+              <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h(ucfirst((string)$row['sex'])) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['birth_date']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h((string)$row['conditions_count']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h((string)$row['allergies_count']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['latest_diagnosis_date'] ?: '-') ?></td>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
@@ -414,38 +420,44 @@ require __DIR__ . '/partials/header.php';
     </table>
     </div>
     <div class="mt-3 flex items-center justify-between text-sm">
-      <div id="medicalPageInfo" class="text-slate-500"></div>
+      <div id="medicalPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
       <div class="flex gap-2">
-        <button id="medicalPrev" type="button" class="px-3 py-1 border border-slate-300 rounded text-slate-700">Prev</button>
-        <button id="medicalNext" type="button" class="px-3 py-1 border border-slate-300 rounded text-slate-700">Next</button>
+        <button id="medicalPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Prev</button>
+        <button id="medicalNext" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Next</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="mt-6 bg-white p-6 rounded shadow">
-  <div class="flex items-center justify-between gap-3">
-    <div class="text-lg font-semibold">Patient Consultation</div>
-    <div class="flex items-center gap-3">
-      <button type="button" class="text-sm text-slate-700" onclick="printSection('section-consultation')">Print/PDF</button>
-      <a class="text-sm text-blue-700" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'consultation']))) ?>">Export CSV</a>
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <div class="text-lg font-semibold">Patient Consultation</div>
+      <p class="text-sm text-slate-500 mt-0.5">Most recent 25 general consultation entries.</p>
+    </div>
+    <div class="flex items-center gap-3 self-end sm:self-auto">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition" onclick="printSection('section-consultation')">
+        <i class="fas fa-print mr-1.5 text-xs"></i>Print/PDF
+      </button>
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'consultation']))) ?>">
+        <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
+      </a>
     </div>
   </div>
-  <p class="text-sm text-slate-500 mt-1">Most recent 25 general consultation entries.</p>
   <div id="section-consultation">
-    <div class="mt-4 flex items-center justify-between gap-3">
-      <input id="consultationSearch" class="w-full md:w-80 border rounded px-3 py-2 text-sm" placeholder="Search patient, barangay, reason, notes..." />
+    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <input id="consultationSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, barangay, reason, notes..." />
       <div class="text-xs text-slate-500">10 rows per page</div>
     </div>
-    <div class="overflow-x-auto mt-4">
-      <table class="min-w-full text-sm" id="consultationTable">
+    <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
+      <table class="min-w-full text-sm min-w-[600px]" id="consultationTable">
       <thead>
-        <tr>
-          <th class="text-left px-3 py-2">Date</th>
-          <th class="text-left px-3 py-2">Patient</th>
-          <th class="text-left px-3 py-2">Barangay</th>
-          <th class="text-left px-3 py-2">Reason</th>
-          <th class="text-left px-3 py-2">Notes</th>
+        <tr class="border-b text-slate-500 uppercase text-xs">
+          <th class="text-left px-3 py-2.5">Date</th>
+          <th class="text-left px-3 py-2.5">Patient</th>
+          <th class="text-left px-3 py-2.5">Barangay</th>
+          <th class="text-left px-3 py-2.5">Reason</th>
+          <th class="text-left px-3 py-2.5">Notes</th>
         </tr>
       </thead>
       <tbody id="consultationTableBody">
@@ -454,9 +466,9 @@ require __DIR__ . '/partials/header.php';
         <?php else: ?>
           <?php foreach ($consultationRows as $row): ?>
             <tr class="border-t border-slate-100">
-              <td class="px-3 py-2"><?= h($row['consult_date']) ?></td>
-              <td class="px-3 py-2"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
-              <td class="px-3 py-2"><?= h($row['barangay']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['consult_date']) ?></td>
+              <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay']) ?></td>
               <td class="px-3 py-2"><?= h($row['reason'] ?: '-') ?></td>
               <td class="px-3 py-2"><?= h($row['notes'] ?: '-') ?></td>
             </tr>
@@ -466,33 +478,41 @@ require __DIR__ . '/partials/header.php';
     </table>
     </div>
     <div class="mt-3 flex items-center justify-between text-sm">
-      <div id="consultationPageInfo" class="text-slate-500"></div>
+      <div id="consultationPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
       <div class="flex gap-2">
-        <button id="consultationPrev" type="button" class="px-3 py-1 border border-slate-300 rounded text-slate-700">Prev</button>
-        <button id="consultationNext" type="button" class="px-3 py-1 border border-slate-300 rounded text-slate-700">Next</button>
+        <button id="consultationPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Prev</button>
+        <button id="consultationNext" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Next</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="mt-6 bg-white p-6 rounded shadow">
-  <div class="flex items-center justify-between gap-3">
-    <div class="text-lg font-semibold">Population Report by Age Group and Gender</div>
-    <div class="flex items-center gap-3">
-      <button type="button" class="text-sm text-slate-700" onclick="printSection('section-population')">Print/PDF</button>
-      <a class="text-sm text-blue-700" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'population']))) ?>">Export CSV</a>
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <div class="text-lg font-semibold">Population Report by Age Group and Gender</div>
+      <p class="text-sm text-slate-500 mt-0.5">Counts of active/inactive (non-deceased) patients.</p>
+    </div>
+    <div class="flex items-center gap-3 self-end sm:self-auto">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition" onclick="printSection('section-population')">
+        <i class="fas fa-print mr-1.5 text-xs"></i>Print/PDF
+      </button>
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'population']))) ?>">
+        <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
+      </a>
     </div>
   </div>
   <div id="section-population">
-    <p class="text-sm text-slate-500 mt-1">Counts of active/inactive (non-deceased) patients.</p>
-    <canvas id="populationAgeGenderChart" height="120" class="mt-4"></canvas>
+    <div class="mt-4 relative min-h-[220px]">
+      <canvas id="populationAgeGenderChart" height="120"></canvas>
+    </div>
   </div>
 </div>
 
-<div class="mt-6 bg-white p-6 rounded shadow">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="text-lg font-semibold">Admission / Consultation Forecasting</div>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-    <div class="rounded-lg border border-slate-200 p-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-4">
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div class="text-xs uppercase tracking-widest text-slate-500">Consultation Forecast (Next 4 Weeks)</div>
       <div class="mt-3 space-y-2 text-sm text-slate-700">
         <?php if (!empty($consultationForecast)): ?>
@@ -504,7 +524,7 @@ require __DIR__ . '/partials/header.php';
         <?php endif; ?>
       </div>
     </div>
-    <div class="rounded-lg border border-slate-200 p-4">
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div class="text-xs uppercase tracking-widest text-slate-500">Admission Forecast (Next 4 Weeks)</div>
       <div class="mt-3 space-y-2 text-sm text-slate-700">
         <?php if (!empty($admissionForecast)): ?>
@@ -520,11 +540,13 @@ require __DIR__ . '/partials/header.php';
 </div>
 
 <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <div class="xl:col-span-2 bg-white p-6 rounded shadow">
+  <div class="xl:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow">
     <div class="text-lg font-semibold">Seasonal Disease</div>
-    <canvas id="seasonalDiseaseChart" height="120" class="mt-4"></canvas>
+    <div class="mt-4 relative min-h-[200px]">
+      <canvas id="seasonalDiseaseChart" height="120"></canvas>
+    </div>
   </div>
-  <div class="bg-white p-6 rounded shadow">
+  <div class="bg-white p-4 sm:p-6 rounded-xl shadow">
     <div class="text-lg font-semibold">Peak Months</div>
     <ul class="mt-4 space-y-3 text-sm text-slate-700">
       <?php if (!empty($seasonalTopMonths)): ?>
@@ -538,9 +560,11 @@ require __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<div class="mt-6 bg-white p-6 rounded shadow">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="text-lg font-semibold">Disease Case Trends (Top 5, Last 12 Months)</div>
-  <canvas id="diseaseTrendChart" height="120" class="mt-4"></canvas>
+  <div class="mt-4 relative min-h-[200px]">
+    <canvas id="diseaseTrendChart" height="120"></canvas>
+  </div>
 </div>
 
 <script>

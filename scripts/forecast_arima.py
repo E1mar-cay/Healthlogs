@@ -14,12 +14,55 @@ import warnings
 from datetime import date
 
 import pandas as pd
+import numpy as np
 import pymysql
 from pmdarima import auto_arima
 
 # Suppress statsmodels warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="statsmodels")
 warnings.filterwarnings("ignore", message="No supported index is available")
+
+
+def compute_evaluation_metrics(actual, fitted):
+    """Compute MAE, RMSE, and MAPE error evaluation metrics."""
+    actual = np.asarray(actual, dtype=float)
+    fitted = np.asarray(fitted, dtype=float)
+    
+    # Clip fitted values at zero since negative visits or items do not exist
+    fitted = np.maximum(0.0, fitted)
+    
+    errors = actual - fitted
+    abs_errors = np.abs(errors)
+    squared_errors = errors ** 2
+    
+    n = len(actual)
+    mae = float(np.mean(abs_errors)) if n > 0 else 0.0
+    rmse = float(np.sqrt(np.mean(squared_errors))) if n > 0 else 0.0
+    
+    # MAPE: avoid division by zero by evaluating on non-zero actual points
+    non_zero = actual > 0
+    if np.any(non_zero):
+        mape = float(np.mean(abs_errors[non_zero] / actual[non_zero]) * 100.0)
+    else:
+        mape = 0.0 if np.all(fitted == 0) else 100.0
+        
+    # Interpret MAPE for qualitative assessment
+    if mape < 10.0:
+        accuracy_rating = "High Accuracy"
+    elif mape < 20.0:
+        accuracy_rating = "Good Fit"
+    elif mape < 50.0:
+        accuracy_rating = "Reasonable"
+    else:
+        accuracy_rating = "High Variance"
+
+    return {
+        "mae": round(mae, 4),
+        "rmse": round(rmse, 4),
+        "mape": round(mape, 2),
+        "accuracy_rating": accuracy_rating,
+        "sample_size": int(n),
+    }
 
 
 def get_connection():
@@ -107,7 +150,18 @@ def forecast(series, horizon):
     last_date = training_series.index.max()
     future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=horizon, freq="D")
 
-    return model, future_dates, preds, conf_int, len(training_series)
+    # Compute in-sample predictions and evaluation metrics (MAE, RMSE, MAPE)
+    try:
+        in_sample_preds = model.predict_in_sample()
+    except Exception:
+        try:
+            in_sample_preds = training_series.values - model.arima_res_.resid
+        except Exception:
+            in_sample_preds = np.full(len(training_series), float(training_series.mean()))
+
+    metrics = compute_evaluation_metrics(training_series.values, in_sample_preds)
+
+    return model, future_dates, preds, conf_int, len(training_series), metrics
 
 
 def build_summary(series_key, series, dates, preds, conf_int, model, training_points):
@@ -197,7 +251,7 @@ def main():
         if len(series) < 14:
             raise ValueError("Not enough history yet. At least 14 days of data are required.")
 
-        model, dates, preds, conf_int, training_points = forecast(series, args.horizon)
+        model, dates, preds, conf_int, training_points, metrics = forecast(series, args.horizon)
         summary = build_summary(args.series_key, series, dates, preds, conf_int, model, training_points)
 
         # Extract model diagnostics safely
@@ -233,6 +287,7 @@ def main():
             "horizon": args.horizon,
             "history": summary["history"],
             "forecast": summary["forecast_rows"],
+            "metrics": metrics,
             "summary": {
                 "intro": summary["intro"],
                 "metric_label": summary["metric_label"],
@@ -249,12 +304,20 @@ def main():
                 "history_end": summary["history_end"],
                 "model": summary["model"],
                 "seasonal_model": summary["seasonal_model"],
+                "mae": metrics["mae"],
+                "rmse": metrics["rmse"],
+                "mape": metrics["mape"],
+                "accuracy_rating": metrics["accuracy_rating"],
             },
             "diagnostics": {
                 "aic": aic,
                 "bic": bic,
                 "log_likelihood": log_likelihood,
                 "sigma2": sigma2,
+                "mae": metrics["mae"],
+                "rmse": metrics["rmse"],
+                "mape": metrics["mape"],
+                "accuracy_rating": metrics["accuracy_rating"],
                 "params": params
             }
         }

@@ -1,16 +1,16 @@
-﻿<?php
+<?php
 $pageTitle = 'Health Worker Dashboard';
 require __DIR__ . '/../partials/header.php';
 ?>
 
-<div class="bg-white p-6 rounded shadow">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
       <div class="text-2xl font-semibold">Health Worker Dashboard</div>
       <p class="text-sm text-slate-500 mt-1">Daily intake, priority programs, and care follow-ups.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">Shift Ready</span>
       <span class="app-chip">Field Tasks</span>
     </div>
@@ -18,38 +18,44 @@ require __DIR__ . '/../partials/header.php';
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
-  <div class="bg-white p-5 rounded shadow border border-slate-100">
-    <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-semibold">PT</span>
-      <div>
-        <div class="text-xs uppercase tracking-widest text-slate-400">Today</div>
-        <div class="text-2xl font-semibold mt-1">Patient Intake</div>
+  <div class="bg-white p-5 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
+    <div>
+      <div class="flex items-center gap-3">
+        <span class="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-semibold">PT</span>
+        <div>
+          <div class="text-xs uppercase tracking-widest text-slate-400">Today</div>
+          <div class="text-2xl font-semibold mt-1">Patient Intake</div>
+        </div>
       </div>
+      <div class="text-sm text-slate-500 mt-3">Register or update records.</div>
     </div>
-    <div class="text-sm text-slate-500 mt-3">Register or update records.</div>
-    <a class="inline-flex items-center justify-center mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm shadow" href="/HealthLogs/public/patients/index.php">Open Patients</a>
+    <a class="w-full sm:w-auto inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium shadow hover:bg-slate-800 transition" href="/HealthLogs/public/patients/index.php">Open Patients</a>
   </div>
-  <div class="bg-white p-5 rounded shadow border border-slate-100">
-    <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-semibold">IM</span>
-      <div>
-        <div class="text-xs uppercase tracking-widest text-slate-400">Programs</div>
-        <div class="text-2xl font-semibold mt-1">Immunization</div>
+  <div class="bg-white p-5 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
+    <div>
+      <div class="flex items-center gap-3">
+        <span class="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-semibold">IM</span>
+        <div>
+          <div class="text-xs uppercase tracking-widest text-slate-400">Programs</div>
+          <div class="text-2xl font-semibold mt-1">Immunization</div>
+        </div>
       </div>
+      <div class="text-sm text-slate-500 mt-3">Log vaccines and schedules.</div>
     </div>
-    <div class="text-sm text-slate-500 mt-3">Log vaccines and schedules.</div>
-    <a class="inline-flex items-center justify-center mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm shadow" href="/HealthLogs/public/immunization.php">Open Immunization</a>
+    <a class="w-full sm:w-auto inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium shadow hover:bg-slate-800 transition" href="/HealthLogs/public/immunization.php">Open Immunization</a>
   </div>
-  <div class="bg-white p-5 rounded shadow border border-slate-100">
-    <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold">MD</span>
-      <div>
-        <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
-        <div class="text-2xl font-semibold mt-1">Medicine</div>
+  <div class="bg-white p-5 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
+    <div>
+      <div class="flex items-center gap-3">
+        <span class="h-12 w-12 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold">MD</span>
+        <div>
+          <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
+          <div class="text-2xl font-semibold mt-1">Medicine</div>
+        </div>
       </div>
+      <div class="text-sm text-slate-500 mt-3">Dispense and track stock.</div>
     </div>
-    <div class="text-sm text-slate-500 mt-3">Dispense and track stock.</div>
-    <a class="inline-flex items-center justify-center mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm shadow" href="/HealthLogs/public/inventory.php">Open Inventory</a>
+    <a class="w-full sm:w-auto inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium shadow hover:bg-slate-800 transition" href="/HealthLogs/public/inventory.php">Open Inventory</a>
   </div>
 </div>
 

@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS forecast_runs (
   training_points INT NULL,
   history_points INT NULL,
   execution_time_seconds DECIMAL(6,3) NULL,
+  mae DECIMAL(12,4) NULL,
+  rmse DECIMAL(12,4) NULL,
+  mape DECIMAL(12,4) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_fr_series_key (series_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -23,6 +26,9 @@ CREATE TABLE IF NOT EXISTS arima_parameters (
   bic DECIMAL(12,4) NULL,
   log_likelihood DECIMAL(12,4) NULL,
   sigma2 DECIMAL(12,6) NULL,
+  mae DECIMAL(12,4) NULL,
+  rmse DECIMAL(12,4) NULL,
+  mape DECIMAL(12,4) NULL,
   parameters_json TEXT NULL,
   CONSTRAINT fk_ap_run FOREIGN KEY (run_id) REFERENCES forecast_runs(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

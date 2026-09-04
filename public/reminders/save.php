@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require __DIR__ . '/../partials/bootstrap.php';
 
 $isEdit = !empty($_POST['id']);
@@ -32,6 +32,7 @@ if ($validator->hasErrors()) {
 }
 
 try {
+    $savedId = $id;
     if ($id) {
         $stmt = $pdo->prepare("UPDATE reminders SET patient_id = ?, reminder_type = ?, due_date = ?, message = ?, status = ? WHERE id = ?");
         $stmt->execute([$patient_id, $type, $due, $message, $status, $id]);
@@ -39,12 +40,39 @@ try {
     } else {
         $stmt = $pdo->prepare("INSERT INTO reminders (patient_id, reminder_type, due_date, message, status) VALUES (?,?,?,?,?)");
         $stmt->execute([$patient_id, $type, $due, $message, $status]);
+        $savedId = (int)$pdo->lastInsertId();
         $_SESSION['success_message'] = 'Reminder created successfully';
     }
+
+    if (!empty($_POST['send_sms_now']) && $savedId) {
+        require_once __DIR__ . '/../../app/Core/SmsHelper.php';
+        $pStmt = $pdo->prepare("SELECT first_name, last_name, contact_no FROM patients WHERE id = ?");
+        $pStmt->execute([$patient_id]);
+        $patient = $pStmt->fetch();
+
+        if ($patient && !empty($patient['contact_no'])) {
+            $smsHelper = new SmsHelper();
+            $reminderData = [
+                'due_date' => $due,
+                'reminder_type' => $type,
+                'message' => $message
+            ];
+            $smsSent = $smsHelper->sendReminder($reminderData, $patient);
+            if ($smsSent) {
+                $pdo->prepare("UPDATE reminders SET status = 'sent', sent_at = NOW() WHERE id = ?")->execute([$savedId]);
+                $_SESSION['success_message'] .= " & instant TextBee SMS dispatched to {$patient['contact_no']}!";
+            } else {
+                $_SESSION['info_message'] = "Reminder saved, but TextBee SMS dispatch failed. Check system logs.";
+            }
+        } else {
+            $_SESSION['info_message'] = "Reminder saved, but patient has no valid mobile contact number for SMS.";
+        }
+    }
+
     unset($_SESSION['old_input']);
 } catch (Exception $e) {
     error_log("Reminder save error: " . $e->getMessage());
-    $_SESSION['error_message'] = 'An error occurred while saving the reminder. Please try again.';
+    $_SESSION['error_message'] = 'An error occurred while saving the reminder: ' . $e->getMessage();
     $_SESSION['old_input'] = $_POST;
     $redirectUrl = $isEdit
         ? ($isEmbed ? "/HealthLogs/public/reminders/form_embed.php?id=$id" : "/HealthLogs/public/reminders/form.php?id=$id")

@@ -92,6 +92,7 @@ class EmailHelper {
             'immunization' => 'Immunization Reminder',
             'prenatal' => 'Prenatal Visit Reminder',
             'postnatal' => 'Postnatal Visit Reminder',
+            'tb_monitoring' => 'TB Monitoring Follow-up Reminder',
             'general' => 'Health Appointment Reminder'
         ];
         
@@ -106,13 +107,14 @@ class EmailHelper {
         $message = htmlspecialchars($reminder['message']);
         $dueDate = date('F j, Y', strtotime($reminder['due_date']));
         $dayOfWeek = date('l', strtotime($reminder['due_date']));
-        $type = ucfirst($reminder['reminder_type']);
+        $type = ucfirst(str_replace('_', ' ', $reminder['reminder_type']));
         
         // Type-specific colors and icons
         $typeConfig = [
             'immunization' => ['color' => '#10b981', 'icon' => '💉', 'bg' => '#d1fae5'],
             'prenatal' => ['color' => '#ec4899', 'icon' => '🤰', 'bg' => '#fce7f3'],
             'postnatal' => ['color' => '#f59e0b', 'icon' => '👶', 'bg' => '#fef3c7'],
+            'tb_monitoring' => ['color' => '#6366f1', 'icon' => '🫁', 'bg' => '#e0e7ff'],
             'general' => ['color' => '#0ea5a4', 'icon' => '📋', 'bg' => '#ccfbf1']
         ];
         

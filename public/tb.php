@@ -33,7 +33,7 @@ try {
 }
 ?>
 
-<div class="bg-white p-6 rounded shadow">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Care coordination</div>
@@ -43,12 +43,14 @@ try {
     <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">NTP Protocol</span>
       <span class="app-chip">DOTS Compliance</span>
-      <a href="/HealthLogs/public/tb/cases/create.php" class="bg-slate-900 text-white px-4 py-2 rounded shadow text-sm font-medium hover:bg-slate-800 transition">Register New TB Case</a>
+      <a href="/HealthLogs/public/tb/cases/create.php" class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow text-sm font-medium hover:bg-slate-800 transition">
+        <i class="fas fa-plus mr-1.5 text-xs"></i>Register New TB Case
+      </a>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
   <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/tb/cases/index.php">
     <div class="flex items-center gap-3">
       <span class="h-12 w-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
@@ -95,43 +97,43 @@ try {
   </a>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
-  <div class="bg-white p-5 rounded shadow">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+  <div class="bg-white p-5 rounded-xl shadow">
     <div class="text-xs uppercase tracking-widest text-slate-500">Active Cases</div>
     <div class="text-2xl font-semibold mt-2"><?= h(number_format($tbSummary['active_cases'])) ?></div>
     <div class="text-sm text-slate-500 mt-1">Currently on treatment</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl shadow">
     <div class="text-xs uppercase tracking-widest text-slate-500">DOTS Today</div>
     <div class="text-2xl font-semibold mt-2"><?= h(number_format($tbSummary['dots_today'])) ?></div>
     <div class="text-sm text-slate-500 mt-1">Doses recorded today</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl shadow">
     <div class="text-xs uppercase tracking-widest text-slate-500">Lab Examinations</div>
     <div class="text-2xl font-semibold mt-2"><?= h(number_format($tbSummary['lab_tests'])) ?></div>
     <div class="text-sm text-slate-500 mt-1">Total lab tests logged</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl shadow">
     <div class="text-xs uppercase tracking-widest text-slate-500">Cured / Completed</div>
     <div class="text-2xl font-semibold mt-2"><?= h(number_format($tbSummary['cured_completed'])) ?></div>
     <div class="text-sm text-slate-500 mt-1">Successful outcomes</div>
   </div>
 </div>
 
-<div class="bg-white p-5 rounded shadow mt-6">
+<div class="bg-white p-4 sm:p-5 rounded-xl shadow mt-6">
   <div class="flex items-center justify-between">
     <div>
       <div class="text-sm text-slate-500">Active Cases</div>
       <div class="text-lg font-semibold">Patients Under Treatment</div>
     </div>
-    <a href="/HealthLogs/public/tb/cases/index.php" class="text-sm text-slate-600 underline">View all cases</a>
+    <a href="/HealthLogs/public/tb/cases/index.php" class="text-sm font-medium text-slate-600 hover:text-slate-900 underline">View all cases</a>
   </div>
 
   <?php if (empty($activeCases)): ?>
     <div class="text-sm text-slate-500 mt-4">No active TB cases currently registered.</div>
   <?php else: ?>
-    <div class="overflow-x-auto mt-4">
-      <table class="w-full text-left text-sm">
+    <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
+      <table class="w-full text-left text-sm min-w-[640px]">
         <thead>
           <tr class="border-b text-slate-500 uppercase text-xs">
             <th class="py-2.5 px-3">Case No</th>
@@ -147,16 +149,18 @@ try {
         <tbody class="divide-y text-slate-700">
           <?php foreach ($activeCases as $c): ?>
             <tr>
-              <td class="py-3 px-3 font-mono font-medium text-slate-900"><?= h($c['case_number']) ?></td>
-              <td class="py-3 px-3 font-medium text-slate-900"><?= h($c['last_name'] . ', ' . $c['first_name']) ?></td>
-              <td class="py-3 px-3"><?= h($c['barangay']) ?></td>
-              <td class="py-3 px-3 capitalize"><?= h(str_replace('_', ' ', $c['tb_type'])) ?></td>
-              <td class="py-3 px-3 font-medium uppercase"><?= h(str_replace('_', ' ', $c['treatment_category'])) ?></td>
-              <td class="py-3 px-3"><?= h($c['treatment_start_date']) ?></td>
-              <td class="py-3 px-3 font-medium text-teal-700"><?= (int)$c['doses_taken'] ?> doses</td>
-              <td class="py-3 px-3 text-right space-x-2">
-                <a href="/HealthLogs/public/tb/dots/index.php?case_id=<?= $c['id'] ?>" class="text-xs bg-teal-50 text-teal-700 hover:bg-teal-100 px-2.5 py-1 rounded font-medium">DOTS Log</a>
-                <a href="/HealthLogs/public/tb/cases/edit.php?id=<?= $c['id'] ?>" class="text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1 rounded font-medium">Edit</a>
+              <td class="py-3 px-3 font-mono font-medium text-slate-900 whitespace-nowrap"><?= h($c['case_number']) ?></td>
+              <td class="py-3 px-3 font-medium text-slate-900 whitespace-nowrap"><?= h($c['last_name'] . ', ' . $c['first_name']) ?></td>
+              <td class="py-3 px-3 whitespace-nowrap"><?= h($c['barangay']) ?></td>
+              <td class="py-3 px-3 capitalize whitespace-nowrap"><?= h(str_replace('_', ' ', $c['tb_type'])) ?></td>
+              <td class="py-3 px-3 font-medium uppercase whitespace-nowrap"><?= h(str_replace('_', ' ', $c['treatment_category'])) ?></td>
+              <td class="py-3 px-3 whitespace-nowrap"><?= h($c['treatment_start_date']) ?></td>
+              <td class="py-3 px-3 font-medium text-teal-700 whitespace-nowrap"><?= (int)$c['doses_taken'] ?> doses</td>
+              <td class="py-3 px-3 text-right whitespace-nowrap">
+                <div class="inline-flex items-center justify-end gap-1.5">
+                  <a href="/HealthLogs/public/tb/dots/index.php?case_id=<?= $c['id'] ?>" class="text-xs bg-teal-50 text-teal-700 hover:bg-teal-100 px-2.5 py-1.5 rounded font-medium transition">DOTS Log</a>
+                  <a href="/HealthLogs/public/tb/cases/edit.php?id=<?= $c['id'] ?>" class="text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1.5 rounded font-medium transition">Edit</a>
+                </div>
               </td>
             </tr>
           <?php endforeach; ?>

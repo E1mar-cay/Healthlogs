@@ -8,30 +8,29 @@ function load_daily_series(PDO $pdo, string $seriesKey, int $days = 84): array
     if ($seriesKey === 'visits_total') {
         $sql = "SELECT DATE(visit_datetime) AS day_key, COUNT(*) AS value
                 FROM visits
-                WHERE visit_datetime >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                WHERE visit_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(visit_datetime)), CURDATE()) FROM visits), INTERVAL ? DAY)
                 GROUP BY DATE(visit_datetime)
                 ORDER BY day_key ASC";
+        $params = [$days];
     } elseif ($seriesKey === 'medicine_total') {
         $sql = "SELECT DATE(transaction_datetime) AS day_key, COALESCE(SUM(ABS(quantity)), 0) AS value
                 FROM medicine_transactions
                 WHERE transaction_type = 'dispensed'
-                  AND transaction_datetime >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                  AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed'), INTERVAL ? DAY)
                 GROUP BY DATE(transaction_datetime)
                 ORDER BY day_key ASC";
+        $params = [$days];
     } else {
         $sql = "SELECT series_date AS day_key, value
                 FROM timeseries_daily
                 WHERE series_key = ?
-                  AND series_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                  AND series_date >= DATE_SUB((SELECT COALESCE(MAX(series_date), CURDATE()) FROM timeseries_daily WHERE series_key = ?), INTERVAL ? DAY)
                 ORDER BY day_key ASC";
+        $params = [$seriesKey, $seriesKey, $days];
     }
 
     $stmt = $pdo->prepare($sql);
-    if ($seriesKey === 'visits_total' || $seriesKey === 'medicine_total') {
-        $stmt->execute([$days]);
-    } else {
-        $stmt->execute([$seriesKey, $days]);
-    }
+    $stmt->execute($params);
 
     $rows = $stmt->fetchAll();
     if (empty($rows)) {
@@ -118,12 +117,43 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
     $peakIndex = array_search($peakValue, array_column($forecast, 'value'), true);
     $peakDate = $forecast[$peakIndex]['date'];
 
+    // Calculate in-sample fitted values and error metrics (MAE, RMSE, MAPE)
+    $absErrors = [];
+    $squaredErrors = [];
+    $pctErrors = [];
+    foreach ($recentHistory as $row) {
+        $w = (int)(new DateTime($row['date']))->format('w');
+        $bucket = $weekdayBuckets[$w];
+        $fitted = !empty($bucket) ? array_sum($bucket) / count($bucket) : $overallAverage;
+        $actual = (float)$row['value'];
+        $err = $actual - $fitted;
+        $absErrors[] = abs($err);
+        $squaredErrors[] = $err * $err;
+        if ($actual > 0) {
+            $pctErrors[] = (abs($err) / $actual) * 100.0;
+        }
+    }
+    $n = count($recentHistory);
+    $mae = $n > 0 ? array_sum($absErrors) / $n : 0.0;
+    $rmse = $n > 0 ? sqrt(array_sum($squaredErrors) / $n) : 0.0;
+    $mape = !empty($pctErrors) ? array_sum($pctErrors) / count($pctErrors) : 0.0;
+    $accuracyRating = $mape < 10.0 ? 'High Accuracy' : ($mape < 20.0 ? 'Good Fit' : ($mape < 50.0 ? 'Reasonable' : 'High Variance'));
+
+    $metrics = [
+        'mae' => round($mae, 4),
+        'rmse' => round($rmse, 4),
+        'mape' => round($mape, 2),
+        'accuracy_rating' => $accuracyRating,
+        'sample_size' => $n,
+    ];
+
     return [
         'series_key' => $seriesKey,
         'generated_on' => date('Y-m-d'),
         'horizon' => $horizon,
         'history' => array_slice($history, -30),
         'forecast' => $forecast,
+        'metrics' => $metrics,
         'summary' => [
             'intro' => 'Expected average for the next ' . $horizon . ' days is about ' . number_format($forecastAverage, 1) . ' ' . $metricLabel . ' per day, which is ' . $trendLabel . '.',
             'metric_label' => $metricLabel,
@@ -140,6 +170,10 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
             'history_end' => end($history)['date'],
             'model' => 'fast_weekday_average',
             'seasonal_model' => '7-day pattern',
+            'mae' => $metrics['mae'],
+            'rmse' => $metrics['rmse'],
+            'mape' => $metrics['mape'],
+            'accuracy_rating' => $metrics['accuracy_rating'],
         ],
     ];
 }
@@ -169,7 +203,9 @@ try {
                 (int)($result['summary']['history_points'] ?? 0),
                 (int)($result['summary']['training_points'] ?? 0),
                 $executionTime,
-                $result['forecast']
+                $result['forecast'],
+                null,
+                $result['metrics'] ?? null
             );
             
             echo json_encode($result);
@@ -217,11 +253,17 @@ try {
     }
 
     // Extract diagnostic information from Python script output
+    $metrics = $data['metrics'] ?? null;
     $diagnostics = null;
     if (isset($data['diagnostics'])) {
         $diagnostics = $data['diagnostics'];
         $diagnostics['model_order'] = $data['summary']['model'] ?? null;
         $diagnostics['seasonal_order'] = $data['summary']['seasonal_model'] ?? null;
+        if ($metrics) {
+            $diagnostics['mae'] = $metrics['mae'] ?? null;
+            $diagnostics['rmse'] = $metrics['rmse'] ?? null;
+            $diagnostics['mape'] = $metrics['mape'] ?? null;
+        }
     }
     
     ForecastLogger::logSuccess(
@@ -230,7 +272,8 @@ try {
         (int)($data['summary']['training_points'] ?? 0),
         $executionTime,
         $data['forecast'],
-        $diagnostics
+        $diagnostics,
+        $metrics
     );
 
     echo json_encode($data);

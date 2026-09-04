@@ -28,8 +28,8 @@ $title = $rec ? 'Edit Reminder' : 'New Reminder';
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="bg-slate-50 p-4 text-slate-900">
-  <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm max-w-4xl mx-auto">
+<body class="bg-slate-50 p-2 sm:p-4 text-slate-900">
+  <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm max-w-4xl mx-auto">
     <div class="mb-5">
       <h1 class="text-xl font-semibold"><?= h($title) ?></h1>
       <p class="text-sm text-slate-500 mt-1">Manage follow-up schedules and outreach timing.</p>
@@ -45,8 +45,8 @@ $title = $rec ? 'Edit Reminder' : 'New Reminder';
       <?php endif; ?>
 
       <div>
-        <label class="block text-sm text-slate-600">Patient</label>
-        <select name="patient_id" required class="mt-1 w-full border rounded px-3 py-2">
+        <label class="block text-sm text-slate-600 mb-1">Patient</label>
+        <select name="patient_id" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
           <?php foreach ($patients as $p): ?>
             <?php $sel = (old('patient_id', $rec['patient_id'] ?? 0) == $p['id']) ? 'selected' : ''; ?>
             <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?></option>
@@ -54,23 +54,24 @@ $title = $rec ? 'Edit Reminder' : 'New Reminder';
         </select>
       </div>
       <div>
-        <label class="block text-sm text-slate-600">Type</label>
+        <label class="block text-sm text-slate-600 mb-1">Type</label>
         <?php $type = old('reminder_type', $rec['reminder_type'] ?? 'immunization'); ?>
-        <select name="reminder_type" class="mt-1 w-full border rounded px-3 py-2">
+        <select name="reminder_type" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
           <option value="immunization" <?= $type === 'immunization' ? 'selected' : '' ?>>Immunization</option>
           <option value="prenatal" <?= $type === 'prenatal' ? 'selected' : '' ?>>Prenatal</option>
           <option value="postnatal" <?= $type === 'postnatal' ? 'selected' : '' ?>>Postnatal</option>
+          <option value="tb_monitoring" <?= $type === 'tb_monitoring' ? 'selected' : '' ?>>TB Monitoring</option>
           <option value="general" <?= $type === 'general' ? 'selected' : '' ?>>General</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm text-slate-600">Due Date</label>
-        <input name="due_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('due_date', $rec['due_date'] ?? '')) ?>" />
+        <label class="block text-sm text-slate-600 mb-1">Due Date</label>
+        <input name="due_date" type="date" required class="w-full border rounded-lg px-3 py-2 text-sm" value="<?= h(old('due_date', $rec['due_date'] ?? '')) ?>" />
       </div>
       <div>
-        <label class="block text-sm text-slate-600">Status</label>
+        <label class="block text-sm text-slate-600 mb-1">Status</label>
         <?php $status = old('status', $rec['status'] ?? 'pending'); ?>
-        <select name="status" class="mt-1 w-full border rounded px-3 py-2">
+        <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
           <option value="pending" <?= $status === 'pending' ? 'selected' : '' ?>>Pending</option>
           <option value="sent" <?= $status === 'sent' ? 'selected' : '' ?>>Sent</option>
           <option value="failed" <?= $status === 'failed' ? 'selected' : '' ?>>Failed</option>
@@ -78,13 +79,20 @@ $title = $rec ? 'Edit Reminder' : 'New Reminder';
         </select>
       </div>
       <div class="md:col-span-2">
-        <label class="block text-sm text-slate-600">Message</label>
-        <textarea name="message" class="mt-1 w-full border rounded px-3 py-2" rows="2" required><?= h(old('message', $rec['message'] ?? '')) ?></textarea>
+        <label class="block text-sm text-slate-600 mb-1">Message</label>
+        <textarea name="message" class="w-full border rounded-lg px-3 py-2 text-sm" rows="2" required><?= h(old('message', $rec['message'] ?? '')) ?></textarea>
       </div>
 
-      <div class="md:col-span-2 flex items-center gap-2 mt-2">
-        <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Save</button>
-        <a class="text-slate-600" href="/HealthLogs/public/reminders.php">Cancel</a>
+      <div class="md:col-span-2 bg-teal-50 border border-teal-200 p-3 rounded-xl flex items-center gap-3">
+        <input type="checkbox" name="send_sms_now" id="send_sms_now" value="1" class="h-4 w-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500" />
+        <label for="send_sms_now" class="text-sm font-medium text-teal-900 cursor-pointer">
+          Send instant SMS notification to patient via TextBee immediately on save
+        </label>
+      </div>
+
+      <div class="md:col-span-2 flex flex-col-reverse sm:flex-row items-center gap-3 pt-2">
+        <a class="w-full sm:w-auto text-center px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition" href="/HealthLogs/public/reminders.php">Cancel</a>
+        <button class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-800 transition" type="submit">Save</button>
       </div>
     </form>
   </div>

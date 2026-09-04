@@ -237,6 +237,11 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       font-weight: 600;
     }
 
+    /* Mobile-responsive table touch scrolling */
+    .overflow-x-auto {
+      -webkit-overflow-scrolling: touch;
+    }
+
     @media print {
       body.app-body {
         background: #fff;
@@ -271,7 +276,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         <div class="app-brand text-2xl font-semibold">HealthLogs</div>
         <div class="app-brand-badge mt-2">Barangay Care Hub</div>
       </div>
-      <nav class="flex-1 px-4 space-y-0.5">
+      <nav class="flex-1 px-4 space-y-0.5 overflow-y-auto">
         <div class="nav-section">Core</div>
         <a class="nav-link <?= $isDashboard ? 'active' : '' ?>" href="/HealthLogs/public/index.php">
           <span class="nav-icon">DB</span> Dashboard
@@ -318,21 +323,21 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       </div>
     </aside>
 
-    <main class="app-main">
+    <main class="app-main min-w-0">
       <header class="app-topbar">
-        <div class="w-full px-4 md:px-6 py-4 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <button id="sidebarToggle" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white/80 text-slate-700 shadow-sm">
+        <div class="w-full px-3 sm:px-4 md:px-6 py-3.5 flex items-center justify-between">
+          <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <button id="sidebarToggle" aria-label="Toggle navigation" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white/80 text-slate-700 shadow-xs shrink-0">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            <div class="app-title text-lg"><?= $pageTitle ?? 'Dashboard' ?></div>
+            <div class="app-title text-base sm:text-lg font-semibold truncate"><?= $pageTitle ?? 'Dashboard' ?></div>
           </div>
-          <div class="flex items-center gap-4 text-sm"></div>
+          <div class="flex items-center gap-2 sm:gap-4 text-sm shrink-0"></div>
         </div>
       </header>
 
-      <section class="w-full px-6 py-6 app-content">
+      <section class="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 app-content max-w-full">

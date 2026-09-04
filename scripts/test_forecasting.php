@@ -22,6 +22,13 @@ $data = json_decode($output, true);
 if ($data && isset($data['forecast'])) {
     echo "✓ Visits forecast: " . count($data['forecast']) . " predictions\n";
     echo "  Sample: {$data['forecast'][0]['date']} = {$data['forecast'][0]['value']} visits\n";
+    if (isset($data['metrics']['mae'], $data['metrics']['rmse'], $data['metrics']['mape'])) {
+        echo "  MAE:  {$data['metrics']['mae']} visits\n";
+        echo "  RMSE: {$data['metrics']['rmse']} visits\n";
+        echo "  MAPE: {$data['metrics']['mape']}% ({$data['metrics']['accuracy_rating']})\n";
+    } else {
+        echo "  ✗ Error metrics (MAE/RMSE/MAPE) missing from visits output!\n";
+    }
 } else {
     echo "✗ Visits forecast failed: $output\n";
 }
@@ -34,6 +41,13 @@ $data = json_decode($output, true);
 if ($data && isset($data['forecast'])) {
     echo "✓ Medicine forecast: " . count($data['forecast']) . " predictions\n";
     echo "  Sample: {$data['forecast'][0]['date']} = {$data['forecast'][0]['value']} units\n";
+    if (isset($data['metrics']['mae'], $data['metrics']['rmse'], $data['metrics']['mape'])) {
+        echo "  MAE:  {$data['metrics']['mae']} units\n";
+        echo "  RMSE: {$data['metrics']['rmse']} units\n";
+        echo "  MAPE: {$data['metrics']['mape']}% ({$data['metrics']['accuracy_rating']})\n";
+    } else {
+        echo "  ✗ Error metrics (MAE/RMSE/MAPE) missing from medicine output!\n";
+    }
 } else {
     echo "✗ Medicine forecast failed: $output\n";
 }
