@@ -1,7 +1,14 @@
 <?php
 $pageTitle = 'Reminders';
 require __DIR__ . '/partials/bootstrap.php';
+require_once __DIR__ . '/../app/Core/SchedulerSettings.php';
 require __DIR__ . '/partials/header.php';
+
+$scheduledTime = SchedulerSettings::getScheduledTime();
+$formattedScheduledTime = SchedulerSettings::getFormattedTime();
+$lastRunTime = SchedulerSettings::getLastRunTime();
+
+$pendingCount = (int)$pdo->query("SELECT COUNT(*) FROM reminders WHERE status = 'pending'")->fetchColumn();
 
 $sql = "SELECT r.*, p.first_name, p.last_name, p.contact_no
         FROM reminders r
@@ -100,14 +107,20 @@ if (!empty($rows)) {
               <div class="inline-flex items-center gap-2">
                 <form method="post" action="/HealthLogs/public/reminders/send_sms.php" class="inline">
                   <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                  <button type="submit" class="inline-flex items-center gap-1 text-xs bg-teal-600 hover:bg-teal-700 text-white font-medium px-2.5 py-1.5 rounded-lg shadow-sm transition">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                    </svg>
-                    Send SMS
-                  </button>
-                </form>
-                <button type="button" class="reminder-modal-edit text-blue-600 hover:underline font-medium text-xs px-2 py-1" data-embed-url="/HealthLogs/public/reminders/form_embed.php?id=<?= (int)$r['id'] ?>">Edit</button>
+                    <button type="submit" class="inline-flex items-center gap-1 text-xs bg-teal-600 hover:bg-teal-700 text-white font-medium px-2.5 py-1.5 rounded-lg shadow-sm transition">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                      </svg>
+                      Send SMS
+                    </button>
+                  </form>
+                  <?php if ($status === 'sent'): ?>
+                    <form method="post" action="/HealthLogs/public/reminders/reset_status.php" class="inline">
+                      <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+                      <button type="submit" class="text-amber-600 hover:text-amber-800 hover:underline font-medium text-xs px-2 py-1" title="Change status back to pending so the scheduler will send it">Re-queue</button>
+                    </form>
+                  <?php endif; ?>
+                  <button type="button" class="reminder-modal-edit text-blue-600 hover:underline font-medium text-xs px-2 py-1" data-embed-url="/HealthLogs/public/reminders/form_embed.php?id=<?= (int)$r['id'] ?>">Edit</button>
                 <form
                   method="post"
                   action="/HealthLogs/public/reminders/delete.php"
@@ -130,19 +143,83 @@ if (!empty($rows)) {
 </div>
 
 <div class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow">
-  <div class="text-sm text-slate-500">Scheduler</div>
-  <div class="text-lg font-semibold">Run Reminder Cron</div>
-  <p class="text-slate-600 mt-1 text-sm">Manual trigger for testing. In production, run `php scripts/cron_reminders.php` on a schedule.</p>
-  <form
-    method="post"
-    action="/HealthLogs/public/reminders/run_cron.php"
-    class="mt-3"
-    data-confirm="Run the reminder scheduler now?"
-    data-confirm-title="Run scheduler"
-    data-confirm-cta="Run now"
-  >
-    <button class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow text-sm font-medium hover:bg-slate-800 transition">Run Now</button>
-  </form>
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-4">
+    <div>
+      <div class="text-sm text-slate-500 font-medium">Scheduler</div>
+      <div class="text-lg font-semibold text-slate-900">SMS Reminder Schedule</div>
+      <p class="text-slate-600 mt-1 text-sm">Configure what time daily SMS reminders are sent out, or trigger manual dispatch.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2">
+        <i class="fas fa-clock text-blue-600"></i>
+        <span class="text-xs text-slate-500 uppercase tracking-wide font-medium">Daily Send Time:</span>
+        <span class="text-sm font-bold text-slate-900" id="displayScheduledTime"><?= h($formattedScheduledTime) ?></span>
+      </div>
+      <button type="button" id="btnEditScheduleTime" class="inline-flex items-center gap-1.5 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-3.5 py-2 rounded-lg font-medium transition">
+        <i class="fas fa-pencil-alt text-xs"></i>Edit Time
+      </button>
+    </div>
+  </div>
+
+  <!-- Queue Status Banner -->
+  <div class="mt-3 flex flex-wrap items-center gap-2.5">
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold <?= $pendingCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600' ?>">
+      <span class="w-2 h-2 rounded-full <?= $pendingCount > 0 ? 'bg-amber-500 animate-pulse' : 'bg-slate-400' ?>"></span>
+      <?= $pendingCount ?> Pending Reminder(s) in Queue
+    </span>
+    <?php if ($pendingCount === 0): ?>
+      <span class="text-xs text-slate-500">
+        <i class="fas fa-info-circle text-slate-400 mr-1"></i>Queue is empty because all existing reminders are already marked as <strong>Sent</strong>. Click <strong>"Re-queue"</strong> on any reminder above or add a new reminder to test.
+      </span>
+    <?php else: ?>
+      <span class="text-xs text-emerald-600 font-medium">
+        <i class="fas fa-check-circle mr-1"></i>Ready! Pending reminders will be dispatched when the clock reaches <?= h($formattedScheduledTime) ?>.
+      </span>
+    <?php endif; ?>
+  </div>
+
+  <!-- Inline Edit Form (Hidden by default) -->
+  <div id="scheduleTimeEditPanel" class="hidden mt-4 p-4 bg-blue-50/70 border border-blue-200 rounded-lg">
+    <form method="post" action="/HealthLogs/public/reminders/save_schedule_time.php" class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">
+          <i class="fas fa-clock mr-1 text-blue-600"></i>Set Daily Dispatch Time
+        </label>
+        <input type="time" name="scheduled_time" id="inputScheduledTime" value="<?= h($scheduledTime) ?>" required class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+      </div>
+      <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+        <i class="fas fa-check mr-1.5"></i>Save Time
+      </button>
+      <button type="button" id="btnCancelScheduleTime" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition">
+        Cancel
+      </button>
+    </form>
+    <p class="text-xs text-slate-500 mt-2">
+      <i class="fas fa-info-circle mr-1"></i>Automatic reminders will be dispatched at this time for all pending reminders.
+    </p>
+  </div>
+
+  <!-- Run Now Section -->
+  <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+    <div class="text-xs text-slate-500">
+      <?php if (!empty($lastRunTime)): ?>
+        Last dispatched: <span class="font-medium text-slate-700"><?= date('M j, Y g:i A', strtotime($lastRunTime)) ?></span>
+      <?php else: ?>
+        Manual trigger immediately dispatches all pending reminders without waiting for the scheduled time.
+      <?php endif; ?>
+    </div>
+    <form
+      method="post"
+      action="/HealthLogs/public/reminders/run_cron.php"
+      data-confirm="Run the reminder scheduler now? This will immediately send SMS to all pending reminders."
+      data-confirm-title="Run scheduler"
+      data-confirm-cta="Run now"
+    >
+      <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hover:bg-slate-800 transition">
+        <i class="fas fa-paper-plane text-xs"></i>Run Now
+      </button>
+    </form>
+  </div>
 </div>
 
 <div id="reminderFormModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
@@ -235,6 +312,26 @@ if (!empty($rows)) {
     window.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeModal();
     });
+
+    var btnEditScheduleTime = document.getElementById('btnEditScheduleTime');
+    var btnCancelScheduleTime = document.getElementById('btnCancelScheduleTime');
+    var scheduleTimeEditPanel = document.getElementById('scheduleTimeEditPanel');
+    var inputScheduledTime = document.getElementById('inputScheduledTime');
+
+    if (btnEditScheduleTime && scheduleTimeEditPanel) {
+      btnEditScheduleTime.addEventListener('click', function () {
+        scheduleTimeEditPanel.classList.toggle('hidden');
+        if (!scheduleTimeEditPanel.classList.contains('hidden') && inputScheduledTime) {
+          inputScheduledTime.focus();
+        }
+      });
+    }
+
+    if (btnCancelScheduleTime && scheduleTimeEditPanel) {
+      btnCancelScheduleTime.addEventListener('click', function () {
+        scheduleTimeEditPanel.classList.add('hidden');
+      });
+    }
   })();
 </script>
 

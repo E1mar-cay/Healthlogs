@@ -20,8 +20,11 @@ $provider = getenv('SMS_PROVIDER') ?: 'textbee';
 $apiKey = getenv('TEXTBEE_API_KEY') ?: getenv('SEMAPHORE_API_KEY');
 $enabled = getenv('SMS_ENABLED');
 
+$deviceId = getenv('TEXTBEE_DEVICE_ID');
+
 echo "Provider: " . strtoupper($provider) . "\n";
 echo "SMS Enabled: " . ($enabled !== 'false' ? 'Yes' : 'No') . "\n";
+echo "Device ID: " . (!empty($deviceId) ? $deviceId : 'Not set') . "\n";
 echo "API Key Set: " . (!empty($apiKey) && $apiKey !== 'your_textbee_api_key_here' ? 'Yes' : 'No (Please set TEXTBEE_API_KEY in .env)') . "\n\n";
 
 if ($apiKey === 'your_textbee_api_key_here' || empty($apiKey)) {

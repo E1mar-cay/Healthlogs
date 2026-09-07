@@ -5,6 +5,8 @@ if (ob_get_level() === 0) {
 require_once __DIR__ . '/../../app/Core/EnvLoader.php';
 EnvLoader::load(__DIR__ . '/../../.env');
 
+date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'Asia/Manila');
+
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../app/Core/Validator.php';
 require_once __DIR__ . '/../../app/Core/FlashHelper.php';

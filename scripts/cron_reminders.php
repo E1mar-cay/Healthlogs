@@ -12,35 +12,43 @@ require_once __DIR__ . '/../app/Core/EnvLoader.php';
 // Load .env file
 EnvLoader::load(__DIR__ . '/../.env');
 
-// Load Composer autoloader for PHPMailer if available
-if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
-    require_once __DIR__ . '/../vendor/autoload.php';
-}
-
 // Load Helpers
-require_once __DIR__ . '/../app/Core/EmailHelper.php';
 require_once __DIR__ . '/../app/Core/SmsHelper.php';
+require_once __DIR__ . '/../app/Core/SchedulerSettings.php';
 
 date_default_timezone_set('Asia/Manila');
 
 $today = date('Y-m-d');
+$currentTime = date('H:i');
+$scheduledTime = SchedulerSettings::getScheduledTime();
+$force = in_array('--force', $argv ?? [], true);
 
 echo "===========================================\n";
-echo "HealthLogs Reminder Cron Job\n";
+echo "HealthLogs SMS Reminder Cron Job\n";
 echo "===========================================\n";
-echo "Date: " . date('Y-m-d H:i:s') . "\n";
+echo "Date:                " . date('Y-m-d H:i:s') . "\n";
+echo "Scheduled Send Time: " . SchedulerSettings::getFormattedTime() . " ({$scheduledTime})\n";
+echo "Current Time:        " . date('g:i A') . " ({$currentTime})\n";
+if ($force) {
+    echo "Mode:                Manual / Force Run\n";
+}
 echo "-------------------------------------------\n\n";
 
-// Get pending reminders due today or earlier
-$sql = "SELECT r.*, p.first_name, p.last_name, p.email, p.contact_no
+if (!$force && $currentTime < $scheduledTime) {
+    echo "ℹ Current time ({$currentTime}) has not reached the scheduled dispatch time ({$scheduledTime}).\n";
+    echo "Reminders will be dispatched after " . SchedulerSettings::getFormattedTime() . ".\n";
+    echo "(Use --force or click 'Run Now' on the web dashboard to dispatch immediately)\n";
+    exit(0);
+}
+
+// Get all pending reminders
+$sql = "SELECT r.*, p.first_name, p.last_name, p.contact_no
         FROM reminders r
         JOIN patients p ON p.id = r.patient_id
         WHERE r.status = 'pending' 
-        AND r.due_date <= ?
         ORDER BY r.due_date ASC";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute([$today]);
+$stmt = $pdo->query($sql);
 $reminders = $stmt->fetchAll();
 
 echo "Found " . count($reminders) . " pending reminder(s)\n\n";
@@ -50,7 +58,6 @@ if (empty($reminders)) {
     exit(0);
 }
 
-$emailHelper = new EmailHelper();
 $smsHelper = new SmsHelper();
 
 $sent = 0;
@@ -63,8 +70,8 @@ foreach ($reminders as $reminder) {
     
     echo "Processing: {$patientName} - {$reminderType} (Due: {$reminder['due_date']})\n";
     
-    if (empty($reminder['email']) && empty($reminder['contact_no'])) {
-        echo "  ⚠ Skipped: No email or contact number on file\n";
+    if (empty($reminder['contact_no'])) {
+        echo "  ⚠ Skipped: No mobile contact number on file\n";
         
         $update = $pdo->prepare("UPDATE reminders SET status = 'failed' WHERE id = ?");
         $update->execute([$reminder['id']]);
@@ -76,39 +83,17 @@ foreach ($reminders as $reminder) {
     $patient = [
         'first_name' => $reminder['first_name'],
         'last_name' => $reminder['last_name'],
-        'email' => $reminder['email'],
         'contact_no' => $reminder['contact_no'],
     ];
 
-    $isSentSuccess = false;
-
-    // Send SMS if contact number is available
-    if (!empty($reminder['contact_no'])) {
-        $smsResult = $smsHelper->sendReminder($reminder, $patient);
-        if ($smsResult) {
-            echo "  ✓ SMS sent to: {$reminder['contact_no']}\n";
-            $isSentSuccess = true;
-        } else {
-            echo "  ✗ SMS dispatch failed or disabled\n";
-        }
-    }
-
-    // Send Email if email address is available
-    if (!empty($reminder['email'])) {
-        $emailResult = $emailHelper->sendReminder($reminder, $patient);
-        if ($emailResult) {
-            echo "  ✓ Email sent to: {$reminder['email']}\n";
-            $isSentSuccess = true;
-        } else {
-            echo "  ✗ Email dispatch failed or disabled\n";
-        }
-    }
-
-    if ($isSentSuccess) {
+    $smsResult = $smsHelper->sendReminder($reminder, $patient);
+    if ($smsResult) {
+        echo "  ✓ SMS sent to: {$reminder['contact_no']}\n";
         $update = $pdo->prepare("UPDATE reminders SET status = 'sent', sent_at = NOW() WHERE id = ?");
         $update->execute([$reminder['id']]);
         $sent++;
     } else {
+        echo "  ✗ SMS dispatch failed or disabled\n";
         $update = $pdo->prepare("UPDATE reminders SET status = 'failed' WHERE id = ?");
         $update->execute([$reminder['id']]);
         $failed++;
@@ -145,5 +130,7 @@ $logEntry = sprintf(
 );
 
 file_put_contents($logFile, $logEntry, FILE_APPEND);
+
+SchedulerSettings::markRunToday();
 
 exit($failed > 0 ? 1 : 0);

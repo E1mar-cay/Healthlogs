@@ -1,10 +1,10 @@
 @echo off
-REM HealthLogs Reminder Email Sender
-REM Double-click this file to send pending reminder emails
+REM HealthLogs Reminder SMS Sender
+REM Double-click this file to send pending SMS reminders
 
 echo.
 echo ========================================
-echo   HealthLogs Reminder Email Sender
+echo   HealthLogs Reminder SMS Sender
 echo ========================================
 echo.
 
@@ -31,41 +31,25 @@ if not exist "cron_reminders.php" (
     exit /b 1
 )
 
-REM Check if vendor directory exists
-if not exist "..\vendor" (
-    echo ERROR: PHPMailer not installed
-    echo.
-    echo Please install Composer dependencies first:
-    echo   cd C:\xampp\htdocs\HealthLogs
-    echo   composer install
-    echo.
-    pause
-    exit /b 1
-)
-
 REM Check if .env file exists
 if not exist "..\.env" (
     echo WARNING: .env file not found
     echo.
-    echo Please copy .env.example to .env and configure:
-    echo   copy .env.example .env
-    echo.
-    echo Then edit .env with your Gmail credentials.
+    echo Please copy .env.example to .env and configure SMS credentials.
     echo.
     pause
     exit /b 1
 )
 
-echo This will send email reminders to patients with:
-echo   - Pending reminders
-echo   - Due date today or earlier
-echo   - Valid email addresses
+echo This will send SMS reminders to patients with:
+echo   - Pending reminders (any picked due date)
+echo   - Valid mobile contact numbers
 echo.
 echo Press Ctrl+C to cancel, or
 pause
 
 echo.
-echo Sending reminder emails...
+echo Sending SMS reminders via TextBee...
 echo.
 
 php cron_reminders.php
@@ -73,7 +57,7 @@ php cron_reminders.php
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo ========================================
-    echo   Reminder Emails Sent Successfully!
+    echo   Reminder SMS Sent Successfully!
     echo ========================================
     echo.
     echo Check the log file for details:
@@ -82,11 +66,11 @@ if %ERRORLEVEL% EQU 0 (
 ) else (
     echo.
     echo ========================================
-    echo   Some Emails Failed!
+    echo   Some SMS Failed to Send!
     echo ========================================
     echo.
     echo Please check the error messages above.
-    echo See EMAIL_SETUP.md for troubleshooting.
+    echo Check device connectivity and .env configuration.
     echo.
 )
 

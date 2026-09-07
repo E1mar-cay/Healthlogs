@@ -1,4 +1,4 @@
-﻿      </section>
+      </section>
     </main>
   </div>
   <script>
@@ -95,6 +95,43 @@
           });
         });
       });
+    })();
+
+    // Automatic SMS Reminder Dispatch Heartbeat
+    (function () {
+      let isChecking = false;
+      const checkReminders = () => {
+        if (isChecking) return;
+        isChecking = true;
+        fetch('/HealthLogs/public/reminders/auto_check.php')
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.status === 'dispatched' && data.sent_count > 0) {
+              if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                  toast: true,
+                  position: 'top-end',
+                  icon: 'success',
+                  title: 'SMS Reminders Dispatched',
+                  text: 'Successfully sent ' + data.sent_count + ' scheduled SMS reminder(s) via TextBee.',
+                  showConfirmButton: false,
+                  timer: 6000
+                });
+              }
+              if (window.location.pathname.includes('/reminders.php')) {
+                setTimeout(() => window.location.reload(), 2500);
+              }
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            isChecking = false;
+          });
+      };
+
+      // Run 4 seconds after page load, then every 30 seconds
+      setTimeout(checkReminders, 4000);
+      setInterval(checkReminders, 30000);
     })();
   </script>
 </body>

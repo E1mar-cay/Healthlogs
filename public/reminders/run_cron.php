@@ -2,7 +2,7 @@
 require __DIR__ . '/../partials/bootstrap.php';
 
 $script = __DIR__ . '/../../scripts/cron_reminders.php';
-$cmd = 'php ' . escapeshellarg($script);
+$cmd = 'php ' . escapeshellarg($script) . ' --force';
 $output = shell_exec($cmd);
 
 if ($output !== null && trim($output) !== '') {
