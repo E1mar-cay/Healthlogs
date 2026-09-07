@@ -44,7 +44,7 @@
     </div>
     <div>
       <label class="block text-sm text-slate-600">Contact No</label>
-      <input name="contact_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('contact_no', $patient['contact_no'] ?? '')) ?>" />
+      <input name="contact_no" placeholder="09XXXXXXXXX" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('contact_no', $patient['contact_no'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Email</label>
@@ -65,7 +65,13 @@
     </div>
     <div>
       <label class="block text-sm text-slate-600">Blood Type</label>
-      <input name="blood_type" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('blood_type', $patient['blood_type'] ?? '')) ?>" />
+      <?php $currBlood = strtoupper((string)old('blood_type', $patient['blood_type'] ?? '')); ?>
+      <select name="blood_type" class="mt-1 w-full border rounded px-3 py-2">
+        <option value="">Unknown / Not specified</option>
+        <?php foreach (['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as $bt): ?>
+          <option value="<?= $bt ?>" <?= $currBlood === $bt ? 'selected' : '' ?>><?= $bt ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Status</label>

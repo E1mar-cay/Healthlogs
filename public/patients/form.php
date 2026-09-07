@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require __DIR__ . '/../partials/bootstrap.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -17,7 +17,7 @@ require __DIR__ . '/../partials/header.php';
 <div class="bg-white p-6 rounded shadow">
   <?php display_flash_messages(true, true); ?>
   <?php display_validation_errors(true); ?>
-  <form method="post" action="/HealthLogs/public/patients/save.php" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <form method="post" action="/HealthLogs/public/patients/save.php" novalidate class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <input type="hidden" name="form_context" value="full" />
     <?php require __DIR__ . '/_form_fields.php'; ?>
     <div class="md:col-span-2 flex items-center gap-2 mt-2">

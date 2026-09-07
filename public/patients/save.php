@@ -82,9 +82,7 @@ if (!empty($validationErrors)) {
     }
     $_SESSION['validation_errors'] = $flatErrors;
     $_SESSION['old_input'] = $_POST;
-    $formLocation = $isEmbed
-        ? '/HealthLogs/public/patients/form_embed.php'
-        : '/HealthLogs/public/patients/form.php';
+    $formLocation = '/HealthLogs/public/patients/form.php';
     header('Location: ' . $formLocation . ($id ? '?id=' . $id : ''));
     exit;
 }
@@ -101,6 +99,9 @@ $national_id = sanitize_string(field('national_id'));
 $address_line = sanitize_string(field('address_line'));
 $barangay = sanitize_string(field('barangay', ''));
 $blood_type = sanitize_string(field('blood_type'));
+if ($blood_type === '') {
+    $blood_type = null;
+}
 
 // Normalize household_id to avoid FK errors
 $household_id = field('household_id');
@@ -209,7 +210,7 @@ try {
     
     $pdo->commit();
     $_SESSION['success_message'] = 'Patient saved successfully!';
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $pdo->rollBack();
     $_SESSION['error_message'] = 'Failed to save patient: ' . $e->getMessage();
 }
