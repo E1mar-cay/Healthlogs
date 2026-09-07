@@ -34,6 +34,7 @@ $title = $isEdit ? 'Edit User' : 'Add User';
     <title><?= h($title) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-50 p-4 text-slate-900">
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-3xl mx-auto">
@@ -105,11 +106,17 @@ $title = $isEdit ? 'Edit User' : 'Add User';
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Password <?= $isEdit ? '' : '<span class="text-red-500">*</span>' ?>
                 </label>
-                <input type="password"
-                       name="password"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="Enter password"
-                       <?= $isEdit ? '' : 'required' ?>>
+                <div class="relative">
+                    <input type="password"
+                           id="passwordInput"
+                           name="password"
+                           class="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Enter password"
+                           <?= $isEdit ? '' : 'required' ?>>
+                    <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors" title="Show password" aria-label="Toggle password visibility">
+                        <i class="fas fa-eye text-sm"></i>
+                    </button>
+                </div>
                 <p class="text-xs text-gray-500 mt-1">
                     <?= $isEdit ? 'Leave blank to keep current password' : 'Minimum 6 characters' ?>
                 </p>
@@ -119,11 +126,17 @@ $title = $isEdit ? 'Edit User' : 'Add User';
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Confirm Password <?= $isEdit ? '' : '<span class="text-red-500">*</span>' ?>
                 </label>
-                <input type="password"
-                       name="password_confirmation"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="Confirm password"
-                       <?= $isEdit ? '' : 'required' ?>>
+                <div class="relative">
+                    <input type="password"
+                           id="confirmPasswordInput"
+                           name="password_confirmation"
+                           class="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Confirm password"
+                           <?= $isEdit ? '' : 'required' ?>>
+                    <button type="button" id="toggleConfirmPassword" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors" title="Show password" aria-label="Toggle confirm password visibility">
+                        <i class="fas fa-eye text-sm"></i>
+                    </button>
+                </div>
             </div>
 
             <div>
@@ -158,5 +171,26 @@ $title = $isEdit ? 'Edit User' : 'Add User';
             </div>
         </form>
     </div>
+    <script>
+    (function () {
+        function setupPasswordToggle(btnId, inputId) {
+            var btn = document.getElementById(btnId);
+            var input = document.getElementById(inputId);
+            if (!btn || !input) return;
+            btn.addEventListener('click', function () {
+                var isPassword = input.getAttribute('type') === 'password';
+                input.setAttribute('type', isPassword ? 'text' : 'password');
+                var icon = btn.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-eye', !isPassword);
+                    icon.classList.toggle('fa-eye-slash', isPassword);
+                }
+                btn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+            });
+        }
+        setupPasswordToggle('togglePassword', 'passwordInput');
+        setupPasswordToggle('toggleConfirmPassword', 'confirmPasswordInput');
+    })();
+    </script>
 </body>
 </html>

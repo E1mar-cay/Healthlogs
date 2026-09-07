@@ -238,7 +238,12 @@ $recaptchaSiteKey = Recaptcha::siteKey();
             
             <div>
               <label class="block text-sm font-medium text-slate-700">Password</label>
-              <input name="password" type="password" required class="mt-2 w-full px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm sm:text-base" placeholder="Enter password" />
+              <div class="relative mt-2">
+                <input id="loginPassword" name="password" type="password" required class="w-full pl-4 pr-11 py-2.5 sm:py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm sm:text-base" placeholder="Enter password" />
+                <button type="button" id="toggleLoginPassword" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors" title="Show password" aria-label="Toggle password visibility">
+                  <i class="fas fa-eye text-sm sm:text-base"></i>
+                </button>
+              </div>
             </div>
 
             <?php if ($recaptchaSiteKey !== ''): ?>
@@ -286,5 +291,23 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       </div>
     </div>
   </div>
+  <script>
+    (function () {
+      var toggleBtn = document.getElementById('toggleLoginPassword');
+      var passwordInput = document.getElementById('loginPassword');
+      if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', function () {
+          var isPassword = passwordInput.getAttribute('type') === 'password';
+          passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+          var icon = toggleBtn.querySelector('i');
+          if (icon) {
+            icon.classList.toggle('fa-eye', !isPassword);
+            icon.classList.toggle('fa-eye-slash', isPassword);
+          }
+          toggleBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
