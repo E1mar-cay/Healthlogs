@@ -4,15 +4,18 @@ require __DIR__ . '/../../partials/header.php';
 
 $search = trim($_GET['search'] ?? '');
 $statusFilter = trim($_GET['status'] ?? '');
+$today = date('Y-m-d');
 
 $query = "
     SELECT c.*, p.first_name, p.last_name, p.contact_no, p.barangay, p.sex, p.birth_date,
-           (SELECT COUNT(*) FROM tb_dot_logs d WHERE d.tb_case_id = c.id AND d.status IN ('taken','supervised')) AS doses_taken
+           (SELECT COUNT(*) FROM tb_dot_logs d WHERE d.tb_case_id = c.id AND d.status IN ('taken','supervised')) AS doses_taken,
+           today_log.status AS today_status
     FROM tb_cases c
     JOIN patients p ON p.id = c.patient_id
+    LEFT JOIN tb_dot_logs today_log ON today_log.tb_case_id = c.id AND today_log.log_date = :today
     WHERE 1=1
 ";
-$params = [];
+$params = ['today' => $today];
 
 if ($search !== '') {
     $query .= " AND (c.case_number LIKE :search OR p.first_name LIKE :search OR p.last_name LIKE :search OR p.barangay LIKE :search)";
@@ -39,12 +42,12 @@ try {
 <div class="bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500">Program Registry</div>
-      <div class="text-2xl font-semibold">TB Case Registry</div>
+      <div class="text-sm text-slate-500 font-medium">Program Registry</div>
+      <div class="text-2xl font-bold text-slate-900">TB Case Registry</div>
       <p class="text-sm text-slate-500 mt-1">Enrolled patient cases under National Tuberculosis Control Program (NTP).</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span class="app-chip">NTP DOTS</span>
+      <span class="app-chip bg-teal-50 text-teal-700 border border-teal-200">NTP DOTS</span>
       <a href="/HealthLogs/public/tb/cases/create.php" class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow text-sm font-medium hover:bg-slate-800 transition">
         <i class="fas fa-plus mr-1.5 text-xs"></i>New TB Case
       </a>
@@ -54,8 +57,8 @@ try {
 </div>
 
 <form method="GET" class="mt-6 bg-white rounded-xl shadow p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-  <input name="search" value="<?= h($search) ?>" class="w-full border rounded-lg px-3 py-2 sm:col-span-2 md:col-span-2 text-sm" placeholder="Search case no, patient name, or barangay..." />
-  <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+  <input name="search" value="<?= h($search) ?>" class="w-full border rounded-lg px-3 py-2 sm:col-span-2 md:col-span-2 text-sm focus:ring-2 focus:ring-teal-500" placeholder="Search case no, patient name, or barangay..." />
+  <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
     <option value="">All statuses</option>
     <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Active</option>
     <option value="completed" <?= $statusFilter === 'completed' ? 'selected' : '' ?>>Completed</option>
@@ -81,15 +84,15 @@ try {
     <div class="text-sm text-slate-500 mt-4">No TB cases found. Try adjusting search filters or register a new case.</div>
   <?php else: ?>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table class="w-full text-left text-sm min-w-[700px]">
+      <table class="w-full text-left text-sm min-w-[760px]">
         <thead>
-          <tr class="border-b text-slate-500 uppercase text-xs">
+          <tr class="border-b bg-slate-50 text-slate-500 uppercase text-xs">
             <th class="py-2.5 px-3">Case No</th>
             <th class="py-2.5 px-3">Patient Name</th>
             <th class="py-2.5 px-3">Barangay</th>
             <th class="py-2.5 px-3">Classification</th>
             <th class="py-2.5 px-3">Regimen</th>
-            <th class="py-2.5 px-3">Reg. Date</th>
+            <th class="py-2.5 px-3">Today's Medicine</th>
             <th class="py-2.5 px-3">Status</th>
             <th class="py-2.5 px-3 text-right">Actions</th>
           </tr>
@@ -98,14 +101,36 @@ try {
           <?php foreach ($cases as $c): ?>
             <tr>
               <td class="py-3 px-3 font-mono font-medium text-slate-900 whitespace-nowrap"><?= h($c['case_number']) ?></td>
-              <td class="py-3 px-3 font-medium text-slate-900 whitespace-nowrap"><?= h($c['last_name'] . ', ' . $c['first_name']) ?></td>
-              <td class="py-3 px-3 whitespace-nowrap"><?= h($c['barangay']) ?></td>
-              <td class="py-3 px-3 capitalize whitespace-nowrap">
-                <?= h(str_replace('_', ' ', $c['tb_type'])) ?>
-                <div class="text-xs text-slate-400 capitalize"><?= h(str_replace('_', ' ', $c['case_definition'])) ?></div>
+              <td class="py-3 px-3 font-medium text-slate-900 whitespace-nowrap">
+                <?= h($c['last_name'] . ', ' . $c['first_name']) ?>
+                <div class="text-xs text-slate-400"><?= (int)$c['doses_taken'] ?> doses taken</div>
               </td>
-              <td class="py-3 px-3 font-medium uppercase whitespace-nowrap"><?= h(str_replace('_', ' ', $c['treatment_category'])) ?></td>
-              <td class="py-3 px-3 whitespace-nowrap"><?= h($c['registration_date']) ?></td>
+              <td class="py-3 px-3 whitespace-nowrap text-xs"><?= h($c['barangay']) ?></td>
+              <td class="py-3 px-3 capitalize whitespace-nowrap text-xs">
+                <?= h(str_replace('_', ' ', $c['tb_type'])) ?>
+                <div class="text-[11px] text-slate-400 capitalize"><?= h(str_replace('_', ' ', $c['case_definition'])) ?></div>
+              </td>
+              <td class="py-3 px-3 font-medium uppercase whitespace-nowrap text-xs"><?= h(str_replace('_', ' ', $c['treatment_category'])) ?></td>
+              
+              <!-- Today's Medicine Column -->
+              <td class="py-3 px-3 whitespace-nowrap text-xs">
+                <?php if ($c['status'] !== 'active'): ?>
+                  <span class="text-slate-400">—</span>
+                <?php elseif ($c['today_status'] === 'taken' || $c['today_status'] === 'supervised'): ?>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                    <i class="fas fa-check-circle text-emerald-600 text-[10px]"></i> Given Today
+                  </span>
+                <?php elseif ($c['today_status'] === 'missed'): ?>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+                    <i class="fas fa-times-circle text-rose-600 text-[10px]"></i> Missed Today
+                  </span>
+                <?php else: ?>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 animate-pulse">
+                    <i class="fas fa-clock text-amber-600 text-[10px]"></i> Needs Medicine
+                  </span>
+                <?php endif; ?>
+              </td>
+
               <td class="py-3 px-3 whitespace-nowrap">
                 <?php if ($c['status'] === 'active'): ?>
                   <span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Active</span>
@@ -115,6 +140,7 @@ try {
                   <span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">Discontinued</span>
                 <?php endif; ?>
               </td>
+
               <td class="py-3 px-3 text-right whitespace-nowrap">
                 <div class="inline-flex items-center justify-end gap-1.5">
                   <a href="/HealthLogs/public/tb/dots/index.php?case_id=<?= $c['id'] ?>" class="text-xs bg-teal-50 text-teal-700 hover:bg-teal-100 px-2.5 py-1.5 rounded font-medium transition">DOTS Log</a>
