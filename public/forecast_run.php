@@ -239,9 +239,11 @@ try {
 
     $data = json_decode($output, true);
     if (!is_array($data)) {
-        ForecastLogger::logFailure($runId, 'Forecasting failed (Invalid JSON from Python).', $executionTime);
+        $cleanedOutput = trim(strip_tags((string)$output));
+        $errMsg = 'Forecasting script failed. ' . ($cleanedOutput !== '' ? $cleanedOutput : 'Invalid JSON from Python.');
+        ForecastLogger::logFailure($runId, $errMsg, $executionTime);
         http_response_code(500);
-        echo json_encode(['error' => 'Forecasting failed.']);
+        echo json_encode(['error' => $errMsg]);
         exit;
     }
 

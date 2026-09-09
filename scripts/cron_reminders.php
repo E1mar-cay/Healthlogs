@@ -66,7 +66,7 @@ $skipped = 0;
 
 foreach ($reminders as $reminder) {
     $patientName = $reminder['first_name'] . ' ' . $reminder['last_name'];
-    $reminderType = ucfirst($reminder['reminder_type']);
+    $reminderType = ucfirst(str_replace('_', ' ', $reminder['reminder_type']));
     
     echo "Processing: {$patientName} - {$reminderType} (Due: {$reminder['due_date']})\n";
     

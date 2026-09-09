@@ -222,7 +222,7 @@ HTML;
         $name = $patient['first_name'] . ' ' . $patient['last_name'];
         $message = $reminder['message'];
         $dueDate = date('F j, Y', strtotime($reminder['due_date']));
-        $type = ucfirst($reminder['reminder_type']);
+        $type = ucfirst(str_replace('_', ' ', $reminder['reminder_type']));
         
         return <<<TEXT
 HealthLogs - Barangay Health Unit

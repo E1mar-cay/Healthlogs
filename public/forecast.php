@@ -40,7 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $data = json_decode($output, true);
         if (!is_array($data)) {
-            $error = 'Forecasting failed. Please try again.';
+            $cleanedOutput = trim(strip_tags((string)$output));
+            $error = 'Forecasting script failed. ' . ($cleanedOutput !== '' ? $cleanedOutput : 'No valid response from Python.');
             ForecastLogger::logFailure($runId, 'Invalid output from python: ' . substr($output, 0, 500), $executionTime);
         } elseif (!empty($data['error'])) {
             $error = $data['error'];

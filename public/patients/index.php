@@ -1,10 +1,11 @@
 <?php
 $pageTitle = 'Patient Record Management';
-require __DIR__ . '/../partials/header.php';
+require __DIR__ . '/../partials/bootstrap.php';
 
 $q = trim($_GET['q'] ?? '');
 $statusFilter = $_GET['status'] ?? '';
 $sexFilter = $_GET['sex'] ?? '';
+$isPrintMode = (isset($_GET['print']) && $_GET['print'] === '1');
 
 $whereParts = [];
 $params = [];
@@ -24,6 +25,255 @@ if (in_array($sexFilter, ['male', 'female'], true)) {
 }
 
 $whereSql = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
+
+// If print mode is requested, fetch ALL matching patients without pagination limit
+if ($isPrintMode) {
+    $stmt = $pdo->prepare("SELECT * FROM patients $whereSql ORDER BY id DESC");
+    $stmt->execute($params);
+    $allPatients = $stmt->fetchAll();
+
+    $currentUserFullName = $_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Health Center Staff';
+    $currentUserRole = ($_SESSION['role'] ?? '') === 'admin' ? 'System Administrator / Admin' : 'Barangay Health Worker (BHW)';
+    $currentDateTimeFormatted = date('F j, Y, h:i A');
+
+    $filterParts = [];
+    if ($q !== '') $filterParts[] = 'Search: "' . $q . '"';
+    if ($statusFilter !== '') $filterParts[] = 'Status: ' . ucfirst($statusFilter);
+    if ($sexFilter !== '') $filterParts[] = 'Gender: ' . ucfirst($sexFilter);
+    $filterSummary = !empty($filterParts) ? implode(' | ', $filterParts) : 'All Patient Records (No Filters)';
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <title>Official Patient Records List - HealthLogs</title>
+      <style>
+        @page {
+          size: auto;
+          margin: 15mm 12mm 15mm 12mm;
+        }
+        body {
+          font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          color: #0f172a;
+          margin: 0;
+          padding: 10px;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+        .official-header {
+          border-bottom: 2px solid #0f172a;
+          padding-bottom: 12px;
+          margin-bottom: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .header-center {
+          text-align: center;
+          flex: 1;
+          padding: 0 15px;
+        }
+        .rep-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #475569; font-weight: 600; }
+        .agency-title { font-size: 11px; text-transform: uppercase; color: #334155; font-weight: 600; margin-top: 1px; }
+        .hub-title { font-size: 15px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.5px; margin-top: 2px; }
+        .sys-title { font-size: 11px; color: #0f766e; font-weight: 700; margin-top: 1px; }
+        .doc-meta-box {
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 8px 12px;
+          margin-bottom: 14px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 11px;
+        }
+        .doc-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0f172a;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+          font-size: 10.5px;
+        }
+        th {
+          background-color: #f1f5f9;
+          color: #334155;
+          font-weight: 700;
+          text-transform: uppercase;
+          font-size: 9px;
+          letter-spacing: 0.5px;
+          border: 1px solid #cbd5e1;
+          padding: 6px 8px;
+          text-align: left;
+        }
+        td {
+          border: 1px solid #e2e8f0;
+          padding: 5px 8px;
+          color: #1e293b;
+        }
+        tr:nth-child(even) td {
+          background-color: #f8fafc;
+        }
+        .signatory-grid {
+          margin-top: 36px;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+          page-break-inside: avoid;
+          text-align: center;
+        }
+        .sig-box {
+          display: flex;
+          flex-direction: column;
+        }
+        .sig-label {
+          font-size: 10px;
+          color: #475569;
+          text-align: left;
+          margin-bottom: 36px;
+        }
+        .sig-name {
+          font-weight: 700;
+          text-transform: uppercase;
+          font-size: 11.5px;
+          border-bottom: 1px solid #0f172a;
+          padding-bottom: 2px;
+        }
+        .sig-role {
+          font-size: 9.5px;
+          color: #475569;
+          margin-top: 3px;
+        }
+        .sig-date {
+          font-size: 9px;
+          color: #94a3b8;
+          margin-top: 2px;
+        }
+        .watermark-footer {
+          margin-top: 20px;
+          border-top: 1px dashed #cbd5e1;
+          padding-top: 6px;
+          font-size: 9px;
+          color: #94a3b8;
+          text-align: center;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="official-header">
+        <div>
+          <svg width="55" height="55" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="46" fill="#0f766e" stroke="#115e59" stroke-width="2"/>
+            <circle cx="50" cy="50" r="41" fill="#ffffff" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="3 2"/>
+            <path d="M43 25 h14 v18 h18 v14 h-18 v18 h-14 v-18 h-18 v-14 h18 z" fill="#0ea5a4" opacity="0.3"/>
+            <rect x="44" y="24" width="12" height="52" rx="2" fill="#0f766e"/>
+            <rect x="24" y="44" width="52" height="12" rx="2" fill="#0f766e"/>
+            <circle cx="50" cy="50" r="7" fill="#ffffff"/>
+            <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="#0f766e"/>
+          </svg>
+        </div>
+        <div class="header-center">
+          <div class="rep-title">Republic of the Philippines</div>
+          <div class="agency-title">Department of Health • Primary Care Services</div>
+          <div class="hub-title">Barangay Health Center & Care Hub</div>
+          <div class="sys-title">HealthLogs Information Management System</div>
+        </div>
+        <div style="text-align: right; font-size: 9.5px; color: #64748b;">
+          <div><strong>Date:</strong> <?= date('M d, Y') ?></div>
+          <div><strong>Time:</strong> <?= date('h:i A') ?></div>
+        </div>
+      </div>
+
+      <div class="doc-meta-box">
+        <div>
+          <div class="doc-title">Official Patient Records Master List</div>
+          <div style="color: #475569; margin-top: 2px;"><strong>Filter Scope:</strong> <?= h($filterSummary) ?> (<?= count($allPatients) ?> total records)</div>
+        </div>
+        <div style="text-align: right; color: #475569;">
+          <div><strong>Generated By:</strong> <?= h($currentUserFullName) ?></div>
+          <div><strong>Designation:</strong> <?= h($currentUserRole) ?></div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Patient Name</th>
+            <th>Sex</th>
+            <th>Birth Date</th>
+            <th>Age</th>
+            <th>Barangay</th>
+            <th>Contact No</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php if (empty($allPatients)): ?>
+            <tr><td colspan="8" style="text-align: center; color: #64748b; padding: 12px;">No patient records found.</td></tr>
+          <?php else: ?>
+            <?php foreach ($allPatients as $p): ?>
+              <?php
+                $birthDate = new DateTime($p['birth_date']);
+                $today = new DateTime();
+                $age = $birthDate->diff($today)->y;
+              ?>
+              <tr>
+                <td><?= h($p['id']) ?></td>
+                <td><strong><?= h($p['last_name'] . ', ' . $p['first_name'] . ($p['middle_name'] ? ' ' . $p['middle_name'] : '')) ?></strong></td>
+                <td style="text-transform: capitalize;"><?= h($p['sex']) ?></td>
+                <td><?= h($p['birth_date']) ?></td>
+                <td><?= h($age) ?> yrs</td>
+                <td><?= h($p['barangay']) ?></td>
+                <td><?= h($p['contact_no'] ?: '—') ?></td>
+                <td style="text-transform: capitalize; font-weight: 600;"><?= h($p['status']) ?></td>
+              </tr>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </tbody>
+      </table>
+
+      <div class="signatory-grid">
+        <div class="sig-box">
+          <div class="sig-label">Prepared by:</div>
+          <div class="sig-name"><?= h($currentUserFullName) ?></div>
+          <div class="sig-role"><?= h($currentUserRole) ?></div>
+          <div class="sig-date">Date: <?= date('M d, Y') ?></div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-label">Verified by:</div>
+          <div class="sig-name">___________________________</div>
+          <div class="sig-role">Supervising Public Health Nurse</div>
+          <div class="sig-date">Date: ____________________</div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-label">Approved by:</div>
+          <div class="sig-name">___________________________</div>
+          <div class="sig-role">Municipal Health Officer / Physician</div>
+          <div class="sig-date">Date: ____________________</div>
+        </div>
+      </div>
+
+      <div class="watermark-footer">
+        Official HealthLogs System Generated Document • Certified Master Records • Timestamp: <?= h($currentDateTimeFormatted) ?>
+      </div>
+
+      <script>
+        window.addEventListener('load', function() {
+          setTimeout(function() { window.print(); }, 300);
+        });
+      </script>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 
 // Get total count
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM patients $whereSql");
@@ -47,6 +297,8 @@ $stats = $pdo->query("
         SUM(CASE WHEN status = 'deceased' THEN 1 ELSE 0 END) as deceased
     FROM patients
 ")->fetch();
+
+require __DIR__ . '/../partials/header.php';
 ?>
 
 <?php display_flash_messages(); ?>
@@ -60,7 +312,10 @@ $stats = $pdo->query("
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">Patient Intake</span>
-      <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Patient</button>
+      <a target="_blank" href="/HealthLogs/public/patients/index.php?<?= h(http_build_query(array_merge($_GET, ['print' => '1']))) ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-medium border border-slate-300 transition shadow-xs">
+        <i class="fas fa-print text-xs text-teal-700"></i> Print All Records
+      </a>
+      <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition">New Patient</button>
       <a href="/HealthLogs/public/patients/form.php" class="text-sm text-slate-600 underline underline-offset-2">Open full-page form</a>
     </div>
   </div>

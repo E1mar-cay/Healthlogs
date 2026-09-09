@@ -92,11 +92,11 @@ if (!empty($rows)) {
             class="border-t hover:bg-slate-50/80 transition"
             data-row="1"
             data-status="<?= h($status) ?>"
-            data-search="<?= h(strtolower($r['last_name'] . ' ' . $r['first_name'] . ' ' . ($r['contact_no'] ?? '') . ' ' . $r['reminder_type'] . ' ' . $r['due_date'] . ' ' . $r['status'])) ?>"
+            data-search="<?= h(strtolower($r['last_name'] . ' ' . $r['first_name'] . ' ' . ($r['contact_no'] ?? '') . ' ' . str_replace('_', ' ', $r['reminder_type']) . ' ' . $r['reminder_type'] . ' ' . $r['due_date'] . ' ' . $r['status'])) ?>"
           >
             <td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></td>
             <td class="px-4 py-3 text-slate-600 font-mono text-xs whitespace-nowrap"><?= h($r['contact_no'] ?: '—') ?></td>
-            <td class="px-4 py-3 capitalize whitespace-nowrap"><?= h($r['reminder_type']) ?></td>
+            <td class="px-4 py-3 capitalize whitespace-nowrap"><?= h(str_replace('_', ' ', $r['reminder_type'])) ?></td>
             <td class="px-4 py-3 whitespace-nowrap"><?= h($r['due_date']) ?></td>
             <td class="px-4 py-3 whitespace-nowrap">
               <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold <?= h($badgeClass) ?>">

@@ -56,16 +56,45 @@ try {
     $barangayOptions = [];
 }
 
+// 1. Weekly Visits & Forecasting (Dynamic with Filters)
 try {
+    $weeklyWhere = ["1=1"];
+    $weeklyParams = [];
+    if ($fromDate !== '') {
+        $weeklyWhere[] = "DATE(v.visit_datetime) >= ?";
+        $weeklyParams[] = $fromDate;
+    } else {
+        $weeklyWhere[] = "v.visit_datetime >= DATE_SUB(CURDATE(), INTERVAL 140 DAY)";
+    }
+    if ($toDate !== '') {
+        $weeklyWhere[] = "DATE(v.visit_datetime) <= ?";
+        $weeklyParams[] = $toDate;
+    }
+    if ($barangayFilter !== '') {
+        $weeklyWhere[] = "p.barangay = ?";
+        $weeklyParams[] = $barangayFilter;
+    }
+    if (in_array($sexFilter, $validSex, true)) {
+        $weeklyWhere[] = "p.sex = ?";
+        $weeklyParams[] = $sexFilter;
+    }
+    if (in_array($ageGroupFilter, $validAgeGroups, true)) {
+        $weeklyWhere[] = $buildAgeWhere('p.birth_date') . " = ?";
+        $weeklyParams[] = $ageGroupFilter;
+    }
+
     $weeklySql = "SELECT
-            YEARWEEK(visit_datetime, 1) AS week_key,
+            YEARWEEK(v.visit_datetime, 1) AS week_key,
             COUNT(*) AS total_visits,
-            SUM(CASE WHEN visit_type = 'general' THEN 1 ELSE 0 END) AS consultation_visits
-        FROM visits
-        WHERE visit_datetime >= DATE_SUB(CURDATE(), INTERVAL 140 DAY)
-        GROUP BY YEARWEEK(visit_datetime, 1)
+            SUM(CASE WHEN v.visit_type = 'general' THEN 1 ELSE 0 END) AS consultation_visits
+        FROM visits v
+        INNER JOIN patients p ON p.id = v.patient_id
+        WHERE " . implode(' AND ', $weeklyWhere) . "
+        GROUP BY YEARWEEK(v.visit_datetime, 1)
         ORDER BY week_key ASC";
-    $weeklyRows = $pdo->query($weeklySql)->fetchAll(PDO::FETCH_ASSOC);
+    $weeklyStmt = $pdo->prepare($weeklySql);
+    $weeklyStmt->execute($weeklyParams);
+    $weeklyRows = $weeklyStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $consultationValues = array_map(fn($x) => (float)$x['consultation_visits'], $weeklyRows);
     $admissionValues = array_map(fn($x) => (float)$x['total_visits'], $weeklyRows);
@@ -94,16 +123,43 @@ try {
     $admissionForecast = [];
 }
 
+// 2. Seasonal Diseases (Dynamic with Filters)
 try {
+    $seasonalWhere = ["pc.diagnosed_on IS NOT NULL"];
+    $seasonalParams = [];
+    if ($fromDate !== '') {
+        $seasonalWhere[] = "DATE(pc.diagnosed_on) >= ?";
+        $seasonalParams[] = $fromDate;
+    }
+    if ($toDate !== '') {
+        $seasonalWhere[] = "DATE(pc.diagnosed_on) <= ?";
+        $seasonalParams[] = $toDate;
+    }
+    if ($barangayFilter !== '') {
+        $seasonalWhere[] = "p.barangay = ?";
+        $seasonalParams[] = $barangayFilter;
+    }
+    if (in_array($sexFilter, $validSex, true)) {
+        $seasonalWhere[] = "p.sex = ?";
+        $seasonalParams[] = $sexFilter;
+    }
+    if (in_array($ageGroupFilter, $validAgeGroups, true)) {
+        $seasonalWhere[] = $buildAgeWhere('p.birth_date') . " = ?";
+        $seasonalParams[] = $ageGroupFilter;
+    }
+
     $seasonalSql = "SELECT
-            MONTH(diagnosed_on) AS month_no,
-            DATE_FORMAT(diagnosed_on, '%b') AS month_label,
+            MONTH(pc.diagnosed_on) AS month_no,
+            DATE_FORMAT(pc.diagnosed_on, '%b') AS month_label,
             COUNT(*) AS total_cases
-        FROM patient_conditions
-        WHERE diagnosed_on IS NOT NULL
-        GROUP BY MONTH(diagnosed_on), DATE_FORMAT(diagnosed_on, '%b')
-        ORDER BY MONTH(diagnosed_on)";
-    $seasonalDiseaseRows = $pdo->query($seasonalSql)->fetchAll(PDO::FETCH_ASSOC);
+        FROM patient_conditions pc
+        INNER JOIN patients p ON p.id = pc.patient_id
+        WHERE " . implode(' AND ', $seasonalWhere) . "
+        GROUP BY MONTH(pc.diagnosed_on), DATE_FORMAT(pc.diagnosed_on, '%b')
+        ORDER BY MONTH(pc.diagnosed_on)";
+    $seasonalStmt = $pdo->prepare($seasonalSql);
+    $seasonalStmt->execute($seasonalParams);
+    $seasonalDiseaseRows = $seasonalStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $sortedSeason = $seasonalDiseaseRows;
     usort($sortedSeason, fn($a, $b) => (int)$b['total_cases'] <=> (int)$a['total_cases']);
@@ -113,29 +169,83 @@ try {
     $seasonalTopMonths = [];
 }
 
+// 3. Top 5 Diseases & Monthly Disease Trends (Dynamic with Filters)
 try {
-    $topDiseaseSql = "SELECT condition_name, COUNT(*) AS total_cases
-        FROM patient_conditions
-        WHERE diagnosed_on IS NOT NULL
-        GROUP BY condition_name
+    $topDiseaseWhere = ["pc.diagnosed_on IS NOT NULL"];
+    $topDiseaseParams = [];
+    if ($fromDate !== '') {
+        $topDiseaseWhere[] = "DATE(pc.diagnosed_on) >= ?";
+        $topDiseaseParams[] = $fromDate;
+    }
+    if ($toDate !== '') {
+        $topDiseaseWhere[] = "DATE(pc.diagnosed_on) <= ?";
+        $topDiseaseParams[] = $toDate;
+    }
+    if ($barangayFilter !== '') {
+        $topDiseaseWhere[] = "p.barangay = ?";
+        $topDiseaseParams[] = $barangayFilter;
+    }
+    if (in_array($sexFilter, $validSex, true)) {
+        $topDiseaseWhere[] = "p.sex = ?";
+        $topDiseaseParams[] = $sexFilter;
+    }
+    if (in_array($ageGroupFilter, $validAgeGroups, true)) {
+        $topDiseaseWhere[] = $buildAgeWhere('p.birth_date') . " = ?";
+        $topDiseaseParams[] = $ageGroupFilter;
+    }
+
+    $topDiseaseSql = "SELECT pc.condition_name, COUNT(*) AS total_cases
+        FROM patient_conditions pc
+        INNER JOIN patients p ON p.id = pc.patient_id
+        WHERE " . implode(' AND ', $topDiseaseWhere) . "
+        GROUP BY pc.condition_name
         ORDER BY total_cases DESC
         LIMIT 5";
-    $topDiseases = $pdo->query($topDiseaseSql)->fetchAll(PDO::FETCH_ASSOC);
+    $topDiseaseStmt = $pdo->prepare($topDiseaseSql);
+    $topDiseaseStmt->execute($topDiseaseParams);
+    $topDiseases = $topDiseaseStmt->fetchAll(PDO::FETCH_ASSOC);
     $topDiseaseNames = array_map(fn($d) => $d['condition_name'], $topDiseases);
 
     if (!empty($topDiseaseNames)) {
+        $trendWhere = [
+            "pc.diagnosed_on IS NOT NULL",
+            "pc.condition_name IN (" . implode(',', array_fill(0, count($topDiseaseNames), '?')) . ")"
+        ];
+        $trendParams = $topDiseaseNames;
+        if ($fromDate !== '') {
+            $trendWhere[] = "DATE(pc.diagnosed_on) >= ?";
+            $trendParams[] = $fromDate;
+        } else {
+            $trendWhere[] = "pc.diagnosed_on >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
+        }
+        if ($toDate !== '') {
+            $trendWhere[] = "DATE(pc.diagnosed_on) <= ?";
+            $trendParams[] = $toDate;
+        }
+        if ($barangayFilter !== '') {
+            $trendWhere[] = "p.barangay = ?";
+            $trendParams[] = $barangayFilter;
+        }
+        if (in_array($sexFilter, $validSex, true)) {
+            $trendWhere[] = "p.sex = ?";
+            $trendParams[] = $sexFilter;
+        }
+        if (in_array($ageGroupFilter, $validAgeGroups, true)) {
+            $trendWhere[] = $buildAgeWhere('p.birth_date') . " = ?";
+            $trendParams[] = $ageGroupFilter;
+        }
+
         $trendSql = "SELECT
-                DATE_FORMAT(diagnosed_on, '%Y-%m') AS ym,
-                condition_name,
+                DATE_FORMAT(pc.diagnosed_on, '%Y-%m') AS ym,
+                pc.condition_name,
                 COUNT(*) AS total_cases
-            FROM patient_conditions
-            WHERE diagnosed_on >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-              AND diagnosed_on IS NOT NULL
-              AND condition_name IN (" . implode(',', array_fill(0, count($topDiseaseNames), '?')) . ")
-            GROUP BY DATE_FORMAT(diagnosed_on, '%Y-%m'), condition_name
+            FROM patient_conditions pc
+            INNER JOIN patients p ON p.id = pc.patient_id
+            WHERE " . implode(' AND ', $trendWhere) . "
+            GROUP BY DATE_FORMAT(pc.diagnosed_on, '%Y-%m'), pc.condition_name
             ORDER BY ym ASC";
         $trendStmt = $pdo->prepare($trendSql);
-        $trendStmt->execute($topDiseaseNames);
+        $trendStmt->execute($trendParams);
         $trendRows = $trendStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $monthMap = [];
@@ -160,6 +270,7 @@ try {
     $diseaseTrendSeries = [];
 }
 
+// 4. Patient Medical Records (Dynamic with Filters, ALL records included without limit)
 try {
     $medicalRecordsWhere = [];
     $medicalRecordsParams = [];
@@ -174,6 +285,16 @@ try {
     if (in_array($ageGroupFilter, $validAgeGroups, true)) {
         $medicalRecordsWhere[] = $buildAgeWhere('p.birth_date') . " = ?";
         $medicalRecordsParams[] = $ageGroupFilter;
+    }
+    if ($fromDate !== '') {
+        $medicalRecordsWhere[] = "(DATE(p.created_at) >= ? OR pc.diagnosed_on >= ?)";
+        $medicalRecordsParams[] = $fromDate;
+        $medicalRecordsParams[] = $fromDate;
+    }
+    if ($toDate !== '') {
+        $medicalRecordsWhere[] = "(DATE(p.created_at) <= ? OR pc.diagnosed_on <= ?)";
+        $medicalRecordsParams[] = $toDate;
+        $medicalRecordsParams[] = $toDate;
     }
     $medicalRecordsSql = "SELECT
             p.id,
@@ -191,8 +312,7 @@ try {
         LEFT JOIN patient_allergies pa ON pa.patient_id = p.id
         " . (!empty($medicalRecordsWhere) ? 'WHERE ' . implode(' AND ', $medicalRecordsWhere) : '') . "
         GROUP BY p.id, p.first_name, p.last_name, p.sex, p.birth_date, p.barangay, p.status
-        ORDER BY p.id DESC
-        LIMIT 20";
+        ORDER BY p.id DESC";
     $medicalStmt = $pdo->prepare($medicalRecordsSql);
     $medicalStmt->execute($medicalRecordsParams);
     $medicalRecordsRows = $medicalStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -200,6 +320,7 @@ try {
     $medicalRecordsRows = [];
 }
 
+// 5. Patient Consultations (Dynamic with Filters, ALL records included without limit)
 try {
     $consultationWhere = ["v.visit_type = 'general'"];
     $consultationParams = [];
@@ -233,8 +354,7 @@ try {
         FROM visits v
         INNER JOIN patients p ON p.id = v.patient_id
         WHERE " . implode(' AND ', $consultationWhere) . "
-        ORDER BY v.visit_datetime DESC
-        LIMIT 25";
+        ORDER BY v.visit_datetime DESC";
     $consultationStmt = $pdo->prepare($consultationSql);
     $consultationStmt->execute($consultationParams);
     $consultationRows = $consultationStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -242,35 +362,39 @@ try {
     $consultationRows = [];
 }
 
+// 6. Population Report by Age Group and Gender (Dynamic with Filters)
 try {
-    $ageGenderSql = "SELECT
-            CASE
-                WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 0 AND 4 THEN '0-4'
-                WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 5 AND 12 THEN '5-12'
-                WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 13 AND 17 THEN '13-17'
-                WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 18 AND 35 THEN '18-35'
-                WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 36 AND 59 THEN '36-59'
-                ELSE '60+'
-            END AS age_group,
-            sex,
-            COUNT(*) AS total
-        FROM patients
-        WHERE status <> 'deceased'
-          " . ($barangayFilter !== '' ? "AND barangay = ?" : "") . "
-          " . (in_array($sexFilter, $validSex, true) ? "AND sex = ?" : "") . "
-          " . (in_array($ageGroupFilter, $validAgeGroups, true) ? "AND " . $buildAgeWhere('birth_date') . " = ?" : "") . "
-        GROUP BY age_group, sex
-        ORDER BY FIELD(age_group, '0-4','5-12','13-17','18-35','36-59','60+'), sex";
+    $ageGenderWhere = ["p.status <> 'deceased'"];
     $ageGenderParams = [];
     if ($barangayFilter !== '') {
+        $ageGenderWhere[] = "p.barangay = ?";
         $ageGenderParams[] = $barangayFilter;
     }
     if (in_array($sexFilter, $validSex, true)) {
+        $ageGenderWhere[] = "p.sex = ?";
         $ageGenderParams[] = $sexFilter;
     }
     if (in_array($ageGroupFilter, $validAgeGroups, true)) {
+        $ageGenderWhere[] = $buildAgeWhere('p.birth_date') . " = ?";
         $ageGenderParams[] = $ageGroupFilter;
     }
+    if ($fromDate !== '') {
+        $ageGenderWhere[] = "DATE(p.created_at) >= ?";
+        $ageGenderParams[] = $fromDate;
+    }
+    if ($toDate !== '') {
+        $ageGenderWhere[] = "DATE(p.created_at) <= ?";
+        $ageGenderParams[] = $toDate;
+    }
+
+    $ageGenderSql = "SELECT
+            " . $buildAgeWhere('p.birth_date') . " AS age_group,
+            p.sex,
+            COUNT(*) AS total
+        FROM patients p
+        WHERE " . implode(' AND ', $ageGenderWhere) . "
+        GROUP BY age_group, p.sex
+        ORDER BY FIELD(age_group, '0-4','5-12','13-17','18-35','36-59','60+'), p.sex";
     $ageGenderStmt = $pdo->prepare($ageGenderSql);
     $ageGenderStmt->execute($ageGenderParams);
     $ageGenderRows = $ageGenderStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -296,6 +420,7 @@ try {
     $femaleCounts = [0, 0, 0, 0, 0, 0];
 }
 
+// Handle CSV Exports
 if ($exportType !== '') {
     if ($exportType === 'medical_records') {
         $rows = array_map(function (array $row): array {
@@ -332,65 +457,163 @@ if ($exportType !== '') {
     }
 }
 
+// Prepare filter summary text for display & print metadata
+$filterSummaryParts = [];
+if ($fromDate !== '' || $toDate !== '') {
+    $filterSummaryParts[] = 'Period: ' . ($fromDate ?: 'Start') . ' to ' . ($toDate ?: 'Present');
+}
+if ($barangayFilter !== '') {
+    $filterSummaryParts[] = 'Barangay: ' . $barangayFilter;
+}
+if ($sexFilter !== '') {
+    $filterSummaryParts[] = 'Gender: ' . ucfirst($sexFilter);
+}
+if ($ageGroupFilter !== '') {
+    $filterSummaryParts[] = 'Age Group: ' . $ageGroupFilter;
+}
+$filterSummaryText = !empty($filterSummaryParts) ? implode(' | ', $filterSummaryParts) : 'All Records (No Filters Applied)';
+
+$currentUserFullName = $_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Health Center Staff';
+$currentUserRole = ($_SESSION['role'] ?? '') === 'admin' ? 'System Administrator / Admin' : 'Barangay Health Worker (BHW)';
+$currentDateTimeFormatted = date('F j, Y, h:i A');
+
 require __DIR__ . '/partials/header.php';
 ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow">
-  <div class="text-sm text-slate-500">Admin Reports</div>
-  <div class="text-2xl font-semibold">Disease and Activity Reports</div>
-  <p class="text-sm text-slate-500 mt-1">Disease values come from patient condition records (`patient_conditions`).</p>
+<!-- Printable Official Header (Visible only when full-page printing) -->
+<div id="printOfficialHeader" class="hidden print:block mb-6 border-b-2 border-slate-800 pb-4">
+  <div class="flex items-center justify-between gap-4">
+    <div class="shrink-0">
+      <svg class="w-16 h-16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="46" fill="#0f766e" stroke="#115e59" stroke-width="2"/>
+        <circle cx="50" cy="50" r="41" fill="#ffffff" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <path d="M43 25 h14 v18 h18 v14 h-18 v18 h-14 v-18 h-18 v-14 h18 z" fill="#0ea5a4" opacity="0.3"/>
+        <rect x="44" y="24" width="12" height="52" rx="2" fill="#0f766e"/>
+        <rect x="24" y="44" width="52" height="12" rx="2" fill="#0f766e"/>
+        <circle cx="50" cy="50" r="7" fill="#ffffff"/>
+        <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="#0f766e"/>
+      </svg>
+    </div>
+    <div class="text-center flex-1">
+      <div class="text-xs uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines</div>
+      <div class="text-xs uppercase tracking-wider text-slate-700 font-medium">Department of Health • Primary Care Services</div>
+      <div class="text-base font-bold text-slate-900 tracking-wide uppercase mt-0.5">Barangay Health Center & Care Hub</div>
+      <div class="text-xs font-semibold text-teal-800">HealthLogs Information Management System</div>
+    </div>
+    <div class="shrink-0 text-right text-xs text-slate-500">
+      <div><strong>Date:</strong> <?= date('M d, Y') ?></div>
+      <div><strong>Time:</strong> <?= date('h:i A') ?></div>
+    </div>
+  </div>
+  <div class="mt-3 bg-slate-50 p-2.5 rounded border border-slate-200 flex flex-wrap justify-between items-center text-xs text-slate-700">
+    <div><strong>Filter Scope:</strong> <?= h($filterSummaryText) ?></div>
+    <div><strong>Generated By:</strong> <?= h($currentUserFullName) ?> (<?= h($currentUserRole) ?>)</div>
+  </div>
 </div>
 
-<form method="get" class="mt-6 bg-white p-4 rounded-xl shadow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-  <input type="date" name="from" value="<?= h($fromDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
-  <input type="date" name="to" value="<?= h($toDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
-  <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-    <option value="">All barangays</option>
-    <?php foreach ($barangayOptions as $opt): ?>
-      <option value="<?= h($opt) ?>" <?= $barangayFilter === $opt ? 'selected' : '' ?>><?= h($opt) ?></option>
-    <?php endforeach; ?>
-  </select>
-  <select name="sex" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-    <option value="">All genders</option>
-    <option value="male" <?= $sexFilter === 'male' ? 'selected' : '' ?>>Male</option>
-    <option value="female" <?= $sexFilter === 'female' ? 'selected' : '' ?>>Female</option>
-  </select>
-  <select name="age_group" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-    <option value="">All age groups</option>
-    <?php foreach ($validAgeGroups as $grp): ?>
-      <option value="<?= h($grp) ?>" <?= $ageGroupFilter === $grp ? 'selected' : '' ?>><?= h($grp) ?></option>
-    <?php endforeach; ?>
-  </select>
-  <div class="flex flex-wrap gap-2">
-    <button type="submit" class="flex-1 sm:flex-initial bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition">Apply</button>
-    <a href="/HealthLogs/public/reports.php" class="flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition">Clear</a>
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow print:hidden">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <div class="text-sm text-slate-500 font-medium">Health Analytics & Reporting</div>
+      <div class="text-2xl font-semibold text-slate-900">Disease, Consultation and Activity Reports</div>
+      <p class="text-sm text-slate-500 mt-1">Dynamic reporting synchronized across patient medical records, consultations, demographics, and disease trends.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="button" onclick="window.print()" class="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
+        <i class="fas fa-print"></i>
+        <span>Print Full Report</span>
+      </button>
+    </div>
   </div>
+</div>
+
+<!-- Dynamic Filter Bar -->
+<form method="get" class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow print:hidden">
+  <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Filter Options (Dynamic Filtering)</div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    <div>
+      <label class="block text-xs font-medium text-slate-600 mb-1">From Date</label>
+      <input type="date" name="from" value="<?= h($fromDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-slate-600 mb-1">To Date</label>
+      <input type="date" name="to" value="<?= h($toDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-slate-600 mb-1">Barangay</label>
+      <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+        <option value="">All barangays</option>
+        <?php foreach ($barangayOptions as $opt): ?>
+          <option value="<?= h($opt) ?>" <?= $barangayFilter === $opt ? 'selected' : '' ?>><?= h($opt) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-slate-600 mb-1">Gender / Sex</label>
+      <select name="sex" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+        <option value="">All genders</option>
+        <option value="male" <?= $sexFilter === 'male' ? 'selected' : '' ?>>Male</option>
+        <option value="female" <?= $sexFilter === 'female' ? 'selected' : '' ?>>Female</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-slate-600 mb-1">Age Group</label>
+      <select name="age_group" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+        <option value="">All age groups</option>
+        <?php foreach ($validAgeGroups as $grp): ?>
+          <option value="<?= h($grp) ?>" <?= $ageGroupFilter === $grp ? 'selected' : '' ?>><?= h($grp) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div class="flex items-end gap-2">
+      <button type="submit" class="flex-1 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-800 transition shadow">
+        <i class="fas fa-filter mr-1 text-xs"></i> Apply
+      </button>
+      <a href="/HealthLogs/public/reports.php" class="flex-1 text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition">
+        Reset
+      </a>
+    </div>
+  </div>
+
+  <?php if ($filterSummaryText !== 'All Records (No Filters Applied)'): ?>
+    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="font-semibold text-slate-700">Active Filter:</span>
+        <span class="inline-flex items-center bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-0.5 rounded-full font-medium">
+          <?= h($filterSummaryText) ?>
+        </span>
+      </div>
+      <span class="text-slate-500"><?= count($medicalRecordsRows) ?> patients found</span>
+    </div>
+  <?php endif; ?>
 </form>
 
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
+<!-- Section: Patient Medical Records -->
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
     <div>
-      <div class="text-lg font-semibold">Patient Medical Records</div>
-      <p class="text-sm text-slate-500 mt-0.5">Latest 20 patients with condition/allergy summary.</p>
+      <div class="text-lg font-semibold text-slate-900">Patient Medical Records</div>
+      <p class="text-sm text-slate-500 mt-0.5">Complete list of registered patients with condition and allergy summaries (<?= count($medicalRecordsRows) ?> records total).</p>
     </div>
-    <div class="flex items-center gap-3 self-end sm:self-auto">
-      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition" onclick="printSection('section-medical-records')">
-        <i class="fas fa-print mr-1.5 text-xs"></i>Print/PDF
+    <div class="flex items-center gap-3 self-end sm:self-auto print:hidden">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-sm" onclick="printReportSection('section-medical-records', 'Official Report: Patient Medical Records')">
+        <i class="fas fa-print mr-1.5 text-xs text-teal-700"></i>Print with Header & Signatory
       </button>
-      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'medical_records']))) ?>">
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-sm" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'medical_records']))) ?>">
         <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
       </a>
     </div>
   </div>
+
   <div id="section-medical-records">
-    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
       <input id="medicalSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, barangay, status..." />
-      <div class="text-xs text-slate-500">10 rows per page</div>
+      <div class="text-xs text-slate-500">10 rows per page (all <?= count($medicalRecordsRows) ?> shown on print)</div>
     </div>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
       <table class="min-w-full text-sm min-w-[650px]" id="medicalTable">
       <thead>
-        <tr class="border-b text-slate-500 uppercase text-xs">
+        <tr class="border-b text-slate-500 uppercase text-xs bg-slate-50/75">
           <th class="text-left px-3 py-2.5">Patient</th>
           <th class="text-left px-3 py-2.5">Sex</th>
           <th class="text-left px-3 py-2.5">Birth Date</th>
@@ -402,24 +625,24 @@ require __DIR__ . '/partials/header.php';
       </thead>
       <tbody id="medicalTableBody">
         <?php if (empty($medicalRecordsRows)): ?>
-          <tr><td class="px-3 py-3 text-slate-500" colspan="7">No patient medical records to display.</td></tr>
+          <tr><td class="px-3 py-4 text-slate-500 text-center" colspan="7">No patient medical records found matching current filters.</td></tr>
         <?php else: ?>
           <?php foreach ($medicalRecordsRows as $row): ?>
-            <tr class="border-t border-slate-100">
+            <tr class="border-t border-slate-100 hover:bg-slate-50/50">
               <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h(ucfirst((string)$row['sex'])) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap capitalize"><?= h((string)$row['sex']) ?></td>
               <td class="px-3 py-2 whitespace-nowrap"><?= h($row['birth_date']) ?></td>
               <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h((string)$row['conditions_count']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h((string)$row['allergies_count']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['latest_diagnosis_date'] ?: '-') ?></td>
+              <td class="px-3 py-2 whitespace-nowrap text-center"><?= h((string)$row['conditions_count']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap text-center"><?= h((string)$row['allergies_count']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['latest_diagnosis_date'] ?: '—') ?></td>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
       </tbody>
     </table>
     </div>
-    <div class="mt-3 flex items-center justify-between text-sm">
+    <div class="mt-3 flex items-center justify-between text-sm print:hidden">
       <div id="medicalPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
       <div class="flex gap-2">
         <button id="medicalPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Prev</button>
@@ -429,30 +652,32 @@ require __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
+<!-- Section: Patient Consultation -->
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
     <div>
-      <div class="text-lg font-semibold">Patient Consultation</div>
-      <p class="text-sm text-slate-500 mt-0.5">Most recent 25 general consultation entries.</p>
+      <div class="text-lg font-semibold text-slate-900">Patient Consultation</div>
+      <p class="text-sm text-slate-500 mt-0.5">Recorded general consultations matching active filters (<?= count($consultationRows) ?> records total).</p>
     </div>
-    <div class="flex items-center gap-3 self-end sm:self-auto">
-      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition" onclick="printSection('section-consultation')">
-        <i class="fas fa-print mr-1.5 text-xs"></i>Print/PDF
+    <div class="flex items-center gap-3 self-end sm:self-auto print:hidden">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-sm" onclick="printReportSection('section-consultation', 'Official Report: Patient Consultations')">
+        <i class="fas fa-print mr-1.5 text-xs text-teal-700"></i>Print with Header & Signatory
       </button>
-      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'consultation']))) ?>">
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-sm" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'consultation']))) ?>">
         <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
       </a>
     </div>
   </div>
+
   <div id="section-consultation">
-    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
       <input id="consultationSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, barangay, reason, notes..." />
-      <div class="text-xs text-slate-500">10 rows per page</div>
+      <div class="text-xs text-slate-500">10 rows per page (all <?= count($consultationRows) ?> shown on print)</div>
     </div>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
       <table class="min-w-full text-sm min-w-[600px]" id="consultationTable">
       <thead>
-        <tr class="border-b text-slate-500 uppercase text-xs">
+        <tr class="border-b text-slate-500 uppercase text-xs bg-slate-50/75">
           <th class="text-left px-3 py-2.5">Date</th>
           <th class="text-left px-3 py-2.5">Patient</th>
           <th class="text-left px-3 py-2.5">Barangay</th>
@@ -462,22 +687,22 @@ require __DIR__ . '/partials/header.php';
       </thead>
       <tbody id="consultationTableBody">
         <?php if (empty($consultationRows)): ?>
-          <tr><td class="px-3 py-3 text-slate-500" colspan="5">No consultation records to display.</td></tr>
+          <tr><td class="px-3 py-4 text-slate-500 text-center" colspan="5">No consultation records found matching current filters.</td></tr>
         <?php else: ?>
           <?php foreach ($consultationRows as $row): ?>
-            <tr class="border-t border-slate-100">
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['consult_date']) ?></td>
+            <tr class="border-t border-slate-100 hover:bg-slate-50/50">
+              <td class="px-3 py-2 whitespace-nowrap font-medium text-slate-800"><?= h($row['consult_date']) ?></td>
               <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
               <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay']) ?></td>
-              <td class="px-3 py-2"><?= h($row['reason'] ?: '-') ?></td>
-              <td class="px-3 py-2"><?= h($row['notes'] ?: '-') ?></td>
+              <td class="px-3 py-2"><?= h($row['reason'] ?: '—') ?></td>
+              <td class="px-3 py-2"><?= h($row['notes'] ?: '—') ?></td>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
       </tbody>
     </table>
     </div>
-    <div class="mt-3 flex items-center justify-between text-sm">
+    <div class="mt-3 flex items-center justify-between text-sm print:hidden">
       <div id="consultationPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
       <div class="flex gap-2">
         <button id="consultationPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Prev</button>
@@ -487,17 +712,18 @@ require __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
+<!-- Section: Population Report by Age Group and Gender -->
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
     <div>
-      <div class="text-lg font-semibold">Population Report by Age Group and Gender</div>
-      <p class="text-sm text-slate-500 mt-0.5">Counts of active/inactive (non-deceased) patients.</p>
+      <div class="text-lg font-semibold text-slate-900">Population Report by Age Group and Gender</div>
+      <p class="text-sm text-slate-500 mt-0.5">Demographic distribution for non-deceased community members.</p>
     </div>
-    <div class="flex items-center gap-3 self-end sm:self-auto">
-      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition" onclick="printSection('section-population')">
-        <i class="fas fa-print mr-1.5 text-xs"></i>Print/PDF
+    <div class="flex items-center gap-3 self-end sm:self-auto print:hidden">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-sm" onclick="printReportSection('section-population', 'Official Demographic Report: Age & Gender Distribution')">
+        <i class="fas fa-print mr-1.5 text-xs text-teal-700"></i>Print Chart
       </button>
-      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'population']))) ?>">
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-sm" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'population']))) ?>">
         <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
       </a>
     </div>
@@ -509,61 +735,111 @@ require __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
-  <div class="text-lg font-semibold">Admission / Consultation Forecasting</div>
+<!-- Section: Forecasting -->
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <div class="text-lg font-semibold text-slate-900">Admission / Consultation Forecasting</div>
+      <p class="text-sm text-slate-500 mt-0.5">Trend projections based on historic weekly clinic visits.</p>
+    </div>
+  </div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-4">
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Consultation Forecast (Next 4 Weeks)</div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50/75 p-4">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Consultation Forecast (Next 4 Weeks)</div>
       <div class="mt-3 space-y-2 text-sm text-slate-700">
         <?php if (!empty($consultationForecast)): ?>
           <?php foreach ($consultationForecast as $i => $value): ?>
-            <div>Week <?= h((string)($i + 1)) ?>: <strong><?= h(number_format($value, 1)) ?></strong> consultations</div>
+            <div class="flex justify-between border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0">
+              <span>Week <?= h((string)($i + 1)) ?></span>
+              <strong><?= h(number_format($value, 1)) ?> consultations</strong>
+            </div>
           <?php endforeach; ?>
         <?php else: ?>
-          <div>Not enough consultation data yet.</div>
+          <div class="text-slate-400">Not enough consultation records for forecasting.</div>
         <?php endif; ?>
       </div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Admission Forecast (Next 4 Weeks)</div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50/75 p-4">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Total Visit / Intake Forecast (Next 4 Weeks)</div>
       <div class="mt-3 space-y-2 text-sm text-slate-700">
         <?php if (!empty($admissionForecast)): ?>
           <?php foreach ($admissionForecast as $i => $value): ?>
-            <div>Week <?= h((string)($i + 1)) ?>: <strong><?= h(number_format($value, 1)) ?></strong> admissions</div>
+            <div class="flex justify-between border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0">
+              <span>Week <?= h((string)($i + 1)) ?></span>
+              <strong><?= h(number_format($value, 1)) ?> visits</strong>
+            </div>
           <?php endforeach; ?>
         <?php else: ?>
-          <div>Not enough admission data yet.</div>
+          <div class="text-slate-400">Not enough visit records for forecasting.</div>
         <?php endif; ?>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Section: Seasonal Disease & Peak Months -->
 <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <div class="xl:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow">
-    <div class="text-lg font-semibold">Seasonal Disease</div>
-    <div class="mt-4 relative min-h-[200px]">
+  <div class="xl:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300">
+    <div class="text-lg font-semibold text-slate-900">Seasonal Disease Cases</div>
+    <p class="text-sm text-slate-500 mt-0.5">Diagnosed disease distribution per calendar month.</p>
+    <div class="mt-4 relative min-h-[200px]" id="section-seasonal">
       <canvas id="seasonalDiseaseChart" height="120"></canvas>
     </div>
   </div>
-  <div class="bg-white p-4 sm:p-6 rounded-xl shadow">
-    <div class="text-lg font-semibold">Peak Months</div>
+  <div class="bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300">
+    <div class="text-lg font-semibold text-slate-900">Peak Infection Months</div>
+    <p class="text-sm text-slate-500 mt-0.5">Highest recorded monthly incidence.</p>
     <ul class="mt-4 space-y-3 text-sm text-slate-700">
       <?php if (!empty($seasonalTopMonths)): ?>
         <?php foreach ($seasonalTopMonths as $row): ?>
-          <li class="border-b border-slate-100 pb-3 last:border-b-0 last:pb-0"><?= h($row['month_label']) ?>: <?= h((string)$row['total_cases']) ?> cases</li>
+          <li class="flex items-center justify-between border-b border-slate-100 pb-2.5 last:border-b-0 last:pb-0">
+            <span class="font-medium text-slate-800"><?= h($row['month_label']) ?></span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+              <?= h((string)$row['total_cases']) ?> cases
+            </span>
+          </li>
         <?php endforeach; ?>
       <?php else: ?>
-        <li>No disease diagnosis history yet.</li>
+        <li class="text-slate-400">No condition diagnosis history recorded yet.</li>
       <?php endif; ?>
     </ul>
   </div>
 </div>
 
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow">
-  <div class="text-lg font-semibold">Disease Case Trends (Top 5, Last 12 Months)</div>
-  <div class="mt-4 relative min-h-[200px]">
+<!-- Section: Disease Case Trends -->
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300">
+  <div class="text-lg font-semibold text-slate-900">Disease Case Trends (Top 5 Diseases)</div>
+  <p class="text-sm text-slate-500 mt-0.5">Monthly trajectory for top diagnosed conditions.</p>
+  <div class="mt-4 relative min-h-[200px]" id="section-trends">
     <canvas id="diseaseTrendChart" height="120"></canvas>
+  </div>
+</div>
+
+<!-- Printable Signatory Section (Visible on full page print) -->
+<div id="printOfficialSignatories" class="hidden print:block mt-12 pt-6 border-t-2 border-slate-800 page-break-inside-avoid">
+  <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-6">Official Signatures & Approval</div>
+  <div class="grid grid-cols-3 gap-6 text-center">
+    <div>
+      <div class="text-xs text-slate-600 text-left mb-10">Prepared by:</div>
+      <div class="font-bold text-slate-900 text-sm border-b border-slate-800 pb-1 uppercase"><?= h($currentUserFullName) ?></div>
+      <div class="text-xs text-slate-600 mt-1"><?= h($currentUserRole) ?></div>
+      <div class="text-[10px] text-slate-400 mt-0.5">Date: <?= date('M d, Y') ?></div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-600 text-left mb-10">Verified by:</div>
+      <div class="font-bold text-slate-900 text-sm border-b border-slate-800 pb-1 uppercase">___________________________</div>
+      <div class="text-xs text-slate-600 mt-1">Supervising Public Health Nurse</div>
+      <div class="text-[10px] text-slate-400 mt-0.5">Date: ____________________</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-600 text-left mb-10">Approved by:</div>
+      <div class="font-bold text-slate-900 text-sm border-b border-slate-800 pb-1 uppercase">___________________________</div>
+      <div class="text-xs text-slate-600 mt-1">Municipal Health Officer / Physician</div>
+      <div class="text-[10px] text-slate-400 mt-0.5">Date: ____________________</div>
+    </div>
+  </div>
+  <div class="mt-8 text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300 pt-2">
+    Official HealthLogs Health Information System Summary Report • Generated on <?= h($currentDateTimeFormatted) ?> • Confidential
   </div>
 </div>
 
@@ -575,15 +851,19 @@ require __DIR__ . '/partials/header.php';
   const maleCounts = <?= json_encode($maleCounts) ?>;
   const femaleCounts = <?= json_encode($femaleCounts) ?>;
 
+  let seasonalChartInstance = null;
+  let diseaseTrendChartInstance = null;
+  let populationChartInstance = null;
+
   if (seasonalDiseaseRows.length) {
-    new Chart(document.getElementById('seasonalDiseaseChart'), {
+    seasonalChartInstance = new Chart(document.getElementById('seasonalDiseaseChart'), {
       type: 'bar',
       data: {
         labels: seasonalDiseaseRows.map((row) => row.month_label),
         datasets: [{
           label: 'Cases',
           data: seasonalDiseaseRows.map((row) => Number(row.total_cases)),
-          backgroundColor: 'rgba(14,165,164,0.6)',
+          backgroundColor: 'rgba(14,165,164,0.65)',
           borderColor: '#0ea5a4',
           borderWidth: 1
         }]
@@ -605,11 +885,11 @@ require __DIR__ . '/partials/header.php';
       borderColor: palette[idx % palette.length],
       backgroundColor: palette[idx % palette.length],
       tension: 0.25,
-      pointRadius: 2,
+      pointRadius: 3,
       borderWidth: 2
     }));
 
-    new Chart(document.getElementById('diseaseTrendChart'), {
+    diseaseTrendChartInstance = new Chart(document.getElementById('diseaseTrendChart'), {
       type: 'line',
       data: { labels: diseaseTrendMonths, datasets },
       options: {
@@ -621,7 +901,7 @@ require __DIR__ . '/partials/header.php';
   }
 
   if (ageGroupLabels.length) {
-    new Chart(document.getElementById('populationAgeGenderChart'), {
+    populationChartInstance = new Chart(document.getElementById('populationAgeGenderChart'), {
       type: 'bar',
       data: {
         labels: ageGroupLabels,
@@ -678,7 +958,7 @@ require __DIR__ . '/partials/header.php';
       allRows.forEach((row) => { row.style.display = 'none'; });
       filtered.slice(start, end).forEach((row) => { row.style.display = ''; });
 
-      pageInfo.textContent = `Page ${page} of ${totalPages} (${filtered.length} results)`;
+      pageInfo.textContent = `Page ${page} of ${totalPages} (${filtered.length} matching rows)`;
       prevBtn.disabled = page <= 1;
       nextBtn.disabled = page >= totalPages;
       prevBtn.classList.toggle('opacity-50', prevBtn.disabled);
@@ -691,29 +971,246 @@ require __DIR__ . '/partials/header.php';
     render();
   }
 
-  function printSection(sectionId) {
+  // Official Print Function with Logo, Date, Signatory, and All Patients
+  function printReportSection(sectionId, reportTitle) {
     const section = document.getElementById(sectionId);
     if (!section) return;
-    const win = window.open('', '_blank', 'width=1000,height=700');
-    if (!win) return;
+
+    // Clone section content
+    const clone = section.cloneNode(true);
+
+    // Ensure all table rows are visible in print (remove pagination display:none)
+    clone.querySelectorAll('tr').forEach((row) => {
+      row.style.display = '';
+    });
+
+    // Remove search and pagination controls from the print output
+    clone.querySelectorAll('input, button, #medicalPageInfo, #consultationPageInfo, .print\\:hidden').forEach((el) => {
+      el.remove();
+    });
+
+    // Handle any canvas inside the clone by converting source canvas to image
+    const origCanvas = section.querySelector('canvas');
+    if (origCanvas) {
+      const img = document.createElement('img');
+      img.src = origCanvas.toDataURL('image/png');
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+      img.style.margin = '10px 0';
+      const cloneCanvas = clone.querySelector('canvas');
+      if (cloneCanvas && cloneCanvas.parentNode) {
+        cloneCanvas.parentNode.replaceChild(img, cloneCanvas);
+      }
+    }
+
+    const filterInfo = <?= json_encode($filterSummaryText) ?>;
+    const printUser = <?= json_encode($currentUserFullName) ?>;
+    const printRole = <?= json_encode($currentUserRole) ?>;
+    const printDate = <?= json_encode($currentDateTimeFormatted) ?>;
+
+    const win = window.open('', '_blank', 'width=1100,height=800');
+    if (!win) {
+      alert('Popup blocker prevented opening the print window. Please allow popups for this site.');
+      return;
+    }
+
     win.document.write(`
+      <!DOCTYPE html>
       <html>
       <head>
-        <title>Report Export</title>
+        <meta charset="utf-8">
+        <title>${reportTitle}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 24px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background: #f3f4f6; }
-          canvas { max-width: 100%; }
+          @page {
+            size: auto;
+            margin: 15mm 12mm 15mm 12mm;
+          }
+          body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 10px;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          .official-header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .header-center {
+            text-align: center;
+            flex: 1;
+            padding: 0 15px;
+          }
+          .rep-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #475569; font-weight: 600; }
+          .agency-title { font-size: 11px; text-transform: uppercase; color: #334155; font-weight: 600; margin-top: 1px; }
+          .hub-title { font-size: 15px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.5px; margin-top: 2px; }
+          .sys-title { font-size: 11px; color: #0f766e; font-weight: 700; margin-top: 1px; }
+          .doc-meta-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+          }
+          .doc-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 11px;
+          }
+          th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 9.5px;
+            letter-spacing: 0.5px;
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            text-align: left;
+          }
+          td {
+            border: 1px solid #e2e8f0;
+            padding: 6px 8px;
+            color: #1e293b;
+          }
+          tr:nth-child(even) td {
+            background-color: #f8fafc;
+          }
+          .signatory-grid {
+            margin-top: 36px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            page-break-inside: avoid;
+            text-align: center;
+          }
+          .sig-box {
+            display: flex;
+            flex-direction: column;
+          }
+          .sig-label {
+            font-size: 10.5px;
+            color: #475569;
+            text-align: left;
+            margin-bottom: 38px;
+          }
+          .sig-name {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 12px;
+            border-bottom: 1px solid #0f172a;
+            padding-bottom: 2px;
+          }
+          .sig-role {
+            font-size: 10px;
+            color: #475569;
+            margin-top: 3px;
+          }
+          .sig-date {
+            font-size: 9.5px;
+            color: #94a3b8;
+            margin-top: 2px;
+          }
+          .watermark-footer {
+            margin-top: 24px;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 6px;
+            font-size: 9px;
+            color: #94a3b8;
+            text-align: center;
+          }
         </style>
       </head>
-      <body>${section.innerHTML}</body>
+      <body>
+        <div class="official-header">
+          <div>
+            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="50" r="46" fill="#0f766e" stroke="#115e59" stroke-width="2"/>
+              <circle cx="50" cy="50" r="41" fill="#ffffff" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="3 2"/>
+              <path d="M43 25 h14 v18 h18 v14 h-18 v18 h-14 v-18 h-18 v-14 h18 z" fill="#0ea5a4" opacity="0.3"/>
+              <rect x="44" y="24" width="12" height="52" rx="2" fill="#0f766e"/>
+              <rect x="24" y="44" width="52" height="12" rx="2" fill="#0f766e"/>
+              <circle cx="50" cy="50" r="7" fill="#ffffff"/>
+              <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="#0f766e"/>
+            </svg>
+          </div>
+          <div class="header-center">
+            <div class="rep-title">Republic of the Philippines</div>
+            <div class="agency-title">Department of Health • Primary Care Services</div>
+            <div class="hub-title">Barangay Health Center & Care Hub</div>
+            <div class="sys-title">HealthLogs Information Management System</div>
+          </div>
+          <div style="text-align: right; font-size: 10px; color: #64748b;">
+            <div><strong>Date:</strong> <?= date('M d, Y') ?></div>
+            <div><strong>Time:</strong> <?= date('h:i A') ?></div>
+          </div>
+        </div>
+
+        <div class="doc-meta-box">
+          <div>
+            <div class="doc-title">${reportTitle}</div>
+            <div style="color: #475569; margin-top: 2px;"><strong>Filter Scope:</strong> ${filterInfo}</div>
+          </div>
+          <div style="text-align: right; color: #475569;">
+            <div><strong>Generated By:</strong> ${printUser}</div>
+            <div><strong>Designation:</strong> ${printRole}</div>
+          </div>
+        </div>
+
+        <div class="report-content">
+          ${clone.innerHTML}
+        </div>
+
+        <div class="signatory-grid">
+          <div class="sig-box">
+            <div class="sig-label">Prepared by:</div>
+            <div class="sig-name">${printUser}</div>
+            <div class="sig-role">${printRole}</div>
+            <div class="sig-date">Date: <?= date('M d, Y') ?></div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">Verified by:</div>
+            <div class="sig-name">___________________________</div>
+            <div class="sig-role">Supervising Public Health Nurse</div>
+            <div class="sig-date">Date: ____________________</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">Approved by:</div>
+            <div class="sig-name">___________________________</div>
+            <div class="sig-role">Municipal Health Officer / Physician</div>
+            <div class="sig-date">Date: ____________________</div>
+          </div>
+        </div>
+
+        <div class="watermark-footer">
+          Official HealthLogs System Generated Document • Certified Medical & Program Records • Timestamp: ${printDate}
+        </div>
+      </body>
       </html>
     `);
+
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); }, 300);
+    setTimeout(() => {
+      win.print();
+    }, 400);
   }
 
   setupTableControls({

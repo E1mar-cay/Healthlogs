@@ -71,7 +71,7 @@ class SmsHelper {
 
         $patientName = ($patient['first_name'] ?? '') . ' ' . ($patient['last_name'] ?? '');
         $dueDate = date('M d, Y', strtotime($reminder['due_date'] ?? 'now'));
-        $type = ucfirst($reminder['reminder_type'] ?? 'Health');
+        $type = ucfirst(str_replace('_', ' ', $reminder['reminder_type'] ?? 'Health'));
 
         // Formulate SMS message text
         $message = "HealthLogs Reminder for {$patientName}:\n";
