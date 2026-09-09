@@ -13,6 +13,11 @@ if ($id) {
     $patient = $stmt->fetch();
 }
 
+if (!$patient && ($_SESSION['role'] ?? '') === 'admin') {
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><script src="https://cdn.tailwindcss.com"></script></head><body class="p-8 font-sans text-center text-rose-600 bg-slate-50"><div class="p-6 bg-white rounded-xl shadow border border-rose-200 inline-block font-semibold"><i class="fas fa-lock mr-2"></i>Only Barangay Health Workers (BHW) are authorized to register new patients.</div></body></html>';
+    exit;
+}
+
 $title = $patient ? 'Edit Patient' : 'New Patient';
 ?>
 <!DOCTYPE html>

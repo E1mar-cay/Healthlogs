@@ -8,6 +8,12 @@ function field($key, $default = null) {
 $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 $isEmbed = trim((string)field('form_context', '')) === 'embed';
 
+if ($id === 0 && ($_SESSION['role'] ?? '') === 'admin') {
+    flash('error', 'Only Barangay Health Workers (BHW) are authorized to register new patients.');
+    header('Location: /HealthLogs/public/patients/index.php');
+    exit;
+}
+
 // Validate input using helper functions from app/Core/Validator.php
 $validationErrors = [];
 $firstNameRaw = field('first_name', '');

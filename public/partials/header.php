@@ -395,6 +395,10 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           <span class="nav-icon">IN</span>
           <span class="nav-text font-medium">Medicine Inventory</span>
         </a>
+        <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php" title="Reminders">
+          <span class="nav-icon">RM</span>
+          <span class="nav-text font-medium">Reminders</span>
+        </a>
 
         <?php if (($_SESSION['role'] ?? 'health_worker') === 'admin'): ?>
           <div class="nav-section">Administration</div>
@@ -405,10 +409,6 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php" title="User Management">
             <span class="nav-icon">US</span>
             <span class="nav-text font-medium">User Management</span>
-          </a>
-          <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php" title="Reminders">
-            <span class="nav-icon">RM</span>
-            <span class="nav-text font-medium">Reminders</span>
           </a>
           <a class="nav-link <?= $isActive('/HealthLogs/public/forecast') ? 'active' : '' ?>" href="/HealthLogs/public/forecast.php" title="Forecasting">
             <span class="nav-icon">FC</span>

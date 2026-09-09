@@ -10,6 +10,12 @@ if ($id) {
     $patient = $stmt->fetch();
 }
 
+if (!$patient && ($_SESSION['role'] ?? '') === 'admin') {
+    flash('error', 'Only Barangay Health Workers (BHW) are authorized to register new patients.');
+    header('Location: /HealthLogs/public/patients/index.php');
+    exit;
+}
+
 $pageTitle = $patient ? 'Edit Patient' : 'New Patient';
 require __DIR__ . '/../partials/header.php';
 ?>

@@ -1,5 +1,33 @@
 <?php
 $pageTitle = 'Health Worker Dashboard';
+require __DIR__ . '/../partials/bootstrap.php';
+
+$hwStats = [
+    'total_patients' => 0,
+    'scheduled_vaccines' => 0,
+    'pending_reminders' => 0,
+    'due_today_reminders' => 0,
+    'low_stock_medicines' => 0,
+];
+
+$upcomingReminders = [];
+
+try {
+    $hwStats['total_patients'] = (int)$pdo->query("SELECT COUNT(*) FROM patients WHERE status = 'active'")->fetchColumn();
+    $hwStats['scheduled_vaccines'] = (int)$pdo->query("SELECT COUNT(*) FROM immunization_schedule WHERE status = 'scheduled'")->fetchColumn();
+    $hwStats['pending_reminders'] = (int)$pdo->query("SELECT COUNT(*) FROM reminders WHERE status = 'pending'")->fetchColumn();
+    $hwStats['due_today_reminders'] = (int)$pdo->query("SELECT COUNT(*) FROM reminders WHERE status = 'pending' AND due_date <= CURDATE()")->fetchColumn();
+    
+    $upcomingReminders = $pdo->query("
+        SELECT r.*, p.first_name, p.last_name, p.contact_no, p.barangay
+        FROM reminders r
+        JOIN patients p ON p.id = r.patient_id
+        WHERE r.status = 'pending'
+        ORDER BY r.due_date ASC
+        LIMIT 5
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {}
+
 require __DIR__ . '/../partials/header.php';
 ?>
 
@@ -7,118 +35,182 @@ require __DIR__ . '/../partials/header.php';
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
-      <div class="text-2xl font-semibold">Health Worker Dashboard</div>
-      <p class="text-sm text-slate-500 mt-1">Daily intake, priority programs, and care follow-ups.</p>
+      <div class="text-2xl font-semibold text-slate-900 mt-1">Health Worker Dashboard</div>
+      <p class="text-sm text-slate-500 mt-1">Daily patient intake, priority community health programs, and outreach reminders.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span class="app-chip">Shift Ready</span>
-      <span class="app-chip">Field Tasks</span>
+      <span class="app-chip bg-teal-50 text-teal-700 border border-teal-200">
+        <i class="fas fa-user-nurse mr-1"></i> BHW Shift Ready
+      </span>
+      <a href="/HealthLogs/public/reminders.php" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow transition">
+        <i class="fas fa-bell"></i> Reminders Queue (<?= $hwStats['pending_reminders'] ?>)
+      </a>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+  <!-- Patient Intake Card -->
   <div class="bg-white p-5 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
     <div>
       <div class="flex items-center gap-3">
-        <span class="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-semibold">PT</span>
+        <span class="h-11 w-11 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-base shadow-xs">
+          <i class="fas fa-users"></i>
+        </span>
         <div>
-          <div class="text-xs uppercase tracking-widest text-slate-400">Today</div>
-          <div class="text-2xl font-semibold mt-1">Patient Intake</div>
+          <div class="text-xs uppercase tracking-widest text-slate-400 font-bold">Patient Records</div>
+          <div class="text-2xl font-bold mt-0.5 text-slate-900"><?= number_format($hwStats['total_patients']) ?></div>
         </div>
       </div>
-      <div class="text-sm text-slate-500 mt-3">Register or update records.</div>
+      <div class="text-xs text-slate-500 mt-3">Register new patients &amp; update records.</div>
     </div>
-    <a class="w-full sm:w-auto inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium shadow hover:bg-slate-800 transition" href="/HealthLogs/public/patients/index.php">Open Patients</a>
+    <a class="w-full inline-flex items-center justify-center mt-4 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/patients/index.php">
+      Open Patients
+    </a>
   </div>
+
+  <!-- Immunization Card -->
   <div class="bg-white p-5 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
     <div>
       <div class="flex items-center gap-3">
-        <span class="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-semibold">IM</span>
+        <span class="h-11 w-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base shadow-xs">
+          <i class="fas fa-syringe"></i>
+        </span>
         <div>
-          <div class="text-xs uppercase tracking-widest text-slate-400">Programs</div>
-          <div class="text-2xl font-semibold mt-1">Immunization</div>
+          <div class="text-xs uppercase tracking-widest text-slate-400 font-bold">Immunization</div>
+          <div class="text-2xl font-bold mt-0.5 text-slate-900"><?= number_format($hwStats['scheduled_vaccines']) ?></div>
         </div>
       </div>
-      <div class="text-sm text-slate-500 mt-3">Log vaccines and schedules.</div>
+      <div class="text-xs text-slate-500 mt-3">Log vaccines, schedules &amp; TCL-2.</div>
     </div>
-    <a class="w-full sm:w-auto inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium shadow hover:bg-slate-800 transition" href="/HealthLogs/public/immunization.php">Open Immunization</a>
+    <a class="w-full inline-flex items-center justify-center mt-4 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/immunization.php">
+      Open Immunization
+    </a>
   </div>
+
+  <!-- Reminders & SMS Card -->
+  <div class="bg-white p-5 rounded-xl shadow border border-purple-200 bg-gradient-to-br from-white to-purple-50/40 flex flex-col justify-between">
+    <div>
+      <div class="flex items-center gap-3">
+        <span class="h-11 w-11 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-base shadow-xs">
+          <i class="fas fa-bell"></i>
+        </span>
+        <div>
+          <div class="text-xs uppercase tracking-widest text-purple-700 font-bold">SMS Reminders</div>
+          <div class="text-2xl font-bold mt-0.5 text-purple-950"><?= number_format($hwStats['pending_reminders']) ?></div>
+        </div>
+      </div>
+      <div class="text-xs text-purple-800 font-medium mt-3">
+        <?php if ($hwStats['due_today_reminders'] > 0): ?>
+          <span class="text-rose-600 font-bold"><i class="fas fa-circle-exclamation mr-1"></i><?= $hwStats['due_today_reminders'] ?> due today</span> for outreach
+        <?php else: ?>
+          Patient follow-up notifications
+        <?php endif; ?>
+      </div>
+    </div>
+    <a class="w-full inline-flex items-center justify-center mt-4 px-3.5 py-2 rounded-lg bg-purple-700 text-white text-xs font-semibold shadow hover:bg-purple-800 transition" href="/HealthLogs/public/reminders.php">
+      Open Reminders
+    </a>
+  </div>
+
+  <!-- Medicine Inventory Card -->
   <div class="bg-white p-5 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
     <div>
       <div class="flex items-center gap-3">
-        <span class="h-12 w-12 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold">MD</span>
+        <span class="h-11 w-11 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-base shadow-xs">
+          <i class="fas fa-pills"></i>
+        </span>
         <div>
-          <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
-          <div class="text-2xl font-semibold mt-1">Medicine</div>
+          <div class="text-xs uppercase tracking-widest text-slate-400 font-bold">Inventory</div>
+          <div class="text-2xl font-bold mt-0.5 text-slate-900">Medicine</div>
         </div>
       </div>
-      <div class="text-sm text-slate-500 mt-3">Dispense and track stock.</div>
+      <div class="text-xs text-slate-500 mt-3">Dispense and track supplies.</div>
     </div>
-    <a class="w-full sm:w-auto inline-flex items-center justify-center mt-4 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium shadow hover:bg-slate-800 transition" href="/HealthLogs/public/inventory.php">Open Inventory</a>
+    <a class="w-full inline-flex items-center justify-center mt-4 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/inventory.php">
+      Open Inventory
+    </a>
   </div>
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-  <div class="bg-white p-5 rounded shadow xl:col-span-2">
-    <div class="flex items-center justify-between">
+  <!-- Reminders List -->
+  <div class="bg-white p-5 rounded-xl shadow border border-slate-100 xl:col-span-2">
+    <div class="flex items-center justify-between border-b pb-3">
       <div>
-        <div class="text-sm text-slate-500">Work Queue</div>
-        <div class="text-lg font-semibold">Daily Checklist</div>
+        <div class="text-xs uppercase font-bold tracking-wider text-purple-700">Patient Outreach Queue</div>
+        <div class="text-lg font-bold text-slate-900 mt-0.5">Upcoming Reminders &amp; Follow-ups</div>
       </div>
-      <span class="text-xs text-slate-400 uppercase tracking-widest">Today</span>
+      <a class="text-xs text-purple-700 hover:underline font-semibold" href="/HealthLogs/public/reminders.php">
+        View All Reminders &rarr;
+      </a>
     </div>
-    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">Immunization</div>
-        <div class="text-xl font-semibold mt-1">Schedules Due</div>
-        <p class="text-slate-500 text-sm mt-1">Check today’s scheduled vaccines.</p>
-      </div>
-      <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">Maternal</div>
-        <div class="text-xl font-semibold mt-1">Prenatal Visits</div>
-        <p class="text-slate-500 text-sm mt-1">Record checkups for mothers.</p>
-      </div>
-      <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
-        <div class="text-xl font-semibold mt-1">Dispense</div>
-        <p class="text-slate-500 text-sm mt-1">Update dispensed medicines.</p>
-      </div>
 
-    </div>
-  </div>
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-sm text-slate-500">Quick Actions</div>
-    <div class="text-lg font-semibold">Shortcuts</div>
-    <div class="mt-4 space-y-2">
-      <a class="block px-4 py-3 rounded-xl bg-slate-900 text-white shadow" href="/HealthLogs/public/patients/form.php">New Patient</a>
-      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition" href="/HealthLogs/public/immunization/records/form.php">Add Vaccine Record</a>
-      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition" href="/HealthLogs/public/inventory/transactions/form.php">Dispense Medicine</a>
-    </div>
-  </div>
-</div>
-
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-sm text-slate-500">Reminders</div>
-    <div class="text-lg font-semibold">Upcoming Tasks</div>
     <div class="mt-4 space-y-3">
-      <div class="flex items-start gap-3">
-        <span class="mt-1 h-2 w-2 rounded-full bg-emerald-400"></span>
-        <div class="text-sm text-slate-600">Check immunization schedules due today.</div>
-      </div>
-
-      <div class="flex items-start gap-3">
-        <span class="mt-1 h-2 w-2 rounded-full bg-indigo-400"></span>
-        <div class="text-sm text-slate-600">Record prenatal visit outcomes.</div>
-      </div>
+      <?php if (empty($upcomingReminders)): ?>
+        <div class="py-6 text-center text-slate-400 text-sm">
+          <i class="fas fa-check-circle text-emerald-500 text-xl block mb-1"></i>
+          All patient reminders are up to date! No pending follow-ups.
+        </div>
+      <?php else: ?>
+        <?php foreach ($upcomingReminders as $rem): ?>
+          <?php 
+            $isPastDue = strtotime($rem['due_date']) < strtotime(date('Y-m-d'));
+            $isToday = $rem['due_date'] === date('Y-m-d');
+            $badgeColor = $isPastDue ? 'bg-rose-100 text-rose-800 border-rose-200' : ($isToday ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200');
+            $badgeText = $isPastDue ? 'Overdue' : ($isToday ? 'Due Today' : 'Upcoming');
+          ?>
+          <div class="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shrink-0">
+                <i class="fas fa-comment-sms"></i>
+              </span>
+              <div>
+                <div class="font-bold text-slate-900 text-sm">
+                  <?= h($rem['first_name'] . ' ' . $rem['last_name']) ?>
+                  <span class="text-xs font-normal text-slate-400">&bull; <?= h($rem['barangay']) ?></span>
+                </div>
+                <div class="text-xs text-slate-600 mt-0.5">
+                  <strong class="uppercase text-[11px] text-purple-700"><?= h($rem['reminder_type'] ?? 'General') ?>:</strong> 
+                  <?= h($rem['message']) ?>
+                </div>
+              </div>
+            </div>
+            <div class="text-right shrink-0 ml-4">
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border <?= $badgeColor ?>">
+                <?= $badgeText ?>
+              </span>
+              <div class="text-xs font-mono text-slate-500 mt-1"><?= h($rem['due_date']) ?></div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-sm text-slate-500">Help</div>
-    <div class="text-lg font-semibold">Quick Guide</div>
-    <div class="mt-4 h-40 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 text-sm">
-      Workflow tips & shortcuts
+
+  <!-- Quick Actions -->
+  <div class="bg-white p-5 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
+    <div>
+      <div class="text-xs uppercase font-bold tracking-wider text-slate-400">Shortcuts</div>
+      <div class="text-lg font-bold text-slate-900 mt-0.5">Quick Actions</div>
+      
+      <div class="mt-4 space-y-2">
+        <a class="block px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/patients/form.php">
+          <i class="fas fa-user-plus mr-2"></i>New Patient (BHW Intake)
+        </a>
+        <a class="block px-4 py-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100 text-xs font-semibold transition" href="/HealthLogs/public/reminders.php">
+          <i class="fas fa-bell mr-2 text-purple-600"></i>Send SMS Reminder
+        </a>
+        <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/immunization/tcl.php">
+          <i class="fas fa-table-list mr-2 text-teal-600"></i>Target Client List (TCL-2)
+        </a>
+        <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/immunization/records/form.php">
+          <i class="fas fa-syringe mr-2 text-blue-600"></i>Add Vaccine Record
+        </a>
+        <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/inventory/transactions/form.php">
+          <i class="fas fa-pills mr-2 text-amber-600"></i>Dispense Medicine
+        </a>
+      </div>
     </div>
   </div>
 </div>

@@ -315,8 +315,10 @@ require __DIR__ . '/../partials/header.php';
       <a target="_blank" href="/HealthLogs/public/patients/index.php?<?= h(http_build_query(array_merge($_GET, ['print' => '1']))) ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-medium border border-slate-300 transition shadow-xs">
         <i class="fas fa-print text-xs text-teal-700"></i> Print All Records
       </a>
-      <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition">New Patient</button>
-      <a href="/HealthLogs/public/patients/form.php" class="text-sm text-slate-600 underline underline-offset-2">Open full-page form</a>
+      <?php if (($_SESSION['role'] ?? '') !== 'admin'): ?>
+        <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition">New Patient</button>
+        <a href="/HealthLogs/public/patients/form.php" class="text-sm text-slate-600 underline underline-offset-2">Open full-page form</a>
+      <?php endif; ?>
     </div>
   </div>
 </div>
