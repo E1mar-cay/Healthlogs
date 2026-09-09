@@ -34,13 +34,13 @@ try {
         exit;
     }
     
-    // Delete the user
-    $deleteStmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-    $deleteStmt->execute([$userId]);
+    // Disable the user instead of deleting
+    $updateStmt = $pdo->prepare("UPDATE users SET status = 'inactive' WHERE id = ?");
+    $updateStmt->execute([$userId]);
     
     $pdo->commit();
     
-    $_SESSION['success_message'] = "User '{$user['username']}' deleted successfully";
+    $_SESSION['success_message'] = "User '{$user['username']}' has been disabled successfully.";
     
 } catch (Exception $e) {
     $pdo->rollBack();

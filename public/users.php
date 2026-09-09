@@ -191,18 +191,37 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
                                             <i class="fas fa-edit mr-1"></i>Edit
                                         </button>
                                         <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                            <form method="POST"
-                                                  action="/HealthLogs/public/users/delete.php"
-                                                  class="inline"
-                                                  data-confirm-title="Delete user"
-                                                  data-confirm="Are you sure you want to delete user &quot;<?= h($user['username']) ?>&quot;? This action cannot be undone."
-                                                  data-confirm-cta="Yes, delete user">
-                                                <input type="hidden" name="id" value="<?= (int)$user['id'] ?>">
-                                                <button class="text-red-600 hover:text-red-900 transition-colors px-2 py-1 border border-red-300 rounded hover:bg-red-50"
-                                                        title="Delete User">
-                                                    <i class="fas fa-trash mr-1"></i>Delete
-                                                </button>
-                                            </form>
+                                            <?php if ($user['status'] === 'active'): ?>
+                                                <form method="POST"
+                                                      action="/HealthLogs/public/users/toggle_status.php"
+                                                      class="inline"
+                                                      data-confirm-title="Disable user"
+                                                      data-confirm="Are you sure you want to disable user &quot;<?= h($user['username']) ?>&quot;? They will no longer be able to log in to the system."
+                                                      data-confirm-cta="Yes, disable user">
+                                                    <input type="hidden" name="id" value="<?= (int)$user['id'] ?>">
+                                                    <input type="hidden" name="status" value="inactive">
+                                                    <button type="submit"
+                                                            class="text-amber-600 hover:text-amber-900 transition-colors px-2.5 py-1 border border-amber-300 rounded hover:bg-amber-50 inline-flex items-center gap-1 text-xs font-medium"
+                                                            title="Disable User">
+                                                        <i class="fas fa-ban"></i>Disable
+                                                    </button>
+                                                </form>
+                                            <?php else: ?>
+                                                <form method="POST"
+                                                      action="/HealthLogs/public/users/toggle_status.php"
+                                                      class="inline"
+                                                      data-confirm-title="Enable user"
+                                                      data-confirm="Are you sure you want to enable user &quot;<?= h($user['username']) ?>&quot;? They will be able to log in to the system."
+                                                      data-confirm-cta="Yes, enable user">
+                                                    <input type="hidden" name="id" value="<?= (int)$user['id'] ?>">
+                                                    <input type="hidden" name="status" value="active">
+                                                    <button type="submit"
+                                                            class="text-emerald-600 hover:text-emerald-900 transition-colors px-2.5 py-1 border border-emerald-300 rounded hover:bg-emerald-50 inline-flex items-center gap-1 text-xs font-medium"
+                                                            title="Enable User">
+                                                        <i class="fas fa-check-circle"></i>Enable
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-gray-400 px-2 py-1 text-xs">Current User</span>
                                         <?php endif; ?>
