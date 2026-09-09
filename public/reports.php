@@ -519,6 +519,10 @@ require __DIR__ . '/partials/header.php';
       <p class="text-sm text-slate-500 mt-1">Dynamic reporting synchronized across patient medical records, consultations, demographics, and disease trends.</p>
     </div>
     <div class="flex items-center gap-2">
+      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2.5 rounded-lg text-sm font-medium shadow transition">
+        <i class="fas fa-table-list"></i>
+        <span>Child Immunization (TCL-2)</span>
+      </a>
       <button type="button" onclick="window.print()" class="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
         <i class="fas fa-print"></i>
         <span>Print Full Report</span>
