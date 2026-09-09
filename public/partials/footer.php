@@ -6,41 +6,83 @@
       const sidebar = document.getElementById('appSidebar');
       const overlay = document.getElementById('appOverlay');
       const toggle = document.getElementById('sidebarToggle');
+      const collapseBtn = document.getElementById('sidebarCollapseBtn');
+      const collapseIcon = document.getElementById('collapseIcon');
 
-      if (!sidebar || !overlay || !toggle) return;
+      // Initialize state from localStorage
+      const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+      if (isCollapsed && window.innerWidth >= 768) {
+        document.body.classList.add('sidebar-collapsed');
+        if (collapseIcon) {
+          collapseIcon.classList.remove('fa-angles-left');
+          collapseIcon.classList.add('fa-angles-right');
+        }
+      }
 
-      const open = () => {
+      const toggleDesktopCollapse = () => {
+        const currentlyCollapsed = document.body.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('sidebar_collapsed', currentlyCollapsed ? 'true' : 'false');
+        if (collapseIcon) {
+          if (currentlyCollapsed) {
+            collapseIcon.classList.remove('fa-angles-left');
+            collapseIcon.classList.add('fa-angles-right');
+          } else {
+            collapseIcon.classList.remove('fa-angles-right');
+            collapseIcon.classList.add('fa-angles-left');
+          }
+        }
+      };
+
+      const openMobile = () => {
         sidebar.classList.remove('-translate-x-full');
         overlay.classList.remove('opacity-0', 'pointer-events-none');
         overlay.classList.add('opacity-100', 'pointer-events-auto');
         document.body.classList.add('overflow-hidden');
       };
 
-      const close = () => {
+      const closeMobile = () => {
         sidebar.classList.add('-translate-x-full');
         overlay.classList.remove('opacity-100', 'pointer-events-auto');
         overlay.classList.add('opacity-0', 'pointer-events-none');
         document.body.classList.remove('overflow-hidden');
       };
 
-      toggle.addEventListener('click', () => {
-        if (sidebar.classList.contains('-translate-x-full')) {
-          open();
-        } else {
-          close();
-        }
-      });
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          if (window.innerWidth >= 768) {
+            toggleDesktopCollapse();
+          } else {
+            if (sidebar.classList.contains('-translate-x-full')) {
+              openMobile();
+            } else {
+              closeMobile();
+            }
+          }
+        });
+      }
 
-      overlay.addEventListener('click', close);
+      if (collapseBtn) {
+        collapseBtn.addEventListener('click', toggleDesktopCollapse);
+      }
+
+      if (overlay) overlay.addEventListener('click', closeMobile);
+
       window.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
-          close();
+          closeMobile();
         }
       });
 
       window.addEventListener('resize', () => {
         if (window.innerWidth >= 768) {
-          close();
+          closeMobile();
+          if (localStorage.getItem('sidebar_collapsed') === 'true') {
+            document.body.classList.add('sidebar-collapsed');
+            if (collapseIcon) {
+              collapseIcon.classList.remove('fa-angles-left');
+              collapseIcon.classList.add('fa-angles-right');
+            }
+          }
         }
       });
     })();

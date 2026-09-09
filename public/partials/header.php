@@ -66,6 +66,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       left: 0;
       margin-top: 0;
       padding-top: 0;
+      transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .app-sidebar::before {
@@ -86,11 +87,13 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
 
     .app-main {
       flex: 1;
+      transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     @media (min-width: 768px) {
       .app-sidebar {
         position: fixed;
+        width: 18rem;
       }
 
       .app-main {
@@ -100,12 +103,81 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       .app-topbar {
         padding-left: 18rem;
       }
+
+      /* Collapsed Sidebar on Desktop */
+      body.sidebar-collapsed .app-sidebar,
+      html.sidebar-collapsed body .app-sidebar {
+        width: 5rem;
+      }
+
+      body.sidebar-collapsed .app-main,
+      html.sidebar-collapsed body .app-main {
+        margin-left: 5rem;
+      }
+
+      body.sidebar-collapsed .app-topbar,
+      html.sidebar-collapsed body .app-topbar {
+        padding-left: 5rem;
+      }
+
+      body.sidebar-collapsed .app-brand-text,
+      body.sidebar-collapsed .app-brand-badge,
+      body.sidebar-collapsed .nav-text,
+      body.sidebar-collapsed .nav-section,
+      html.sidebar-collapsed body .app-brand-text,
+      html.sidebar-collapsed body .app-brand-badge,
+      html.sidebar-collapsed body .nav-text,
+      html.sidebar-collapsed body .nav-section {
+        display: none !important;
+      }
+
+      body.sidebar-collapsed .app-brand-container,
+      html.sidebar-collapsed body .app-brand-container {
+        padding: 1rem 0.5rem;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      body.sidebar-collapsed .nav-link,
+      html.sidebar-collapsed body .nav-link {
+        justify-content: center;
+        padding: 9px 0;
+        margin-left: 6px;
+        margin-right: 6px;
+        position: relative;
+      }
+
+      body.sidebar-collapsed .nav-link:hover::after,
+      html.sidebar-collapsed body .nav-link:hover::after {
+        content: attr(title);
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-left: 10px;
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 5px 11px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        z-index: 50;
+        pointer-events: none;
+      }
     }
 
     .app-topbar {
       position: sticky;
       top: 0;
       z-index: 20;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      transition: padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .app-brand {
@@ -156,6 +228,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       font-weight: 700;
       border-radius: 8px;
       background: rgba(148, 163, 184, 0.18);
+      flex-shrink: 0;
     }
 
     .nav-link.active .nav-icon,
@@ -170,12 +243,6 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       font-size: 10px;
       color: rgba(226, 232, 240, 0.45);
       padding: 10px 12px 4px;
-    }
-
-    .app-topbar {
-      background: rgba(255, 255, 255, 0.7);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--line);
     }
 
     .app-title {
@@ -266,59 +333,93 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       }
     }
   </style>
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem('sidebar_collapsed') === 'true' && window.innerWidth >= 768) {
+          document.documentElement.classList.add('sidebar-collapsed');
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 
 <body class="app-body">
   <div class="app-shell">
     <div id="appOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition md:hidden z-30"></div>
-    <aside id="appSidebar" class="w-72 flex flex-col app-sidebar fixed inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform duration-200">
-      <div class="px-6 py-6">
-        <div class="app-brand text-2xl font-semibold">HealthLogs</div>
-        <div class="app-brand-badge mt-2">Barangay Care Hub</div>
+    <aside id="appSidebar" class="flex flex-col app-sidebar fixed inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0">
+      <div class="px-5 py-5 flex items-center justify-between app-brand-container">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-600 text-white font-bold flex items-center justify-center shadow-sm shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 4v16"></path>
+              <path d="M4 12h16"></path>
+              <path d="M7 7h10v10H7z"></path>
+            </svg>
+          </span>
+          <div class="app-brand-text overflow-hidden">
+            <div class="app-brand text-xl font-bold text-white tracking-wide truncate">HealthLogs</div>
+            <div class="app-brand-badge mt-1">Barangay Care Hub</div>
+          </div>
+        </div>
+        <button id="sidebarCollapseBtn" type="button" class="hidden md:inline-flex text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/80 transition shrink-0" title="Collapse / Expand Sidebar">
+          <i class="fas fa-angles-left text-xs transition-transform duration-200" id="collapseIcon"></i>
+        </button>
       </div>
-      <nav class="flex-1 px-4 space-y-0.5 overflow-y-auto">
+      <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto">
         <div class="nav-section">Core</div>
-        <a class="nav-link <?= $isDashboard ? 'active' : '' ?>" href="/HealthLogs/public/index.php">
-          <span class="nav-icon">DB</span> Dashboard
+        <a class="nav-link <?= $isDashboard ? 'active' : '' ?>" href="/HealthLogs/public/index.php" title="Dashboard">
+          <span class="nav-icon">DB</span>
+          <span class="nav-text font-medium">Dashboard</span>
         </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/patients') ? 'active' : '' ?>" href="/HealthLogs/public/patients/index.php">
-          <span class="nav-icon">PT</span> Patient Records
+        <a class="nav-link <?= $isActive('/HealthLogs/public/patients') ? 'active' : '' ?>" href="/HealthLogs/public/patients/index.php" title="Patient Records">
+          <span class="nav-icon">PT</span>
+          <span class="nav-text font-medium">Patient Records</span>
         </a>
 
         <div class="nav-section">Programs</div>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/immunization') ? 'active' : '' ?>" href="/HealthLogs/public/immunization.php">
-          <span class="nav-icon">IM</span> Immunization
+        <a class="nav-link <?= $isActive('/HealthLogs/public/immunization') ? 'active' : '' ?>" href="/HealthLogs/public/immunization.php" title="Immunization">
+          <span class="nav-icon">IM</span>
+          <span class="nav-text font-medium">Immunization</span>
         </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/maternal') ? 'active' : '' ?>" href="/HealthLogs/public/maternal.php">
-          <span class="nav-icon">MH</span> Maternal Health
+        <a class="nav-link <?= $isActive('/HealthLogs/public/maternal') ? 'active' : '' ?>" href="/HealthLogs/public/maternal.php" title="Maternal Health">
+          <span class="nav-icon">MH</span>
+          <span class="nav-text font-medium">Maternal Health</span>
         </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/tb') ? 'active' : '' ?>" href="/HealthLogs/public/tb.php">
-          <span class="nav-icon">TB</span> TB Monitoring
+        <a class="nav-link <?= $isActive('/HealthLogs/public/tb') ? 'active' : '' ?>" href="/HealthLogs/public/tb.php" title="TB Monitoring">
+          <span class="nav-icon">TB</span>
+          <span class="nav-text font-medium">TB Monitoring</span>
         </a>
 
-        <a class="nav-link <?= $isActive('/HealthLogs/public/inventory') ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php">
-          <span class="nav-icon">IN</span> Medicine Inventory
+        <a class="nav-link <?= $isActive('/HealthLogs/public/inventory') ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicine Inventory">
+          <span class="nav-icon">IN</span>
+          <span class="nav-text font-medium">Medicine Inventory</span>
         </a>
 
         <?php if (($_SESSION['role'] ?? 'health_worker') === 'admin'): ?>
           <div class="nav-section">Administration</div>
-          <a class="nav-link <?= $isActive('/HealthLogs/public/reports') ? 'active' : '' ?>" href="/HealthLogs/public/reports.php">
-            <span class="nav-icon">RP</span> Reports
+          <a class="nav-link <?= $isActive('/HealthLogs/public/reports') ? 'active' : '' ?>" href="/HealthLogs/public/reports.php" title="Reports">
+            <span class="nav-icon">RP</span>
+            <span class="nav-text font-medium">Reports</span>
           </a>
-          <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php">
-            <span class="nav-icon">US</span> User Management
+          <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php" title="User Management">
+            <span class="nav-icon">US</span>
+            <span class="nav-text font-medium">User Management</span>
           </a>
-          <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php">
-            <span class="nav-icon">RM</span> Reminders
+          <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php" title="Reminders">
+            <span class="nav-icon">RM</span>
+            <span class="nav-text font-medium">Reminders</span>
           </a>
-          <a class="nav-link <?= $isActive('/HealthLogs/public/forecast') ? 'active' : '' ?>" href="/HealthLogs/public/forecast.php">
-            <span class="nav-icon">FC</span> Forecasting
+          <a class="nav-link <?= $isActive('/HealthLogs/public/forecast') ? 'active' : '' ?>" href="/HealthLogs/public/forecast.php" title="Forecasting">
+            <span class="nav-icon">FC</span>
+            <span class="nav-text font-medium">Forecasting</span>
           </a>
         <?php endif; ?>
       </nav>
-      <div class="px-4 pb-6 mt-auto pt-2 border-t border-slate-700/40">
-        <a class="nav-link" href="/HealthLogs/public/logout.php">
-          <span class="nav-icon">LG</span> Logout
+      <div class="px-3 pb-5 mt-auto pt-2 border-t border-slate-800/80">
+        <a class="nav-link text-rose-300 hover:text-rose-100 hover:bg-rose-950/30" href="/HealthLogs/public/logout.php" title="Logout">
+          <span class="nav-icon bg-rose-950/40 text-rose-300">LG</span>
+          <span class="nav-text font-medium">Logout</span>
         </a>
       </div>
     </aside>
@@ -327,7 +428,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       <header class="app-topbar">
         <div class="w-full px-3 sm:px-4 md:px-6 py-3.5 flex items-center justify-between">
           <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <button id="sidebarToggle" aria-label="Toggle navigation" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white/80 text-slate-700 shadow-xs shrink-0">
+            <button id="sidebarToggle" aria-label="Toggle navigation" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white/90 text-slate-700 hover:bg-slate-100 shadow-xs shrink-0 transition" title="Toggle Sidebar">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="12" x2="21" y2="12"></line>
