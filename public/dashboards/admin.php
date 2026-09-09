@@ -161,10 +161,10 @@ try {
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <div class="text-sm text-slate-500">Reports</div>
-      <div class="text-lg font-semibold">Administrative Summary</div>
-      <p class="text-sm text-slate-500 mt-1">Quick printable overview of key program highlights.</p>
+      <div class="text-lg font-semibold text-slate-900">Administrative Summary</div>
+      <p class="text-sm text-slate-500 mt-1">Official printable overview of primary healthcare operations, program metrics, and clinical trends.</p>
     </div>
-    <button class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow hover:bg-slate-800 transition" onclick="window.print()">
+    <button class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow hover:bg-slate-800 transition" onclick="printDashboardReport()">
       <i class="fas fa-print mr-2"></i>Print Report
     </button>
   </div>
@@ -172,30 +172,30 @@ try {
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
     <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
       <div class="text-xs uppercase tracking-widest text-slate-400">Coverage</div>
-      <div class="text-xl font-semibold mt-1">Immunization</div>
+      <div class="text-xl font-semibold mt-1 text-slate-900">Immunization</div>
       <p class="text-slate-500 text-sm mt-1">Monitor completion rates and missed schedules.</p>
     </div>
     <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
       <div class="text-xs uppercase tracking-widest text-slate-400">Care</div>
-      <div class="text-xl font-semibold mt-1">Maternal Health</div>
+      <div class="text-xl font-semibold mt-1 text-slate-900">Maternal Health</div>
       <p class="text-slate-500 text-sm mt-1">Track prenatal and postnatal visit consistency.</p>
+    </div>
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
+      <div class="text-xl font-semibold mt-1 text-slate-900">Stock Health</div>
+      <p class="text-slate-500 text-sm mt-1">Identify low-stock and expiring medicines.</p>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-      <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
-      <div class="text-xl font-semibold mt-1">Stock Health</div>
-      <p class="text-slate-500 text-sm mt-1">Identify low-stock and expiring medicines.</p>
-    </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
     <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
       <div class="text-xs uppercase tracking-widest text-slate-400">Outreach</div>
-      <div class="text-xl font-semibold mt-1">Reminders</div>
+      <div class="text-xl font-semibold mt-1 text-slate-900">Reminders</div>
       <p class="text-slate-500 text-sm mt-1">Upcoming tasks and overdue follow-ups.</p>
     </div>
     <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
       <div class="text-xs uppercase tracking-widest text-slate-400">Forecast</div>
-      <div class="text-xl font-semibold mt-1">Next 30 Days</div>
+      <div class="text-xl font-semibold mt-1 text-slate-900">Next 30 Days</div>
       <p class="text-slate-500 text-sm mt-1">Projected demand for planning resources.</p>
     </div>
   </div>
@@ -204,25 +204,25 @@ try {
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
   <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
     <div class="text-sm text-slate-500">Alerts</div>
-    <div class="text-lg font-semibold">Needs Attention</div>
+    <div class="text-lg font-semibold text-slate-900">Needs Attention</div>
     <ul class="mt-3 text-sm text-slate-600 space-y-2">
-      <li>3 vaccines expiring within 60 days.</li>
-      <li>5 patients overdue for immunization follow-up.</li>
-      <li>Review inactive accounts and reminder backlog.</li>
+      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><?= h((string)$adminStats['low_stock_items']) ?> medicine items below reorder level.</li>
+      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><?= h((string)$adminStats['pending_reminders']) ?> pending reminders due for dispatch.</li>
+      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span><?= h((string)$adminStats['ongoing_pregnancies']) ?> active maternal health ongoing pregnancies.</li>
     </ul>
   </div>
   <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
     <div class="text-sm text-slate-500">Forecast Snapshot</div>
-    <div class="text-lg font-semibold">Patient Visits</div>
+    <div class="text-lg font-semibold text-slate-900">Patient Visits</div>
     <p class="mt-1 text-sm text-slate-500" id="adminForecastIntro">Loading forecast summary...</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div class="text-xs uppercase tracking-widest text-slate-400">Average / Day</div>
-        <div class="mt-1 text-xl font-semibold" id="adminForecastAverage">--</div>
+        <div class="mt-1 text-xl font-semibold text-slate-900" id="adminForecastAverage">--</div>
       </div>
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div class="text-xs uppercase tracking-widest text-slate-400">Peak Day</div>
-        <div class="mt-1 text-xl font-semibold" id="adminForecastPeak">--</div>
+        <div class="mt-1 text-xl font-semibold text-slate-900" id="adminForecastPeak">--</div>
       </div>
     </div>
     <div class="mt-4 relative min-h-[160px]">
@@ -235,6 +235,8 @@ try {
 </div>
 
 <script>
+  let adminForecastChartInstance = null;
+
   (function () {
     const introEl = document.getElementById('adminForecastIntro');
     const averageEl = document.getElementById('adminForecastAverage');
@@ -262,7 +264,7 @@ try {
         averageEl.textContent = Number(data.summary.forecast_average).toFixed(1);
         peakEl.textContent = data.summary.peak_date;
 
-        new Chart(canvas, {
+        adminForecastChartInstance = new Chart(canvas, {
           type: 'line',
           data: {
             labels: data.forecast.map((row) => row.date),
@@ -291,6 +293,366 @@ try {
         renderFallback('Forecast is not ready yet. Open the full forecast page to review details.');
       });
   }());
+
+  function printDashboardReport() {
+    const printUser = <?= json_encode($_SESSION['full_name'] ?? $_SESSION['username'] ?? 'System Administrator') ?>;
+    const printRole = 'System Administrator / Admin';
+    const printDate = <?= json_encode(date('F j, Y, h:i A')) ?>;
+    const todayDate = <?= json_encode(date('M d, Y')) ?>;
+
+    const totalPatients = <?= json_encode(number_format($adminStats['total_patients'])) ?>;
+    const monthlyVisits = <?= json_encode(number_format($adminStats['monthly_visits'])) ?>;
+    const lowStockItems = <?= json_encode(number_format($adminStats['low_stock_items'])) ?>;
+    const activeUsers = <?= json_encode(number_format($adminStats['active_users'])) ?>;
+    const pendingReminders = <?= json_encode(number_format($adminStats['pending_reminders'])) ?>;
+    const ongoingPregnancies = <?= json_encode(number_format($adminStats['ongoing_pregnancies'])) ?>;
+
+    const avgEl = document.getElementById('adminForecastAverage');
+    const peakEl = document.getElementById('adminForecastPeak');
+    const forecastAvg = avgEl ? avgEl.textContent : '--';
+    const forecastPeak = peakEl ? peakEl.textContent : '--';
+
+    let chartImgHtml = '';
+    const chartCanvas = document.getElementById('adminForecastChart');
+    if (chartCanvas) {
+      try {
+        const chartDataUrl = chartCanvas.toDataURL('image/png');
+        chartImgHtml = `<div style="margin-top: 14px; text-align: center;"><img src="${chartDataUrl}" style="max-width: 100%; height: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px;" alt="Visits Forecast Chart" /></div>`;
+      } catch (e) {}
+    }
+
+    const win = window.open('', '_blank', 'width=1100,height=800');
+    if (!win) {
+      alert('Popup blocker prevented opening the print window. Please allow popups for this site.');
+      return;
+    }
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Executive Administrative & Program Summary Report</title>
+        <style>
+          @page {
+            size: auto;
+            margin: 15mm 12mm 15mm 12mm;
+          }
+          body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 10px;
+            font-size: 11.5px;
+            line-height: 1.4;
+          }
+          .official-header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .header-center {
+            text-align: center;
+            flex: 1;
+            padding: 0 15px;
+          }
+          .rep-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #475569; font-weight: 600; }
+          .agency-title { font-size: 11px; text-transform: uppercase; color: #334155; font-weight: 600; margin-top: 1px; }
+          .hub-title { font-size: 15px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.5px; margin-top: 2px; }
+          .sys-title { font-size: 11px; color: #0f766e; font-weight: 700; margin-top: 1px; }
+          .doc-meta-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+          }
+          .doc-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #1e293b;
+            margin: 16px 0 8px 0;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 4px;
+          }
+          .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+          }
+          .kpi-card {
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 10px 12px;
+          }
+          .kpi-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            font-weight: 600;
+          }
+          .kpi-val {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-top: 2px;
+          }
+          .kpi-sub {
+            font-size: 9.5px;
+            color: #64748b;
+            margin-top: 2px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+            font-size: 11px;
+          }
+          th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 9.5px;
+            letter-spacing: 0.5px;
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            text-align: left;
+          }
+          td {
+            border: 1px solid #e2e8f0;
+            padding: 6px 8px;
+            color: #1e293b;
+          }
+          tr:nth-child(even) td {
+            background-color: #f8fafc;
+          }
+          .signatory-grid {
+            margin-top: 36px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            page-break-inside: avoid;
+            text-align: center;
+          }
+          .sig-box {
+            display: flex;
+            flex-direction: column;
+          }
+          .sig-label {
+            font-size: 10.5px;
+            color: #475569;
+            text-align: left;
+            margin-bottom: 38px;
+          }
+          .sig-name {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 12px;
+            border-bottom: 1px solid #0f172a;
+            padding-bottom: 2px;
+          }
+          .sig-role {
+            font-size: 10px;
+            color: #475569;
+            margin-top: 3px;
+          }
+          .sig-date {
+            font-size: 9.5px;
+            color: #94a3b8;
+            margin-top: 2px;
+          }
+          .watermark-footer {
+            margin-top: 24px;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 6px;
+            font-size: 9px;
+            color: #94a3b8;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="official-header">
+          <div>
+            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="50" r="46" fill="#0f766e" stroke="#115e59" stroke-width="2"/>
+              <circle cx="50" cy="50" r="41" fill="#ffffff" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="3 2"/>
+              <path d="M43 25 h14 v18 h18 v14 h-18 v18 h-14 v-18 h-18 v-14 h18 z" fill="#0ea5a4" opacity="0.3"/>
+              <rect x="44" y="24" width="12" height="52" rx="2" fill="#0f766e"/>
+              <rect x="24" y="44" width="52" height="12" rx="2" fill="#0f766e"/>
+              <circle cx="50" cy="50" r="7" fill="#ffffff"/>
+              <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="#0f766e"/>
+            </svg>
+          </div>
+          <div class="header-center">
+            <div class="rep-title">Republic of the Philippines</div>
+            <div class="agency-title">Department of Health • Primary Care Services</div>
+            <div class="hub-title">Barangay Health Center & Care Hub</div>
+            <div class="sys-title">HealthLogs Information Management System</div>
+          </div>
+          <div style="text-align: right; font-size: 10px; color: #64748b;">
+            <div><strong>Date:</strong> ${todayDate}</div>
+            <div><strong>Time:</strong> <?= date('h:i A') ?></div>
+          </div>
+        </div>
+
+        <div class="doc-meta-box">
+          <div>
+            <div class="doc-title">Official Report: Executive Administrative & Program Summary</div>
+            <div style="color: #475569; margin-top: 2px;"><strong>Scope:</strong> Primary Healthcare Operations, Active Programs & Operational Metrics</div>
+          </div>
+          <div style="text-align: right; color: #475569;">
+            <div><strong>Generated By:</strong> ${printUser}</div>
+            <div><strong>Designation:</strong> ${printRole}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Key Program Metrics & Indicators</div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Registered Patients</div>
+            <div class="kpi-val">${totalPatients}</div>
+            <div class="kpi-sub">Total active records</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Monthly Clinic Visits</div>
+            <div class="kpi-val">${monthlyVisits}</div>
+            <div class="kpi-sub">Recorded this month</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Low Stock Medicines</div>
+            <div class="kpi-val">${lowStockItems}</div>
+            <div class="kpi-sub">Items below reorder point</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Active User Accounts</div>
+            <div class="kpi-val">${activeUsers}</div>
+            <div class="kpi-sub">Staff & administrative accounts</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Pending Reminders</div>
+            <div class="kpi-val">${pendingReminders}</div>
+            <div class="kpi-sub">Due for SMS / follow-up</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Ongoing Pregnancies</div>
+            <div class="kpi-val">${ongoingPregnancies}</div>
+            <div class="kpi-sub">Active maternal cases</div>
+          </div>
+        </div>
+
+        <div class="section-title">Core Program Status</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Program / Domain</th>
+              <th>Status</th>
+              <th>Operational Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Immunization Module</strong></td>
+              <td><span style="color:#047857; font-weight:700;">Active & On Track</span></td>
+              <td>Routine vaccines and scheduled outreach tracking for infants and children.</td>
+            </tr>
+            <tr>
+              <td><strong>Maternal Health</strong></td>
+              <td><span style="color:#047857; font-weight:700;">Monitored</span></td>
+              <td>Prenatal vital checks, gestational age tracking, and postpartum care.</td>
+            </tr>
+            <tr>
+              <td><strong>Medicine Inventory</strong></td>
+              <td><span style="color:${lowStockItems > '0' ? '#b91c1c' : '#047857'}; font-weight:700;">${lowStockItems > '0' ? 'Needs Attention' : 'Optimal'}</span></td>
+              <td>Stock replenishment monitoring with ${lowStockItems} items below reorder threshold.</td>
+            </tr>
+            <tr>
+              <td><strong>Patient Engagement & Reminders</strong></td>
+              <td><span style="color:#047857; font-weight:700;">Automated</span></td>
+              <td>Daily scheduled SMS reminders dispatched to patients for upcoming care visits.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="section-title">Visit Forecast Snapshot & Resource Planning</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Forecast Metric</th>
+              <th>Projected Value</th>
+              <th>Clinical Planning Insight</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Projected Average Intake</strong></td>
+              <td><strong>${forecastAvg} visits / day</strong></td>
+              <td>Estimated daily patient visit load over the next forecasting horizon.</td>
+            </tr>
+            <tr>
+              <td><strong>Expected Peak Date</strong></td>
+              <td><strong>${forecastPeak}</strong></td>
+              <td>Projected high-volume intake day requiring adequate staff and supply allocation.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        ${chartImgHtml}
+
+        <div class="signatory-grid">
+          <div class="sig-box">
+            <div class="sig-label">Prepared by:</div>
+            <div class="sig-name">${printUser}</div>
+            <div class="sig-role">${printRole}</div>
+            <div class="sig-date">Date: ${todayDate}</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">Verified by:</div>
+            <div class="sig-name">___________________________</div>
+            <div class="sig-role">Supervising Public Health Nurse</div>
+            <div class="sig-date">Date: ____________________</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-label">Approved by:</div>
+            <div class="sig-name">___________________________</div>
+            <div class="sig-role">Municipal Health Officer / Physician</div>
+            <div class="sig-date">Date: ____________________</div>
+          </div>
+        </div>
+
+        <div class="watermark-footer">
+          Official HealthLogs System Generated Document • Certified Executive Summary • Timestamp: ${printDate}
+        </div>
+      </body>
+      </html>
+    `);
+
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+    }, 400);
+  }
 </script>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>
