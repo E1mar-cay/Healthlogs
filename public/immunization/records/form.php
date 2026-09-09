@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require __DIR__ . '/../../partials/bootstrap.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -57,10 +57,6 @@ require __DIR__ . '/../../partials/header.php';
     <div>
       <label class="block text-sm text-slate-600">Administered At</label>
       <input name="administered_at" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('administered_at', str_replace(' ', 'T', $rec['administered_at'] ?? ''))) ?>" />
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">Lot No</label>
-      <input name="lot_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('lot_no', $rec['lot_no'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Notes</label>

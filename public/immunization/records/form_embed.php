@@ -66,10 +66,6 @@ $title = $rec ? 'Edit Immunization Record' : 'New Immunization Record';
         <input name="administered_at" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('administered_at', str_replace(' ', 'T', $rec['administered_at'] ?? ''))) ?>" />
       </div>
       <div>
-        <label class="block text-sm text-slate-600">Lot No</label>
-        <input name="lot_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('lot_no', $rec['lot_no'] ?? '')) ?>" />
-      </div>
-      <div>
         <label class="block text-sm text-slate-600">Notes</label>
         <textarea name="notes" class="mt-1 w-full border rounded px-3 py-2" rows="2"><?= h(old('notes', $rec['notes'] ?? '')) ?></textarea>
       </div>
