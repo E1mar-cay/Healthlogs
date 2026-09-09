@@ -515,7 +515,7 @@ require __DIR__ . '/partials/header.php';
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <div class="text-sm text-slate-500 font-medium">Health Analytics & Reporting</div>
-      <div class="text-2xl font-semibold text-slate-900">Disease, Consultation and Activity Reports</div>
+      <div class="text-2xl font-semibold text-slate-900">Reports</div>
       <p class="text-sm text-slate-500 mt-1">Dynamic reporting synchronized across patient medical records, consultations, demographics, and disease trends.</p>
     </div>
     <div class="flex items-center gap-2">
