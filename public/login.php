@@ -17,280 +17,306 @@ $recaptchaSiteKey = Recaptcha::siteKey();
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - HealthLogs</title>
+  <title>Login • HealthLogs - Barangay Care Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <?php if ($recaptchaSiteKey !== ''): ?>
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <?php endif; ?>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
     
-    :root {
-      --bg-1: #eef2ff;
-      --bg-2: #f0fdf4;
-      --ink: #0b1220;
-      --muted: #5b6b82;
-      --accent: #0ea5a4;
-      --accent-2: #2563eb;
-      --card: rgba(255, 255, 255, 0.92);
-      --line: rgba(15, 23, 42, 0.08);
-      --shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-    }
-    
-    body.app-body {
-      font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, var(--bg-1), transparent 60%),
-        radial-gradient(1000px 500px at 100% 0%, var(--bg-2), transparent 55%),
-        #f8fafc;
-      margin: 0;
-      overflow-x: hidden;
-      min-height: 100vh;
-    }
-
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
       box-sizing: border-box;
     }
-    
-    .login-card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      border-radius: 18px;
+
+    body {
+      font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      color: #0f172a;
+      overflow-x: hidden;
     }
-    
-    .hero-orb {
-      position: absolute;
-      width: 420px;
-      height: 420px;
-      border-radius: 999px;
-      background: radial-gradient(circle at 30% 30%, rgba(37,99,235,0.25), transparent 60%),
-        radial-gradient(circle at 60% 60%, rgba(14,165,164,0.2), transparent 65%);
-      filter: blur(0);
-      opacity: 0.9;
-    }
-    
-    .login-shell {
-      position: relative;
-      isolation: isolate;
-      width: 100%;
-      min-height: 100vh;
-    }
-    
-    .brand {
+
+    .brand-title-font {
       font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-      letter-spacing: 0.02em;
     }
 
-    .brand-mark {
-      width: 52px;
-      height: 52px;
-      border-radius: 16px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(145deg, rgba(37,99,235,0.16), rgba(14,165,164,0.2));
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    /* Left Hero Panel: Signature Sidebar Dark Navy / Slate Gradient */
+    .hero-panel {
+      background: linear-gradient(180deg, #0f172a 0%, #111827 60%, #090d16 100%);
+      position: relative;
+      overflow: hidden;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .brand-mark svg {
-      width: 28px;
-      height: 28px;
-      color: #0f4ccf;
-    }
-    
-    .login-card input {
-      background: rgba(248, 250, 252, 0.9);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-    }
-    
-    .login-card input:focus {
-      outline: 2px solid rgba(14,165,164,0.25);
-      border-color: rgba(14,165,164,0.6);
-    }
-    
-    .login-card label {
-      font-weight: 500;
-    }
-    
-    @media (max-width: 768px) {
-      .hero-orb {
-        width: 300px;
-        height: 300px;
-      }
-      .hero-orb:first-of-type {
-        left: -150px;
-        top: -150px;
-      }
-      .hero-orb:last-of-type {
-        right: -150px;
-        top: 0;
-      }
+    /* Background Ambient Watermark */
+    .hero-watermark {
+      position: absolute;
+      right: -80px;
+      bottom: -80px;
+      width: 560px;
+      height: 560px;
+      opacity: 0.06;
+      pointer-events: none;
+      user-select: none;
     }
 
-    @media (max-width: 640px) {
-      html,
-      body.app-body {
-        height: 100dvh;
-        min-height: 100dvh;
-        overflow: hidden;
-      }
+    /* Subtle Glass Pill */
+    .frosted-pill {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      transition: all 0.2s ease;
+    }
 
-      .login-shell {
-        height: 100dvh;
-        min-height: 100dvh;
-        padding-top: 12px;
-        padding-bottom: 12px;
-        align-items: center;
-        overflow: hidden;
-      }
+    .frosted-pill:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(96, 165, 250, 0.35);
+      transform: translateX(4px);
+    }
 
-      .login-card {
-        border-radius: 16px;
-        width: min(100%, 420px);
-        max-height: calc(100dvh - 24px);
-        min-height: 0;
-        overflow-y: auto;
-      }
+    /* Custom Input Styling */
+    .form-input-field {
+      background-color: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      color: #0f172a;
+      transition: all 0.2s ease;
+    }
 
-      .login-card > .grid {
-        display: block;
-      }
+    .form-input-field:focus {
+      background-color: #ffffff;
+      border-color: #2563eb;
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    }
 
-      .login-card > .grid > :last-child {
-        display: none !important;
-      }
+    /* Primary Action Button: Signature Blue */
+    .btn-login-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 60%, #1e40af 100%);
+      color: #ffffff;
+      transition: all 0.25s ease;
+    }
 
-      .hero-orb {
-        width: 220px;
-        height: 220px;
-        opacity: 0.65;
-      }
+    .btn-login-primary:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 60%, #172554 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
+    }
 
-      .hero-orb:first-of-type {
-        left: -120px;
-        top: -120px;
-      }
-
-      .hero-orb:last-of-type {
-        right: -120px;
-        top: 24px;
-      }
-
-      .login-card .p-6 {
-        padding: 1.25rem;
-      }
-
-      .brand-mark {
-        width: 46px;
-        height: 46px;
-        border-radius: 14px;
-      }
-
-      .brand-mark svg {
-        width: 24px;
-        height: 24px;
-      }
-
-      .login-card form {
-        margin-bottom: 0;
-      }
+    .btn-login-primary:active {
+      transform: translateY(0);
     }
   </style>
 </head>
-<body class="app-body">
-  <div class="min-h-screen flex items-center justify-center px-3 py-3 sm:px-4 sm:py-10 login-shell">
-    <span class="hero-orb -left-24 -top-32"></span>
-    <span class="hero-orb -right-32 top-32"></span>
+<body class="min-h-screen">
+  <div class="min-h-screen grid grid-cols-1 lg:grid-cols-12">
+    
+    <!-- LEFT PANEL: Signature Dark Navy / Slate Sidebar Blue Theme (7 cols on lg) -->
+    <div class="lg:col-span-6 xl:col-span-7 hero-panel flex flex-col justify-between p-8 sm:p-12 lg:p-16 text-white min-h-[380px] lg:min-h-screen">
+      
+      <!-- Big Logo Watermark Background -->
+      <div class="hero-watermark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-blue-400">
+          <circle cx="50" cy="50" r="46" fill="currentColor"/>
+          <circle cx="50" cy="50" r="40" stroke="#000" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.3"/>
+          <rect x="43" y="20" width="14" height="60" rx="3" fill="#000" opacity="0.3"/>
+          <rect x="20" y="43" width="60" height="14" rx="3" fill="#000" opacity="0.3"/>
+          <circle cx="50" cy="50" r="8" fill="#000" opacity="0.3"/>
+        </svg>
+      </div>
 
-    <div class="login-card w-full max-w-md md:max-w-5xl overflow-hidden relative">
-      <div class="grid grid-cols-1 md:grid-cols-2">
-        <!-- Left Side: Login Form -->
-        <div class="p-6 sm:p-8 md:p-10">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 4v16"></path>
-              <path d="M4 12h16"></path>
-              <path d="M7 7h10v10H7z"></path>
-            </svg>
-          </div>
-          <div class="brand text-2xl sm:text-3xl font-semibold text-slate-900">HealthLogs</div>
-          <p class="text-xs sm:text-sm text-slate-600 mt-2">Secure access for Barangay Health Units.</p>
-
-          <?php if ($error): ?>
-            <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center gap-2">
-              <i class="fas fa-exclamation-circle flex-shrink-0"></i>
-              <span><?= $error === 'captcha' ? 'Please complete the reCAPTCHA verification.' : 'Invalid username or password.' ?></span>
-            </div>
-          <?php endif; ?>
-
-          <form method="post" action="/HealthLogs/public/auth.php" class="mt-6 space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-700">Username</label>
-              <input name="username" required class="mt-2 w-full px-4 py-2.5 sm:py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm sm:text-base" placeholder="e.g. admin" />
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-slate-700">Password</label>
-              <div class="relative mt-2">
-                <input id="loginPassword" name="password" type="password" required class="w-full pl-4 pr-11 py-2.5 sm:py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm sm:text-base" placeholder="Enter password" />
-                <button type="button" id="toggleLoginPassword" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors" title="Show password" aria-label="Toggle password visibility">
-                  <i class="fas fa-eye text-sm sm:text-base"></i>
-                </button>
-              </div>
-            </div>
-
-            <?php if ($recaptchaSiteKey !== ''): ?>
-            <div class="flex justify-center sm:justify-start">
-              <div class="g-recaptcha" data-sitekey="<?= htmlspecialchars($recaptchaSiteKey, ENT_QUOTES, 'UTF-8') ?>"></div>
-            </div>
-            <?php endif; ?>
-            
-            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 sm:py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition-all mt-6 text-sm sm:text-base" type="submit">
-              <i class="fas fa-sign-in-alt mr-2"></i>Login
-            </button>
-          </form>
-
-
+      <!-- Top Branding -->
+      <div class="relative z-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-200 text-xs font-semibold backdrop-blur-xs">
+          <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+          Republic of the Philippines • DOH Primary Care
         </div>
 
-        <!-- Right Side: Info (Hidden on Mobile) -->
-        <div class="hidden md:flex flex-col justify-between p-8 md:p-10" style="background: linear-gradient(145deg, rgba(14,165,164,0.18), rgba(37,99,235,0.18));">
-          <div>
-            <div class="text-xs uppercase tracking-widest text-slate-600 font-semibold">Health Insights</div>
-            <div class="text-2xl font-bold text-slate-900 mt-3">Connected BHU Care</div>
-            <p class="text-sm text-slate-700 mt-3 leading-relaxed">
-              Track immunization, maternal health, and medicine inventory in one centralized dashboard.
-            </p>
-            <div class="mt-6 space-y-3">
-              <div class="flex items-start gap-3">
-                <i class="fas fa-check-circle text-teal-600 mt-1 flex-shrink-0 text-sm"></i>
-                <span class="text-sm text-slate-700">Real-time patient records</span>
-              </div>
-              <div class="flex items-start gap-3">
-                <i class="fas fa-check-circle text-teal-600 mt-1 flex-shrink-0 text-sm"></i>
-                <span class="text-sm text-slate-700">ARIMA forecasting</span>
-              </div>
-              <div class="flex items-start gap-3">
-                <i class="fas fa-check-circle text-teal-600 mt-1 flex-shrink-0 text-sm"></i>
-                <span class="text-sm text-slate-700">Automated reminders</span>
-              </div>
-            </div>
+        <div class="flex items-center gap-3.5 mt-8">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center p-2 shadow-lg shadow-blue-900/50 shrink-0 border border-blue-300/30">
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+              <circle cx="50" cy="50" r="46" fill="#ffffff" />
+              <rect x="43" y="22" width="14" height="56" rx="3" fill="#1e40af"/>
+              <rect x="22" y="43" width="56" height="14" rx="3" fill="#1e40af"/>
+              <circle cx="50" cy="50" r="7" fill="#ffffff"/>
+              <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="#1e40af"/>
+            </svg>
           </div>
-          <div class="text-xs text-slate-600 font-medium">
-            <i class="fas fa-shield-alt mr-1"></i>
-            Secure. Organized. Ready for forecasting.
+          <div>
+            <div class="brand-title-font text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-none">
+              HealthLogs
+            </div>
+            <div class="text-xs font-medium text-slate-400 mt-1">
+              Barangay Health Care Hub & Clinical Station
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Center Headline & Feature Highlights -->
+      <div class="relative z-10 max-w-xl my-8">
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold leading-snug tracking-tight text-white">
+          Unified Primary Health Records & Epidemiological Intelligence
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-300 mt-3 leading-relaxed">
+          Centralized electronic logs, maternal checkups, child immunization monitoring, and predictive ARIMA disease forecasting for Barangay Health Units.
+        </p>
+
+        <!-- Feature Pills -->
+        <div class="mt-6 space-y-2.5">
+          <div class="frosted-pill px-4 py-3 rounded-xl flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 text-sm">
+              <i class="fas fa-users-medical"></i>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-white">Comprehensive Patient Records</div>
+              <div class="text-[11px] text-slate-400">Real-time demographic profiles, visits, and clinical histories</div>
+            </div>
+          </div>
+
+          <div class="frosted-pill px-4 py-3 rounded-xl flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0 text-sm">
+              <i class="fas fa-chart-line-up"></i>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-white">ARIMA Outbreak Forecasting</div>
+              <div class="text-[11px] text-slate-400">Predictive monthly clinic visit trends for proactive planning</div>
+            </div>
+          </div>
+
+          <div class="frosted-pill px-4 py-3 rounded-xl flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0 text-sm">
+              <i class="fas fa-prescription-bottle-medical"></i>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-white">Medicine Inventory & SMS Alerts</div>
+              <div class="text-[11px] text-slate-400">Stock level tracking and automated appointment reminders</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Footnote -->
+      <div class="relative z-10 pt-4 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+        <span>Barangay Health Center Management System</span>
+        <span class="flex items-center gap-1.5 font-medium text-slate-400">
+          <i class="fas fa-circle-check text-emerald-400 text-[10px]"></i> Primary Care Services
+        </span>
+      </div>
+
     </div>
+
+    <!-- RIGHT PANEL: Clean Login Form (5 cols on lg) -->
+    <div class="lg:col-span-6 xl:col-span-5 bg-white flex flex-col justify-center px-6 sm:px-12 md:px-16 lg:px-16 py-10 lg:py-16 min-h-[500px]">
+      <div class="w-full max-w-md mx-auto">
+        
+        <!-- Welcome Header -->
+        <div class="mb-8">
+          <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight brand-title-font">
+            Welcome back
+          </h2>
+          <p class="text-slate-500 text-xs sm:text-sm mt-1.5 leading-relaxed">
+            Please enter your authorized credentials to access the clinic workstation.
+          </p>
+        </div>
+
+        <!-- Error Banner -->
+        <?php if ($error): ?>
+          <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs sm:text-sm text-red-700 flex items-start gap-2.5 shadow-xs">
+            <i class="fas fa-circle-exclamation text-red-500 text-base mt-0.5 shrink-0"></i>
+            <div>
+              <?= $error === 'captcha' ? 'Verification failed. Please complete the reCAPTCHA box below.' : 'Invalid username or password. Please verify your credentials and try again.' ?>
+            </div>
+          </div>
+        <?php endif; ?>
+
+        <!-- Login Form -->
+        <form method="post" action="/HealthLogs/public/auth.php" class="space-y-4">
+          <!-- Username Input -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5" for="usernameInput">
+              Username
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i class="fas fa-user-circle text-base"></i>
+              </span>
+              <input 
+                id="usernameInput"
+                name="username" 
+                type="text" 
+                required 
+                autocomplete="username"
+                class="form-input-field w-full pl-10 pr-4 py-3 rounded-xl text-sm sm:text-base font-medium placeholder-slate-400" 
+                placeholder="Enter username (e.g. admin)" 
+              />
+            </div>
+          </div>
+
+          <!-- Password Input -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5" for="loginPassword">
+              Password
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i class="fas fa-lock text-base"></i>
+              </span>
+              <input 
+                id="loginPassword" 
+                name="password" 
+                type="password" 
+                required 
+                autocomplete="current-password"
+                class="form-input-field w-full pl-10 pr-11 py-3 rounded-xl text-sm sm:text-base font-medium placeholder-slate-400" 
+                placeholder="••••••••••••" 
+              />
+              <button 
+                type="button" 
+                id="toggleLoginPassword" 
+                class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors" 
+                title="Show password" 
+                aria-label="Toggle password visibility">
+                <i class="fas fa-eye text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- reCAPTCHA if enabled -->
+          <?php if ($recaptchaSiteKey !== ''): ?>
+          <div class="pt-2 flex justify-start">
+            <div class="g-recaptcha" data-sitekey="<?= htmlspecialchars($recaptchaSiteKey, ENT_QUOTES, 'UTF-8') ?>"></div>
+          </div>
+          <?php endif; ?>
+
+          <!-- Primary Sign In Button -->
+          <div class="pt-2">
+            <button 
+              type="submit" 
+              class="btn-login-primary w-full font-semibold py-3.5 px-6 rounded-xl text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer shadow-md">
+              <span>Sign In to HealthLogs</span>
+              <i class="fas fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+        </form>
+
+        <!-- Help / Support Footer -->
+        <div class="mt-8 pt-6 border-t border-slate-100 text-center text-xs text-slate-500 space-y-1.5">
+          <div class="flex items-center justify-center gap-1.5 text-slate-600 font-medium">
+            <i class="fas fa-circle-info text-blue-600"></i>
+            <span>Need an account or password reset?</span>
+          </div>
+          <div>Please contact the <strong class="text-slate-700">Barangay Clinic Administrator</strong>.</div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
+
   <script>
     (function () {
       var toggleBtn = document.getElementById('toggleLoginPassword');
