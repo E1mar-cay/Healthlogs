@@ -518,12 +518,16 @@ require __DIR__ . '/partials/header.php';
       <div class="text-2xl font-semibold text-slate-900">Reports</div>
       <p class="text-sm text-slate-500 mt-1">Dynamic reporting synchronized across patient medical records, consultations, demographics, and disease trends.</p>
     </div>
-    <div class="flex items-center gap-2">
-      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2.5 rounded-lg text-sm font-medium shadow transition">
-        <i class="fas fa-table-list"></i>
-        <span>Child Immunization (TCL-2)</span>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3 py-2 rounded-lg text-xs font-semibold shadow transition">
+        <i class="fas fa-syringe"></i>
+        <span>Child TCL-2</span>
       </a>
-      <button type="button" onclick="window.print()" class="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
+      <a href="/HealthLogs/public/maternal/tcl.php" class="inline-flex items-center gap-1.5 bg-rose-700 hover:bg-rose-800 text-white px-3 py-2 rounded-lg text-xs font-semibold shadow transition">
+        <i class="fas fa-person-pregnant"></i>
+        <span>Maternal 8-ANC TCL</span>
+      </a>
+      <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow hover:bg-slate-800 transition">
         <i class="fas fa-print"></i>
         <span>Print Full Report</span>
       </button>

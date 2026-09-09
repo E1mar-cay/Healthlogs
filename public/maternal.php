@@ -64,73 +64,79 @@ try {
 }
 ?>
 
-<div class="bg-white p-6 rounded-xl shadow">
+<div class="bg-white p-6 rounded-xl shadow border border-slate-100">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500 font-medium">Maternal Care & Continuity</div>
-      <div class="text-2xl font-semibold text-slate-900">Maternal Health Module</div>
-      <p class="text-sm text-slate-500 mt-1">Track pregnancies, monitor critical 6–7 months prenatal care, and document postnatal outcomes.</p>
+      <div class="text-xs font-bold uppercase tracking-wider text-rose-700">Maternal Care &amp; DOH Registry</div>
+      <div class="text-2xl font-bold text-slate-900 mt-1">Maternal Health Module</div>
+      <p class="text-sm text-slate-500 mt-1">Track pregnancies, monitor critical 6–7 months prenatal care, and maintain the official DOH 8-ANC Target Client List.</p>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="app-chip">Maternal Hub</span>
+    <div class="flex flex-wrap items-center gap-2">
       <?php if ($maternalSummary['sensitive_6_7'] > 0): ?>
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs">
           <i class="fas fa-exclamation-circle text-rose-600 animate-pulse"></i>
           <?= $maternalSummary['sensitive_6_7'] ?> Sensitive (6–7 Mos)
         </span>
       <?php endif; ?>
+      <a href="/HealthLogs/public/maternal/tcl.php" class="inline-flex items-center gap-2 bg-rose-700 hover:bg-rose-800 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow transition">
+        <i class="fas fa-table-list"></i> Target Client List (8-ANC TCL)
+      </a>
     </div>
   </div>
 </div>
 
 <!-- Navigation Cards -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-  <a class="bg-white p-6 rounded-xl shadow block hover:-translate-y-0.5 transition border border-slate-100" href="/HealthLogs/public/maternal/pregnancies/index.php">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+  <a class="bg-white p-5 rounded-xl shadow border border-rose-200 bg-gradient-to-br from-white to-rose-50/50 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/maternal/tcl.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
-        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 8a4 4 0 0 1 4 4v4H8v-4a4 4 0 0 1 4-4Z"></path>
-          <path d="M6 20h12"></path>
-          <path d="M12 2v4"></path>
-        </svg>
+      <span class="h-11 w-11 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
+        <i class="fas fa-file-medical"></i>
       </span>
       <div>
-        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Registry</div>
-        <div class="text-lg font-semibold text-slate-900">Pregnancies</div>
+        <div class="text-xs uppercase font-bold tracking-wider text-rose-700">DOH Register</div>
+        <div class="text-base font-bold text-slate-900">8-ANC TCL Register</div>
       </div>
     </div>
-    <p class="text-sm text-slate-500 mt-4">Register cases, calculate gestational age, and monitor high-risk patients.</p>
+    <p class="text-xs text-slate-500 mt-3">Official 4-part Target Client List (8-ANC Visits, Nutrition/Td, Lab Screenings, 4PNC).</p>
   </a>
-  <a class="bg-white p-6 rounded-xl shadow block hover:-translate-y-0.5 transition border border-slate-100" href="/HealthLogs/public/maternal/prenatal/index.php">
+
+  <a class="bg-white p-5 rounded-xl shadow border border-slate-100 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/maternal/pregnancies/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center">
-        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 6h16v12H4z"></path>
-          <path d="M8 10h8"></path>
-          <path d="M8 14h6"></path>
-        </svg>
+      <span class="h-11 w-11 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
+        <i class="fas fa-person-pregnant"></i>
       </span>
       <div>
-        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Clinical Visits</div>
-        <div class="text-lg font-semibold text-slate-900">Prenatal Visits</div>
+        <div class="text-xs uppercase font-bold tracking-wider text-purple-700">Registry</div>
+        <div class="text-base font-bold text-slate-900">Pregnancies</div>
       </div>
     </div>
-    <p class="text-sm text-slate-500 mt-4">Monitor vitals, BP checks, gestational progress, and lab tests.</p>
+    <p class="text-xs text-slate-500 mt-3">Register cases, calculate gestational age, and monitor high-risk patients.</p>
   </a>
-  <a class="bg-white p-6 rounded-xl shadow block hover:-translate-y-0.5 transition border border-slate-100" href="/HealthLogs/public/maternal/postnatal/index.php">
+
+  <a class="bg-white p-5 rounded-xl shadow border border-slate-100 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/maternal/prenatal/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center">
-        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 3c4.4 0 8 3.6 8 8 0 4-3 7-6.9 7.8L12 22l-1.1-3.2C7 18 4 15 4 11c0-4.4 3.6-8 8-8Z"></path>
-          <path d="M9.5 11.5h5"></path>
-        </svg>
+      <span class="h-11 w-11 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
+        <i class="fas fa-stethoscope"></i>
       </span>
       <div>
-        <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Post-Delivery</div>
-        <div class="text-lg font-semibold text-slate-900">Postnatal Visits</div>
+        <div class="text-xs uppercase font-bold tracking-wider text-blue-700">Clinical Visits</div>
+        <div class="text-base font-bold text-slate-900">Prenatal Visits</div>
       </div>
     </div>
-    <p class="text-sm text-slate-500 mt-4">Track maternal recovery, infant health, and postnatal checkups.</p>
+    <p class="text-xs text-slate-500 mt-3">Log prenatal checkups, fetal heartbeat, BP, and clinical findings.</p>
+  </a>
+
+  <a class="bg-white p-5 rounded-xl shadow border border-slate-100 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/maternal/postnatal/index.php">
+    <div class="flex items-center gap-3">
+      <span class="h-11 w-11 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
+        <i class="fas fa-baby"></i>
+      </span>
+      <div>
+        <div class="text-xs uppercase font-bold tracking-wider text-teal-700">Outcomes</div>
+        <div class="text-base font-bold text-slate-900">Postnatal Care</div>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500 mt-3">Record delivery outcomes, newborn conditions, and 4PNC follow-up visits.</p>
   </a>
 </div>
 
