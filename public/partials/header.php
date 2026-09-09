@@ -272,24 +272,11 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <div class="app-shell">
     <div id="appOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition md:hidden z-30"></div>
     <aside id="appSidebar" class="w-72 flex flex-col app-sidebar fixed inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform duration-200">
-      <div class="px-6 py-5 border-b border-slate-800/80">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-teal-400 flex items-center justify-center p-1.5 shadow-md shadow-teal-500/20 shrink-0 border border-teal-300/30">
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-              <circle cx="50" cy="50" r="46" fill="#ffffff" />
-              <rect x="43" y="22" width="14" height="56" rx="3" fill="#0f766e"/>
-              <rect x="22" y="43" width="56" height="14" rx="3" fill="#0f766e"/>
-              <circle cx="50" cy="50" r="7" fill="#ffffff"/>
-              <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="#0f766e"/>
-            </svg>
-          </div>
-          <div>
-            <div class="app-brand text-xl font-bold text-white tracking-tight leading-tight">HealthLogs</div>
-            <div class="app-brand-badge mt-0.5 inline-block text-[10px]">Barangay Care Hub</div>
-          </div>
-        </div>
+      <div class="px-6 py-6">
+        <div class="app-brand text-2xl font-semibold">HealthLogs</div>
+        <div class="app-brand-badge mt-2">Barangay Care Hub</div>
       </div>
-      <nav class="flex-1 px-4 space-y-0.5 overflow-y-auto pt-3">
+      <nav class="flex-1 px-4 space-y-0.5 overflow-y-auto">
         <div class="nav-section">Core</div>
         <a class="nav-link <?= $isDashboard ? 'active' : '' ?>" href="/HealthLogs/public/index.php">
           <span class="nav-icon">DB</span> Dashboard
@@ -330,28 +317,15 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         <?php endif; ?>
       </nav>
       <div class="px-4 pb-6 mt-auto pt-2 border-t border-slate-700/40">
-        <a class="nav-link hover:text-red-300" href="/HealthLogs/public/logout.php">
-          <span class="nav-icon"><i class="fas fa-sign-out-alt text-xs"></i></span> Logout
+        <a class="nav-link" href="/HealthLogs/public/logout.php">
+          <span class="nav-icon">LG</span> Logout
         </a>
       </div>
     </aside>
 
-    <main class="app-main min-w-0 relative">
-      <!-- Watermark Background Logo for Main Layout & Dashboard -->
-      <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden flex items-center justify-center select-none" style="opacity: 0.04;" aria-hidden="true">
-        <svg class="w-[500px] h-[500px] sm:w-[650px] sm:h-[650px] lg:w-[820px] lg:h-[820px] text-teal-900" viewBox="0 0 100 100" fill="currentColor">
-          <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2.5"/>
-          <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
-          <path d="M43 25 h14 v18 h18 v14 h-18 v18 h-14 v-18 h-18 v-14 h18 z" fill="currentColor" opacity="0.35"/>
-          <rect x="44" y="24" width="12" height="52" rx="2" fill="currentColor"/>
-          <rect x="24" y="44" width="52" height="12" rx="2" fill="currentColor"/>
-          <circle cx="50" cy="50" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="currentColor"/>
-        </svg>
-      </div>
-
-      <header class="app-topbar relative z-20">
-        <div class="w-full px-3 sm:px-4 md:px-6 py-3 flex items-center justify-between">
+    <main class="app-main min-w-0">
+      <header class="app-topbar">
+        <div class="w-full px-3 sm:px-4 md:px-6 py-3.5 flex items-center justify-between">
           <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button id="sidebarToggle" aria-label="Toggle navigation" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white/80 text-slate-700 shadow-xs shrink-0">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -360,24 +334,10 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            <div class="app-title text-base sm:text-lg font-bold text-slate-900 truncate"><?= $pageTitle ?? 'Dashboard' ?></div>
+            <div class="app-title text-base sm:text-lg font-semibold truncate"><?= $pageTitle ?? 'Dashboard' ?></div>
           </div>
-          <div class="flex items-center gap-2 sm:gap-3 text-sm shrink-0">
-            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/80 text-xs text-slate-600 font-medium border border-slate-200/80 shadow-xs backdrop-blur-xs">
-              <i class="far fa-calendar-alt text-teal-600"></i>
-              <span><?= date('M d, Y') ?></span>
-            </div>
-            <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/80 border border-slate-200/80 shadow-xs backdrop-blur-xs">
-              <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-teal-600 to-blue-600 text-white flex items-center justify-center text-[11px] font-bold shadow-xs">
-                <?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 1)) ?>
-              </div>
-              <div class="hidden md:block text-left text-xs">
-                <div class="font-bold text-slate-800 leading-tight"><?= h($_SESSION['username'] ?? 'User') ?></div>
-                <div class="text-[10px] text-teal-700 font-semibold capitalize"><?= h($_SESSION['role'] ?? 'Health Worker') ?></div>
-              </div>
-            </div>
-          </div>
+          <div class="flex items-center gap-2 sm:gap-4 text-sm shrink-0"></div>
         </div>
       </header>
 
-      <section class="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 app-content max-w-full relative z-10">
+      <section class="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 app-content max-w-full">

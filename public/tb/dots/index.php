@@ -43,13 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all active TB cases for selector with today's intake status
+// Fetch all active TB cases for selector
 $activeCases = [];
 try {
     $activeCases = $pdo->query("
-        SELECT c.id, c.case_number, p.first_name, p.last_name, p.barangay,
-               (SELECT d.status FROM tb_dot_logs d WHERE d.tb_case_id = c.id AND d.log_date = CURRENT_DATE() LIMIT 1) AS today_status,
-               (SELECT COUNT(*) FROM tb_dot_logs d WHERE d.tb_case_id = c.id AND d.status IN ('taken','supervised')) AS doses_taken
+        SELECT c.id, c.case_number, p.first_name, p.last_name, p.barangay
         FROM tb_cases c
         JOIN patients p ON p.id = c.patient_id
         WHERE c.status = 'active'
@@ -69,9 +67,7 @@ $totalMissed = 0;
 if ($case_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT c.*, p.first_name, p.last_name, p.barangay, p.contact_no, p.sex, p.birth_date,
-                   (SELECT d.status FROM tb_dot_logs d WHERE d.tb_case_id = c.id AND d.log_date = CURRENT_DATE() LIMIT 1) AS today_status,
-                   (SELECT d.remarks FROM tb_dot_logs d WHERE d.tb_case_id = c.id AND d.log_date = CURRENT_DATE() LIMIT 1) AS today_remarks
+            SELECT c.*, p.first_name, p.last_name, p.barangay, p.contact_no, p.sex, p.birth_date
             FROM tb_cases c
             JOIN patients p ON p.id = c.patient_id
             WHERE c.id = :id
@@ -102,106 +98,64 @@ if ($case_id > 0) {
 }
 ?>
 
-<div class="bg-white/90 backdrop-blur-md p-5 sm:p-6 rounded-2xl shadow-xs border border-slate-200/80">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-xs font-semibold uppercase tracking-wider text-teal-700 flex items-center gap-1.5 mb-1">
-        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Directly Observed Therapy Short-Course (DOTS)
-      </div>
-      <div class="text-2xl font-bold text-slate-900 brand-font">Daily DOTS Intake Tracker</div>
-      <p class="text-xs sm:text-sm text-slate-500 mt-1">Select an active TB patient to record or review daily medication adherence.</p>
+      <div class="text-sm text-slate-500">Adherence Monitoring</div>
+      <div class="text-2xl font-semibold">Daily DOTS Tracker</div>
+      <p class="text-sm text-slate-500 mt-1">Directly Observed Therapy Short-Course daily adherence log.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <?php if (!empty($activeCases)): ?>
         <form method="GET" class="w-full sm:w-auto flex items-center gap-2">
-          <select name="case_id" onchange="this.form.submit()" class="w-full sm:w-auto border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold bg-white shadow-2xs">
+          <select name="case_id" onchange="this.form.submit()" class="w-full sm:w-auto border rounded-lg px-3 py-2 text-sm font-medium bg-white">
             <?php foreach ($activeCases as $ac): ?>
-              <?php $isDoneToday = in_array($ac['today_status'], ['taken', 'supervised']); ?>
               <option value="<?= $ac['id'] ?>" <?= (int)$ac['id'] === $case_id ? 'selected' : '' ?>>
-                <?= $isDoneToday ? '✓ [TAKEN TODAY]' : '⏳ [DUE TODAY]' ?> <?= h($ac['case_number']) ?> - <?= h($ac['last_name'] . ', ' . $ac['first_name']) ?>
+                <?= h($ac['case_number']) ?> - <?= h($ac['last_name'] . ', ' . $ac['first_name']) ?>
               </option>
             <?php endforeach; ?>
           </select>
         </form>
       <?php endif; ?>
-      <a href="/HealthLogs/public/tb.php" class="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition">
-        <i class="fas fa-arrow-left text-xs"></i> TB Module
-      </a>
+      <a href="/HealthLogs/public/tb.php" class="text-sm font-medium text-slate-600 hover:text-slate-900 underline ml-1">Back to Dashboard</a>
     </div>
   </div>
 </div>
 
 <?php if (!empty($successMsg)): ?>
-  <div class="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm flex items-center gap-2 shadow-xs">
-    <i class="fas fa-check-circle text-emerald-600 text-base"></i>
-    <span><?= h($successMsg) ?></span>
+  <div class="mt-6 bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl text-sm">
+    &check; <?= h($successMsg) ?>
   </div>
 <?php endif; ?>
 
 <?php if (!empty($errors)): ?>
-  <div class="mt-4 bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-sm space-y-1 shadow-xs">
+  <div class="mt-6 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm space-y-1">
     <?php foreach ($errors as $err): ?>
-      <p><i class="fas fa-circle-exclamation text-red-600 mr-1"></i><?= h($err) ?></p>
+      <p>&bull; <?= h($err) ?></p>
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
 
 <?php if ($selectedCase): ?>
-  <?php 
-    $targetDoses = ($selectedCase['treatment_category'] === 'category_2') ? 240 : 180;
-    $takenToday = in_array($selectedCase['today_status'] ?? '', ['taken', 'supervised']);
-  ?>
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-    <!-- Patient Card -->
-    <div class="bg-white/95 p-5 rounded-2xl border border-slate-200/80 shadow-xs sm:col-span-2 flex flex-col justify-between">
-      <div>
-        <div class="flex items-center justify-between">
-          <div class="text-xs uppercase tracking-wider font-bold text-slate-400">Enrolled Patient Details</div>
-          <?php if ($takenToday): ?>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 border border-emerald-200 text-emerald-800">
-              <i class="fas fa-check-circle text-emerald-600"></i> Completed Today
-            </span>
-          <?php else: ?>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 border border-amber-200 text-amber-800">
-              <i class="fas fa-clock text-amber-600"></i> Pending Dose Today
-            </span>
-          <?php endif; ?>
-        </div>
-        <div class="text-xl sm:text-2xl font-bold text-slate-900 brand-font mt-2"><?= h($selectedCase['last_name'] . ', ' . $selectedCase['first_name']) ?></div>
-        <div class="text-xs sm:text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-2 sm:gap-4">
-          <span>Case No: <strong class="font-mono text-slate-900"><?= h($selectedCase['case_number']) ?></strong></span>
-          <span>&bull;</span>
-          <span>Brgy. <?= h($selectedCase['barangay']) ?></span>
-          <span>&bull;</span>
-          <span>Started: <?= h($selectedCase['treatment_start_date']) ?></span>
-        </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+    <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
+      <div class="text-xs uppercase tracking-widest text-slate-500">Patient Details</div>
+      <div class="text-xl font-semibold mt-1"><?= h($selectedCase['last_name'] . ', ' . $selectedCase['first_name']) ?></div>
+      <div class="text-sm text-slate-500 mt-1">
+        Case No: <span class="font-mono font-medium text-slate-900"><?= h($selectedCase['case_number']) ?></span> &bull; Brgy. <?= h($selectedCase['barangay']) ?>
       </div>
-      
-      <!-- Progress Bar -->
-      <div class="mt-4 pt-3 border-t border-slate-100">
-        <div class="flex justify-between text-xs font-bold mb-1">
-          <span class="text-slate-600">Treatment Regimen Progress (<?= h(str_replace('_', ' ', $selectedCase['treatment_category'])) ?>)</span>
-          <span class="text-teal-700"><?= $totalTaken ?> / <?= $targetDoses ?> doses (<?= min(100, round(($totalTaken / $targetDoses) * 100)) ?>%)</span>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-          <div class="bg-gradient-to-r from-teal-500 to-emerald-600 h-2.5 rounded-full" style="width: <?= min(100, round(($totalTaken / $targetDoses) * 100)) ?>%"></div>
-        </div>
-      </div>
+      <div class="text-xs text-slate-400 mt-2">Started: <?= h($selectedCase['treatment_start_date']) ?></div>
     </div>
 
-    <!-- Stats summary -->
-    <div class="bg-white/95 p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-around text-center">
+    <div class="bg-white p-4 sm:p-5 rounded-xl shadow flex items-center justify-around text-center">
       <div>
-        <div class="text-xs uppercase tracking-wider font-bold text-slate-400">Doses Taken</div>
-        <div class="text-3xl font-extrabold text-teal-600 mt-1 brand-font"><?= $totalTaken ?></div>
-        <div class="text-xs text-slate-500 mt-0.5">Administered / observed</div>
+        <div class="text-xs uppercase tracking-widest text-slate-500">Doses Taken</div>
+        <div class="text-2xl font-semibold text-teal-600 mt-1"><?= $totalTaken ?></div>
       </div>
-      <div class="w-full h-px bg-slate-100 my-2"></div>
+      <div class="w-px h-10 bg-slate-200"></div>
       <div>
-        <div class="text-xs uppercase tracking-wider font-bold text-slate-400">Doses Missed</div>
-        <div class="text-3xl font-extrabold text-rose-600 mt-1 brand-font"><?= $totalMissed ?></div>
-        <div class="text-xs text-slate-500 mt-0.5">Untaken days recorded</div>
+        <div class="text-xs uppercase tracking-widest text-slate-500">Doses Missed</div>
+        <div class="text-2xl font-semibold text-rose-600 mt-1"><?= $totalMissed ?></div>
       </div>
     </div>
   </div>
@@ -289,24 +243,6 @@ if ($case_id > 0) {
     <p class="text-sm">No active TB cases available to log DOTS.</p>
     <a href="/HealthLogs/public/tb/cases/create.php" class="mt-2 inline-block text-sm font-medium text-slate-900 underline">Register a new case &rarr;</a>
   </div>
-<?php endif; ?>
-
-<?php if (!empty($successMsg)): ?>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: '<?= addslashes($successMsg) ?>',
-      showConfirmButton: false,
-      timer: 3500,
-      timerProgressBar: true
-    });
-  }
-});
-</script>
 <?php endif; ?>
 
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

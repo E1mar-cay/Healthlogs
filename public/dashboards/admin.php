@@ -53,104 +53,53 @@ try {
 }
 ?>
 
-<div class="bg-white/90 backdrop-blur-md p-5 sm:p-6 rounded-2xl shadow-xs border border-slate-200/80 mb-6">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-xs font-semibold uppercase tracking-wider text-teal-700 flex items-center gap-1.5 mb-1">
-        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Primary Care Command Center
-      </div>
-      <div class="text-2xl sm:text-3xl font-bold text-slate-900 brand-font">Administrator Dashboard</div>
-      <p class="text-xs sm:text-sm text-slate-500 mt-1">
-        Welcome back, <strong class="text-slate-800"><?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></strong>. System overview, patient analytics, and operational controls.
-      </p>
+    <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
+      <div class="text-2xl font-semibold">Administrator Dashboard</div>
+      <p class="text-sm text-slate-500 mt-1">System overview, user management, program analytics, and operational controls.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold">
-        <i class="fas fa-shield-check text-teal-600"></i> Admin Access
-      </span>
-      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold">
-        <i class="fas fa-bolt text-blue-600"></i> Full System Scope
-      </span>
+      <span class="app-chip">Admin Access</span>
+      <span class="app-chip">Full Control</span>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-  <!-- Total Patients -->
-  <div class="bg-white/95 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
-    <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Patients</div>
-      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 brand-font"><?= h(number_format($adminStats['total_patients'])) ?></div>
-      <div class="text-xs text-slate-500 mt-0.5">Active registered records</div>
-    </div>
-    <div class="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center text-xl shrink-0 shadow-xs">
-      <i class="fas fa-users-medical"></i>
-    </div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Patients</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['total_patients'])) ?></div>
+    <div class="text-sm text-slate-500">Total registered</div>
   </div>
-
-  <!-- Monthly Visits -->
-  <div class="bg-white/95 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
-    <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Monthly Visits</div>
-      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 brand-font"><?= h(number_format($adminStats['monthly_visits'])) ?></div>
-      <div class="text-xs text-emerald-600 font-medium mt-0.5"><i class="fas fa-calendar-check mr-1"></i>Recorded this month</div>
-    </div>
-    <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0 shadow-xs">
-      <i class="fas fa-notes-medical"></i>
-    </div>
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Visits</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['monthly_visits'])) ?></div>
+    <div class="text-sm text-slate-500">This month</div>
   </div>
-
-  <!-- Low Stock Alert -->
-  <div class="bg-white/95 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
-    <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Low Stock Supplies</div>
-      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 brand-font"><?= h(number_format($adminStats['low_stock_items'])) ?></div>
-      <div class="text-xs <?= $adminStats['low_stock_items'] > 0 ? 'text-amber-600 font-medium' : 'text-slate-500' ?> mt-0.5">
-        <?= $adminStats['low_stock_items'] > 0 ? '<i class="fas fa-triangle-exclamation mr-1"></i>Needs restock' : 'Supplies adequate' ?>
-      </div>
-    </div>
-    <div class="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center text-xl shrink-0 shadow-xs">
-      <i class="fas fa-boxes-stacked"></i>
-    </div>
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Low Stock</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['low_stock_items'])) ?></div>
+    <div class="text-sm text-slate-500">Items below reorder</div>
   </div>
+</div>
 
-  <!-- Active Accounts -->
-  <div class="bg-white/95 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
-    <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Active Staff Accounts</div>
-      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 brand-font"><?= h(number_format($adminStats['active_users'])) ?></div>
-      <div class="text-xs text-slate-500 mt-0.5">Authorized clinicians & BHWs</div>
-    </div>
-    <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center text-xl shrink-0 shadow-xs">
-      <i class="fas fa-user-shield"></i>
-    </div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Accounts</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['active_users'])) ?></div>
+    <div class="text-sm text-slate-500">Active user accounts</div>
   </div>
-
-  <!-- Pending Reminders -->
-  <div class="bg-white/95 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
-    <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Due Reminders</div>
-      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 brand-font"><?= h(number_format($adminStats['pending_reminders'])) ?></div>
-      <div class="text-xs <?= $adminStats['pending_reminders'] > 0 ? 'text-rose-600 font-medium' : 'text-slate-500' ?> mt-0.5">
-        <?= $adminStats['pending_reminders'] > 0 ? '<i class="fas fa-clock mr-1"></i>Due for dispatch' : 'All dispatched' ?>
-      </div>
-    </div>
-    <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center text-xl shrink-0 shadow-xs">
-      <i class="fas fa-bell"></i>
-    </div>
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Reminders</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['pending_reminders'])) ?></div>
+    <div class="text-sm text-slate-500">Pending and due now</div>
   </div>
-
-  <!-- Ongoing Pregnancies -->
-  <div class="bg-white/95 backdrop-blur-xs p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
-    <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Active Maternal Cases</div>
-      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 brand-font"><?= h(number_format($adminStats['ongoing_pregnancies'])) ?></div>
-      <div class="text-xs text-pink-600 font-medium mt-0.5"><i class="fas fa-heart-pulse mr-1"></i>Active prenatal monitoring</div>
-    </div>
-    <div class="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 text-pink-600 flex items-center justify-center text-xl shrink-0 shadow-xs">
-      <i class="fas fa-baby"></i>
-    </div>
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">Maternal</div>
+    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['ongoing_pregnancies'])) ?></div>
+    <div class="text-sm text-slate-500">Ongoing pregnancies</div>
   </div>
 </div>
 
