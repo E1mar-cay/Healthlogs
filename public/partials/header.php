@@ -100,10 +100,6 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         margin-left: 18rem;
       }
 
-      .app-topbar {
-        padding-left: 18rem;
-      }
-
       /* Collapsed Sidebar on Desktop */
       body.sidebar-collapsed .app-sidebar,
       html.sidebar-collapsed body .app-sidebar {
@@ -113,11 +109,6 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       body.sidebar-collapsed .app-main,
       html.sidebar-collapsed body .app-main {
         margin-left: 5rem;
-      }
-
-      body.sidebar-collapsed .app-topbar,
-      html.sidebar-collapsed body .app-topbar {
-        padding-left: 5rem;
       }
 
       body.sidebar-collapsed .app-brand-text,
@@ -428,6 +419,12 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       <header class="app-topbar">
         <div class="w-full px-3 sm:px-4 md:px-6 py-3.5 flex items-center justify-between">
           <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <?php if (!$isDashboard): ?>
+              <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/HealthLogs/public/index.php'; }" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white/95 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-xs transition shrink-0" title="Go back to previous page">
+                <i class="fas fa-arrow-left text-xs text-teal-600"></i>
+                <span class="hidden sm:inline">Back</span>
+              </button>
+            <?php endif; ?>
             <button id="sidebarToggle" aria-label="Toggle navigation" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white/90 text-slate-700 hover:bg-slate-100 shadow-xs shrink-0 transition" title="Toggle Sidebar">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="3" y1="6" x2="21" y2="6"></line>
