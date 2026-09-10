@@ -41,72 +41,87 @@ try {
 }
 ?>
 
-<div class="bg-white p-6 rounded-xl shadow border border-slate-100">
+<div class="bg-white p-6 rounded shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-teal-700">Care Coordination &amp; DOH Registry</div>
-      <div class="text-2xl font-bold text-slate-900 mt-1">Child Immunization Module</div>
+      <div class="text-sm text-slate-500">Child healthcare</div>
+      <div class="text-2xl font-semibold">Child Immunization Module</div>
       <p class="text-sm text-slate-500 mt-1">Manage vaccines, track administered doses, and maintain the official DOH Target Client List (TCL-2).</p>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow transition">
-        <i class="fas fa-table-list"></i> Target Client List (TCL-2)
-      </a>
+    <div class="flex items-center gap-2">
+      <span class="app-chip">TCL-2 Registry</span>
+      <span class="app-chip">Vaccine Schedules</span>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-  <a class="bg-white p-5 rounded-xl shadow border border-teal-200 bg-gradient-to-br from-white to-teal-50/50 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/immunization/tcl.php">
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/immunization/tcl.php">
     <div class="flex items-center gap-3">
-      <span class="h-11 w-11 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
-        <i class="fas fa-file-medical"></i>
+      <span class="h-12 w-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="3" y1="15" x2="21" y2="15"></line>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+          <line x1="15" y1="3" x2="15" y2="21"></line>
+        </svg>
       </span>
       <div>
-        <div class="text-xs uppercase font-bold tracking-wider text-teal-700">DOH Register</div>
-        <div class="text-base font-bold text-slate-900">Target Client List (TCL-2)</div>
+        <div class="text-sm text-slate-500">DOH Register</div>
+        <div class="text-lg font-semibold">TCL-2 Register</div>
       </div>
     </div>
-    <p class="text-xs text-slate-500 mt-3">Master registry for 0–23 months (BCG, HepB, Penta, OPV, IPV, PCV, MMR, FIC, CIC).</p>
+    <p class="text-sm text-slate-500 mt-4">Master registry for 0–23 months infant vaccinations.</p>
   </a>
 
-  <a class="bg-white p-5 rounded-xl shadow border border-slate-100 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/immunization/records/index.php">
+  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/immunization/records/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-11 w-11 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
-        <i class="fas fa-syringe"></i>
+      <span class="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+        </svg>
       </span>
       <div>
-        <div class="text-xs uppercase font-bold tracking-wider text-blue-700">Daily Logs</div>
-        <div class="text-base font-bold text-slate-900">Immunization Records</div>
+        <div class="text-sm text-slate-500">Daily Logs</div>
+        <div class="text-lg font-semibold">Records</div>
       </div>
     </div>
-    <p class="text-xs text-slate-500 mt-3">Capture individual administered doses and clinical injection details.</p>
+    <p class="text-sm text-slate-500 mt-4">Capture administered doses and clinical injection details.</p>
   </a>
 
-  <a class="bg-white p-5 rounded-xl shadow border border-slate-100 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/immunization/schedules/index.php">
+  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/immunization/schedules/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-11 w-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
-        <i class="fas fa-calendar-check"></i>
+      <span class="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
       </span>
       <div>
-        <div class="text-xs uppercase font-bold tracking-wider text-amber-700">Scheduling</div>
-        <div class="text-base font-bold text-slate-900">Vaccine Schedules</div>
+        <div class="text-sm text-slate-500">Scheduling</div>
+        <div class="text-lg font-semibold">Schedules</div>
       </div>
     </div>
-    <p class="text-xs text-slate-500 mt-3">Plan dose sequences, next visits, and outreach reminders.</p>
+    <p class="text-sm text-slate-500 mt-4">Plan dose sequences, next visits, and outreach reminders.</p>
   </a>
 
-  <a class="bg-white p-5 rounded-xl shadow border border-slate-100 block hover:-translate-y-0.5 transition group" href="/HealthLogs/public/immunization/vaccines/index.php">
+  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/immunization/vaccines/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-11 w-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base shadow-sm group-hover:scale-105 transition">
-        <i class="fas fa-vial"></i>
+      <span class="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M7 3h10v6H7z"></path>
+          <path d="M5 9h14v12H5z"></path>
+        </svg>
       </span>
       <div>
-        <div class="text-xs uppercase font-bold tracking-wider text-emerald-700">Setup</div>
-        <div class="text-base font-bold text-slate-900">Vaccine Registry</div>
+        <div class="text-sm text-slate-500">Setup</div>
+        <div class="text-lg font-semibold">Vaccines</div>
       </div>
     </div>
-    <p class="text-xs text-slate-500 mt-3">Maintain vaccine registry, required doses, and age guidelines.</p>
+    <p class="text-sm text-slate-500 mt-4">Maintain vaccine types, required doses, and age guidelines.</p>
   </a>
 </div>
 

@@ -301,27 +301,28 @@ try {
         'insight' => 'Infant immunization visits remain consistent. Verify vaccine stock (BCG, Pentavalent, OPV, Measles) and send automated SMS reminders for scheduled vaccination days.',
     ];
 
-    // 3. TB Monitoring & DOTS Adherence
-    $activeTbCases = (int)$pdo->query("SELECT COUNT(*) FROM tb_cases WHERE status = 'active'")->fetchColumn();
-    $tbBase = max(5, $activeTbCases * 8); // ~8 clinic visits/supervised logs per month per active case
-    $tbForecastM1 = $tbBase;
-    $tbForecastM2 = (int)round($tbBase * 0.95); // gradual completion
-    $tbForecastM3 = (int)round($tbBase * 0.90);
+    // 3. Family Planning & Contraceptive Resupply
+    $activeFpClients = (int)$pdo->query("SELECT COUNT(*) FROM fp_records WHERE status = 'active'")->fetchColumn();
+    $fpVisitsPast30 = (int)$pdo->query("SELECT COUNT(*) FROM fp_visits WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)")->fetchColumn();
+    $fpBase = max(15, (int)round(($activeFpClients * 0.45) + ($fpVisitsPast30 * 0.55)));
+    $fpForecastM1 = $fpBase;
+    $fpForecastM2 = (int)round($fpBase * 1.06); // +6% demand
+    $fpForecastM3 = (int)round($fpBase * 1.12); // +12% seasonal expansion
 
-    $categoryForecast['tb'] = [
-        'title' => 'TB Monitoring & DOTS Care',
-        'subtitle' => 'Directly Observed Therapy & Evaluation Visits',
-        'icon' => 'fa-lungs',
-        'badge' => 'TB DOTS Program',
-        'color' => 'amber',
-        'active_cohort' => $activeTbCases . ' active TB patients undergoing treatment',
-        'm1' => $tbForecastM1,
-        'm2' => $tbForecastM2,
-        'm3' => $tbForecastM3,
-        'total_3m' => $tbForecastM1 + $tbForecastM2 + $tbForecastM3,
-        'trend_pct' => -5,
-        'trend_label' => 'Stable adherence / gradual treatment completion',
-        'insight' => 'Daily DOTS intake and monthly lab check-ups. Ensure sufficient stock of anti-TB blister packs and monitor patients due for medicine to prevent lost to follow-up.',
+    $categoryForecast['family_planning'] = [
+        'title' => 'Family Planning & RPRH Care',
+        'subtitle' => 'Contraceptive Refills & Follow-up Consultations',
+        'icon' => 'fa-venus-mars',
+        'badge' => 'Family Planning (FP)',
+        'color' => 'purple',
+        'active_cohort' => $activeFpClients . ' active contraceptive users enrolled',
+        'm1' => $fpForecastM1,
+        'm2' => $fpForecastM2,
+        'm3' => $fpForecastM3,
+        'total_3m' => $fpForecastM1 + $fpForecastM2 + $fpForecastM3,
+        'trend_pct' => 12,
+        'trend_label' => '+12% expected increase in monthly refill visits',
+        'insight' => 'High demand for oral contraceptive pills (COC/POP) and 3-month DMPA injectables. Ensure buffer stock of Depo-Provera vials and condom packs; dispatch automated SMS reminders prior to scheduled re-injection dates.',
     ];
 
     // 4. General Consultations & Adult / Senior Health
@@ -614,7 +615,7 @@ if ($summary) {
         <span>Program &amp; Category Patient Visit Forecasting (Next 1–3 Months)</span>
       </div>
       <h3 class="text-xl font-bold text-slate-900 mt-2">Which Patient Groups Will Visit Most in Next 3 Months?</h3>
-      <p class="text-xs text-slate-500 mt-0.5">Forecasts specific patient demographics (Buntis/Pregnant Women, Child Immunization, TB Patients, General Care) to allocate clinical staff and resources proactively.</p>
+      <p class="text-xs text-slate-500 mt-0.5">Forecasts specific patient demographics (Buntis/Pregnant Women, Child Immunization, Family Planning Clients, General Care) to allocate clinical staff and resources proactively.</p>
     </div>
   </div>
 

@@ -1,7 +1,41 @@
 <?php
-/**
- * Flash Messages and Validation Error Display Helper
- */
+if (!function_exists('h')) {
+    function h($value): string {
+        if (is_array($value) || is_object($value)) {
+            $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return htmlspecialchars($encoded !== false ? $encoded : '[invalid value]', ENT_QUOTES, 'UTF-8');
+        }
+        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('flash')) {
+    /**
+     * Set a flash message
+     */
+    function flash(string $type, string $message): void {
+        if ($type === 'success') {
+            $_SESSION['success_message'] = $message;
+        } elseif ($type === 'error') {
+            $_SESSION['error_message'] = $message;
+        } elseif ($type === 'info') {
+            $_SESSION['info_message'] = $message;
+        } elseif ($type === 'warning') {
+            $_SESSION['warning_message'] = $message;
+        } else {
+            $_SESSION[$type . '_message'] = $message;
+        }
+    }
+}
+
+if (!function_exists('set_flash')) {
+    /**
+     * Alias for flash()
+     */
+    function set_flash(string $type, string $message): void {
+        flash($type, $message);
+    }
+}
 
 if (!function_exists('display_flash_messages')) {
     /**

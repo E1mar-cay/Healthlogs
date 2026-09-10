@@ -61,7 +61,7 @@ $title = $rec ? 'Edit Reminder' : 'New Reminder';
           <option value="immunization" <?= $type === 'immunization' ? 'selected' : '' ?>>Immunization</option>
           <option value="prenatal" <?= $type === 'prenatal' ? 'selected' : '' ?>>Prenatal</option>
           <option value="postnatal" <?= $type === 'postnatal' ? 'selected' : '' ?>>Postnatal</option>
-          <option value="tb_monitoring" <?= $type === 'tb_monitoring' ? 'selected' : '' ?>>TB Monitoring</option>
+          <option value="family_planning" <?= $type === 'family_planning' ? 'selected' : '' ?>>Family Planning</option>
           <option value="general" <?= $type === 'general' ? 'selected' : '' ?>>General</option>
         </select>
       </div>

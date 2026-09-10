@@ -92,7 +92,7 @@ class EmailHelper {
             'immunization' => 'Immunization Reminder',
             'prenatal' => 'Prenatal Visit Reminder',
             'postnatal' => 'Postnatal Visit Reminder',
-            'tb_monitoring' => 'TB Monitoring Follow-up Reminder',
+            'family_planning' => 'Family Planning Follow-up Reminder',
             'general' => 'Health Appointment Reminder'
         ];
         
@@ -114,7 +114,7 @@ class EmailHelper {
             'immunization' => ['color' => '#10b981', 'icon' => '💉', 'bg' => '#d1fae5'],
             'prenatal' => ['color' => '#ec4899', 'icon' => '🤰', 'bg' => '#fce7f3'],
             'postnatal' => ['color' => '#f59e0b', 'icon' => '👶', 'bg' => '#fef3c7'],
-            'tb_monitoring' => ['color' => '#6366f1', 'icon' => '🫁', 'bg' => '#e0e7ff'],
+            'family_planning' => ['color' => '#8b5cf6', 'icon' => '🌸', 'bg' => '#ede9fe'],
             'general' => ['color' => '#0ea5a4', 'icon' => '📋', 'bg' => '#ccfbf1']
         ];
         

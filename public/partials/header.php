@@ -377,9 +377,9 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           <span class="nav-icon">MH</span>
           <span class="nav-text font-medium">Maternal Health</span>
         </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/tb') ? 'active' : '' ?>" href="/HealthLogs/public/tb.php" title="TB Monitoring">
-          <span class="nav-icon">TB</span>
-          <span class="nav-text font-medium">TB Monitoring</span>
+        <a class="nav-link <?= $isActive('/HealthLogs/public/family_planning') ? 'active' : '' ?>" href="/HealthLogs/public/family_planning.php" title="Family Planning">
+          <span class="nav-icon">FP</span>
+          <span class="nav-text font-medium">Family Planning</span>
         </a>
 
         <a class="nav-link <?= $isActive('/HealthLogs/public/inventory') ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicine Inventory">
