@@ -116,74 +116,56 @@ try {
 require __DIR__ . '/../../partials/header.php';
 ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
-  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-    <div>
-      <div class="text-sm text-slate-500 font-semibold">
-        <a href="/HealthLogs/public/family_planning.php" class="text-purple-600 hover:underline">&larr; Back to FP Dashboard</a>
-      </div>
-      <div class="text-2xl font-bold text-slate-900 mt-1">Family Planning Consultations &amp; Dispensing Log</div>
-      <p class="text-sm text-slate-500 mt-1">Track clinic check-ups, contraceptive supplies dispensed, vitals, and next appointment dates.</p>
-    </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/family_planning/records/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
-        <i class="fas fa-address-book mr-1.5 text-xs"></i> Client Registry
-      </a>
-      <a href="/HealthLogs/public/family_planning/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 text-xs font-semibold hover:bg-purple-100 transition">
-        <i class="fas fa-table-list mr-1.5 text-purple-600"></i> Target Client List
-      </a>
-    </div>
+<div class="flex items-center justify-between">
+  <div class="text-lg font-semibold">Family Planning Visits &amp; Dispensing</div>
+  <div class="flex items-center gap-2">
+    <a href="/HealthLogs/public/family_planning/records/index.php" class="px-3 py-2 rounded border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition">Client Registry</a>
+    <a href="/HealthLogs/public/family_planning/tcl.php" class="px-3 py-2 rounded border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition">Target Client List</a>
   </div>
 </div>
 
 <?php display_flash_messages(); ?>
 
 <?php if (!empty($successMsg)): ?>
-  <div class="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm flex items-center justify-between shadow-sm">
-    <div class="flex items-center gap-2">
-      <i class="fas fa-check-circle text-emerald-600 text-base"></i>
-      <span><?= h($successMsg) ?></span>
-    </div>
+  <div class="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded text-sm flex items-center justify-between">
+    <span><?= h($successMsg) ?></span>
     <button type="button" onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-900 font-bold">&times;</button>
   </div>
 <?php endif; ?>
 
 <?php if (!empty($errorMsg)): ?>
-  <div class="mb-6 bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm flex items-center justify-between shadow-sm">
-    <div class="flex items-center gap-2">
-      <i class="fas fa-exclamation-circle text-rose-600 text-base"></i>
-      <span><?= h($errorMsg) ?></span>
-    </div>
+  <div class="mt-4 bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded text-sm flex items-center justify-between">
+    <span><?= h($errorMsg) ?></span>
     <button type="button" onclick="this.parentElement.remove()" class="text-rose-600 hover:text-rose-900 font-bold">&times;</button>
   </div>
 <?php endif; ?>
 
 <?php if ($selectedClient): ?>
   <!-- Selected Client Header Profile Card -->
-  <div class="bg-gradient-to-r from-purple-800 to-indigo-800 text-white rounded-2xl shadow-lg p-5 sm:p-6 mb-6">
+  <div class="mt-4 bg-white border border-slate-200 text-slate-900 rounded shadow p-4">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
-          <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/20 uppercase tracking-wide">
+          <span class="px-2 py-0.5 rounded text-xs font-mono bg-purple-100 text-purple-800 font-semibold">
             <?= h($selectedClient['client_code']) ?>
           </span>
-          <span class="text-xs text-purple-200">Enrolled: <?= date('M d, Y', strtotime($selectedClient['registration_date'])) ?></span>
+          <span class="text-xs text-slate-500">Enrolled: <?= date('M d, Y', strtotime($selectedClient['registration_date'])) ?></span>
         </div>
-        <h2 class="text-2xl font-bold mt-1.5"><?= h($selectedClient['first_name'] . ' ' . $selectedClient['last_name']) ?></h2>
-        <div class="text-xs text-purple-200 mt-0.5">
+        <div class="text-lg font-semibold mt-1 text-slate-900"><?= h($selectedClient['first_name'] . ' ' . $selectedClient['last_name']) ?></div>
+        <div class="text-xs text-slate-500 mt-0.5">
           <?= (int)$selectedClient['age'] ?> yrs old &bull; Brgy. <?= h($selectedClient['barangay']) ?> &bull; Contact: <?= h($selectedClient['contact_no'] ?: 'None') ?>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <div class="bg-white/10 backdrop-blur-xs px-3.5 py-2 rounded-xl text-center">
-          <div class="text-[10px] uppercase font-bold text-purple-200">Current Method</div>
-          <div class="text-sm font-bold text-white"><?= h(ucwords(str_replace('_', ' ', $selectedClient['method_accepted']))) ?></div>
+        <div class="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded text-center">
+          <div class="text-[10px] uppercase text-slate-500">Method</div>
+          <div class="text-xs font-semibold text-slate-900"><?= h(ucwords(str_replace('_', ' ', $selectedClient['method_accepted']))) ?></div>
         </div>
-        <div class="bg-white/10 backdrop-blur-xs px-3.5 py-2 rounded-xl text-center">
-          <div class="text-[10px] uppercase font-bold text-purple-200">Status</div>
-          <div class="text-sm font-bold text-emerald-300 capitalize"><?= h($selectedClient['status']) ?></div>
+        <div class="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded text-center">
+          <div class="text-[10px] uppercase text-slate-500">Status</div>
+          <div class="text-xs font-semibold text-emerald-700 capitalize"><?= h($selectedClient['status']) ?></div>
         </div>
-        <a href="/HealthLogs/public/family_planning/visits/index.php" class="bg-white/15 hover:bg-white/25 px-3 py-2 rounded-xl text-xs font-semibold text-white transition">
+        <a href="/HealthLogs/public/family_planning/visits/index.php" class="bg-white border border-slate-300 hover:bg-slate-50 px-3 py-1.5 rounded text-xs font-semibold text-slate-700 transition">
           View All Clients
         </a>
       </div>
@@ -192,15 +174,8 @@ require __DIR__ . '/../../partials/header.php';
 <?php endif; ?>
 
 <!-- Log Visit / Dispensing Form -->
-<div class="bg-white rounded-xl shadow p-5 sm:p-6 mb-6 border border-slate-100">
-  <div class="flex items-center justify-between border-b pb-3 mb-4">
-    <div>
-      <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-        <i class="fas fa-notes-medical text-purple-600"></i> Record Follow-up &amp; Contraceptive Dispensing
-      </h3>
-      <p class="text-xs text-slate-500">Record vital signs, pills/depo supply issued, complaints, and scheduled appointment.</p>
-    </div>
-  </div>
+<div class="mt-4 bg-white rounded shadow p-4">
+  <div class="text-sm font-semibold text-slate-800 mb-3">Record Consultation &amp; Contraceptive Dispensing</div>
 
   <form method="POST" class="space-y-4">
     <input type="hidden" name="action" value="save_visit" />
@@ -280,90 +255,63 @@ require __DIR__ . '/../../partials/header.php';
     </div>
 
     <div class="pt-3 border-t flex justify-end">
-      <button type="submit" class="px-5 py-2.5 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold shadow transition flex items-center gap-1.5">
-        <i class="fas fa-save"></i> Save Visit Record
+      <button type="submit" class="bg-slate-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-slate-800 transition">
+        Save Visit Record
       </button>
     </div>
   </form>
 </div>
 
 <!-- Visits History Table -->
-<div class="bg-white rounded-xl shadow p-5 sm:p-6">
-  <div class="flex items-center justify-between border-b pb-3 mb-4">
-    <h3 class="text-base font-bold text-slate-900">
-      <?= $selectedClient ? 'Consultations for ' . h($selectedClient['first_name'] . ' ' . $selectedClient['last_name']) : 'Recent Consultations Log (All Clients)' ?>
-    </h3>
-    <span class="text-xs text-slate-500 font-medium"><?= count($visits) ?> visit record(s)</span>
+<div class="mt-4 bg-white rounded shadow overflow-x-auto">
+  <div class="px-4 py-3 border-b border-slate-100 font-semibold text-sm text-slate-800 flex items-center justify-between">
+    <span><?= $selectedClient ? 'Consultations for ' . h($selectedClient['first_name'] . ' ' . $selectedClient['last_name']) : 'Recent Consultations Log' ?></span>
+    <span class="text-xs text-slate-400 font-normal"><?= count($visits) ?> record(s)</span>
   </div>
-
-  <?php if (empty($visits)): ?>
-    <div class="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-      <i class="fas fa-notes-medical text-3xl text-slate-400 mb-2"></i>
-      <p class="text-sm font-semibold text-slate-700">No follow-up visits recorded yet.</p>
-      <p class="text-xs text-slate-500 mt-1">Use the form above to record client consultations or contraceptive dispensing.</p>
-    </div>
-  <?php else: ?>
-    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table class="w-full text-left text-sm min-w-[760px]">
-        <thead>
-          <tr class="border-b bg-slate-50 text-slate-500 uppercase text-xs">
-            <th class="py-3 px-3">Date</th>
-            <th class="py-3 px-3">Client</th>
-            <th class="py-3 px-3">Method Dispensed</th>
-            <th class="py-3 px-3">Qty</th>
-            <th class="py-3 px-3">Vitals (BP / Wt)</th>
-            <th class="py-3 px-3">Next Appointment</th>
-            <th class="py-3 px-3">Recorded By</th>
+  <table class="min-w-full text-sm">
+    <thead class="bg-slate-50 text-slate-600">
+      <tr>
+        <th class="text-left px-4 py-2">Date</th>
+        <th class="text-left px-4 py-2">Client Code</th>
+        <th class="text-left px-4 py-2">Patient</th>
+        <th class="text-left px-4 py-2">Method Dispensed</th>
+        <th class="text-left px-4 py-2">Qty</th>
+        <th class="text-left px-4 py-2">Vitals</th>
+        <th class="text-left px-4 py-2">Next Due</th>
+        <th class="text-left px-4 py-2">Recorded By</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if (empty($visits)): ?>
+        <tr><td class="px-4 py-4" colspan="8">No consultations recorded yet.</td></tr>
+      <?php else: ?>
+        <?php foreach ($visits as $v): ?>
+          <tr class="border-t">
+            <td class="px-4 py-2 whitespace-nowrap"><?= date('M d, Y', strtotime($v['visit_date'])) ?></td>
+            <td class="px-4 py-2 font-mono whitespace-nowrap">
+              <a href="/HealthLogs/public/family_planning/visits/index.php?record_id=<?= $v['fp_record_id'] ?>" class="text-blue-600 hover:underline">
+                <?= h($v['client_code']) ?>
+              </a>
+            </td>
+            <td class="px-4 py-2 font-medium whitespace-nowrap"><?= h($v['last_name'] . ', ' . $v['first_name']) ?></td>
+            <td class="px-4 py-2"><?= h($v['method_prescribed']) ?></td>
+            <td class="px-4 py-2"><?= (int)$v['quantity_dispensed'] ?></td>
+            <td class="px-4 py-2 text-xs">
+              <?php if (!empty($v['bp_systolic'])): ?>
+                <span><?= (int)$v['bp_systolic'] ?>/<?= (int)$v['bp_diastolic'] ?></span>
+              <?php else: ?>
+                <span class="text-slate-400">—</span>
+              <?php endif; ?>
+            </td>
+            <td class="px-4 py-2 whitespace-nowrap text-xs">
+              <?= !empty($v['next_appointment_date']) ? date('M d, Y', strtotime($v['next_appointment_date'])) : '—' ?>
+            </td>
+            <td class="px-4 py-2 text-xs text-slate-500"><?= h($v['recorded_by_name'] ?: 'Staff') ?></td>
           </tr>
-        </thead>
-        <tbody class="divide-y text-slate-700">
-          <?php foreach ($visits as $v): ?>
-            <tr class="hover:bg-slate-50/80 transition">
-              <td class="py-3 px-3 font-semibold text-slate-900 whitespace-nowrap">
-                <?= date('M d, Y', strtotime($v['visit_date'])) ?>
-              </td>
-              <td class="py-3 px-3 whitespace-nowrap">
-                <a href="/HealthLogs/public/family_planning/visits/index.php?record_id=<?= $v['fp_record_id'] ?>" class="font-medium text-purple-700 hover:underline">
-                  <?= h($v['last_name'] . ', ' . $v['first_name']) ?>
-                </a>
-                <div class="text-xs text-slate-400 font-mono"><?= h($v['client_code']) ?></div>
-              </td>
-              <td class="py-3 px-3 whitespace-nowrap font-medium text-slate-800">
-                <?= h($v['method_prescribed']) ?>
-                <?php if (!empty($v['findings_complaints'])): ?>
-                  <div class="text-xs text-slate-500 truncate max-w-xs font-normal"><?= h($v['findings_complaints']) ?></div>
-                <?php endif; ?>
-              </td>
-              <td class="py-3 px-3 whitespace-nowrap text-center font-bold">
-                <?= (int)$v['quantity_dispensed'] ?>
-              </td>
-              <td class="py-3 px-3 whitespace-nowrap text-xs">
-                <?php if (!empty($v['bp_systolic'])): ?>
-                  <div>BP: <strong class="text-slate-800"><?= (int)$v['bp_systolic'] ?>/<?= (int)$v['bp_diastolic'] ?></strong></div>
-                <?php endif; ?>
-                <?php if (!empty($v['weight_kg'])): ?>
-                  <div class="text-slate-500">Weight: <?= number_format((float)$v['weight_kg'], 1) ?> kg</div>
-                <?php endif; ?>
-                <?php if (empty($v['bp_systolic']) && empty($v['weight_kg'])): ?>
-                  <span class="text-slate-400">—</span>
-                <?php endif; ?>
-              </td>
-              <td class="py-3 px-3 whitespace-nowrap text-xs font-mono">
-                <?php if (!empty($v['next_appointment_date'])): ?>
-                  <span class="font-semibold text-slate-800"><?= date('M d, Y', strtotime($v['next_appointment_date'])) ?></span>
-                <?php else: ?>
-                  <span class="text-slate-400">—</span>
-                <?php endif; ?>
-              </td>
-              <td class="py-3 px-3 whitespace-nowrap text-xs text-slate-500">
-                <?= h($v['recorded_by_name'] ?: 'Staff') ?>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-  <?php endif; ?>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </tbody>
+  </table>
 </div>
 
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

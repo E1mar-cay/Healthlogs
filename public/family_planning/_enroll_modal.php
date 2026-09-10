@@ -25,17 +25,17 @@ try {
 <div id="enrollClientModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
   <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 overflow-hidden animate-in fade-in zoom-in duration-150 border border-slate-200">
     <!-- Modal Header -->
-    <div class="px-5 py-4 bg-gradient-to-r from-purple-800 to-indigo-800 text-white flex items-center justify-between">
+    <div class="px-5 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <span class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-sm font-bold shadow-xs">
+        <span class="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center text-sm font-bold shadow-xs">
           <i class="fas fa-user-plus"></i>
         </span>
         <div>
-          <div class="text-[10px] uppercase tracking-wider text-purple-200 font-bold">RPRH Clinical Form 1</div>
-          <h3 class="text-base sm:text-lg font-bold">Enroll Family Planning Client</h3>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">RPRH Clinical Form 1</div>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">Enroll Family Planning Client</h3>
         </div>
       </div>
-      <button type="button" onclick="closeEnrollModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white flex items-center justify-center text-lg font-bold transition">
+      <button type="button" onclick="closeEnrollModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-lg font-bold transition">
         &times;
       </button>
     </div>
@@ -172,10 +172,10 @@ try {
 
       <!-- Modal Footer -->
       <div class="pt-4 border-t flex items-center justify-end gap-2.5">
-        <button type="button" onclick="closeEnrollModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
+        <button type="button" onclick="closeEnrollModal()" class="px-4 py-2 rounded border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
           Cancel
         </button>
-        <button type="submit" class="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold shadow transition flex items-center gap-1.5">
+        <button type="submit" class="px-4 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition flex items-center gap-1.5">
           <i class="fas fa-check"></i> Enroll Client
         </button>
       </div>

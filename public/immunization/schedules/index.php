@@ -28,11 +28,9 @@ $rows = $stmt->fetchAll();
 $stats = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status = 'missed' THEN 1 ELSE 0 END) as missed FROM immunization_schedule")->fetch();
 ?>
 <?php display_flash_messages(); ?>
-<div class="bg-white p-6 rounded shadow">
-  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-    <div><div class="text-sm text-slate-500">Immunization Module</div><div class="text-2xl font-semibold">Immunization Schedules</div><p class="text-sm text-slate-500 mt-1">Track and manage vaccination schedules for all patients.</p></div>
-    <button type="button" id="scheduleModalOpenNew" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Schedule</button>
-  </div>
+<div class="flex items-center justify-between">
+  <div class="text-lg font-semibold">Immunization Schedules</div>
+  <button type="button" id="scheduleModalOpenNew" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-slate-800 transition">New Schedule</button>
 </div>
 <form method="get" class="mt-6 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">
   <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2" placeholder="Search patient, vaccine, or status" />

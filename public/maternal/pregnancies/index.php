@@ -59,62 +59,52 @@ $sensitiveCount = (int)$pdo->query("
 
 <?php display_flash_messages(); ?>
 
-<div class="bg-white p-6 rounded-xl shadow mb-6">
-  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-    <div>
-      <div class="text-sm text-slate-500 font-medium">Maternal Registry</div>
-      <div class="text-2xl font-semibold text-slate-900">Pregnancy Management</div>
-      <p class="text-sm text-slate-500 mt-1">Monitor gestational progression and identify sensitive (6–7 months) and high-priority mothers.</p>
-    </div>
-    <div class="flex items-center gap-2 flex-wrap">
-      <?php if ($sensitiveCount > 0): ?>
-        <a href="/HealthLogs/public/maternal/pregnancies/index.php?status=ongoing&stage=sensitive" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 hover:bg-rose-200 transition shadow-2xs">
-          <i class="fas fa-exclamation-circle text-rose-600 animate-pulse"></i>
-          <span><?= $sensitiveCount ?> Sensitive (6–7 Mos)</span>
-        </a>
-      <?php endif; ?>
-      <button type="button" id="pregnancyModalOpenNew" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
-        <i class="fas fa-plus mr-1 text-xs"></i> New Pregnancy
-      </button>
-    </div>
+<div class="flex items-center justify-between">
+  <div class="text-lg font-semibold">Pregnancies</div>
+  <div class="flex items-center gap-2">
+    <?php if ($sensitiveCount > 0): ?>
+      <a href="/HealthLogs/public/maternal/pregnancies/index.php?status=ongoing&stage=sensitive" class="px-2.5 py-1.5 rounded text-xs font-semibold bg-rose-100 text-rose-800 hover:bg-rose-200 transition">
+        <?= $sensitiveCount ?> Sensitive (6–7 Mos)
+      </a>
+    <?php endif; ?>
+    <button type="button" id="pregnancyModalOpenNew" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-slate-800 transition">New Pregnancy</button>
   </div>
 </div>
 
-<form method="get" class="bg-white rounded-xl shadow p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-  <input name="q" value="<?= h($q) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Search patient name or barangay" />
-  <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+<form method="get" class="mt-4 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">
+  <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2 text-sm" placeholder="Search patient name or barangay" />
+  <select name="status" class="w-full md:w-44 border rounded px-3 py-2 text-sm">
     <option value="">All statuses</option>
     <option value="ongoing" <?= $statusFilter === 'ongoing' ? 'selected' : '' ?>>Ongoing</option>
     <option value="delivered" <?= $statusFilter === 'delivered' ? 'selected' : '' ?>>Delivered</option>
     <option value="terminated" <?= $statusFilter === 'terminated' ? 'selected' : '' ?>>Terminated</option>
   </select>
-  <select name="stage" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+  <select name="stage" class="w-full md:w-60 border rounded px-3 py-2 text-sm">
     <option value="">All Gestational Stages</option>
-    <option value="sensitive" <?= $stageFilter === 'sensitive' ? 'selected' : '' ?>>⚠️ Sensitive (6–7 Months / 24–31 wks)</option>
-    <option value="late" <?= $stageFilter === 'late' ? 'selected' : '' ?>>Near Term (>31 wks / 8–9 mos)</option>
-    <option value="early" <?= $stageFilter === 'early' ? 'selected' : '' ?>>Early Pregnancy (<24 wks)</option>
+    <option value="sensitive" <?= $stageFilter === 'sensitive' ? 'selected' : '' ?>>Sensitive (6–7 Mos)</option>
+    <option value="late" <?= $stageFilter === 'late' ? 'selected' : '' ?>>Near Term (>31 wks)</option>
+    <option value="early" <?= $stageFilter === 'early' ? 'selected' : '' ?>>Early (&lt;24 wks)</option>
   </select>
   <div class="flex gap-2">
-    <button class="flex-1 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition" type="submit">Filter</button>
-    <a class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm text-center hover:bg-slate-50 transition" href="/HealthLogs/public/maternal/pregnancies/index.php">Clear</a>
+    <button class="bg-slate-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-slate-800 transition" type="submit">Search</button>
+    <a class="px-4 py-2 rounded border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition" href="/HealthLogs/public/maternal/pregnancies/index.php">Clear</a>
   </div>
 </form>
 
-<div class="mt-6 bg-white rounded-xl shadow overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="min-w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
-        <tr>
-          <th class="text-left px-4 py-3 font-semibold">Patient</th>
-          <th class="text-left px-4 py-3 font-semibold">Barangay</th>
-          <th class="text-left px-4 py-3 font-semibold">LMP Date</th>
-          <th class="text-left px-4 py-3 font-semibold">EDD Date</th>
-          <th class="text-left px-4 py-3 font-semibold">Gestational Progress</th>
-          <th class="text-left px-4 py-3 font-semibold">Status</th>
-          <th class="text-right px-4 py-3 font-semibold">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
+<div class="mt-4 bg-white rounded shadow overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead class="bg-slate-50 text-slate-600">
+      <tr>
+        <th class="text-left px-4 py-2">Patient</th>
+        <th class="text-left px-4 py-2">Barangay</th>
+        <th class="text-left px-4 py-2">LMP Date</th>
+        <th class="text-left px-4 py-2">EDD Date</th>
+        <th class="text-left px-4 py-2">Gestational Progress</th>
+        <th class="text-left px-4 py-2">Status</th>
+        <th class="text-left px-4 py-2">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
         <?php if (empty($rows)): ?>
           <tr><td class="px-4 py-6 text-center text-slate-500" colspan="7">No pregnancy records found matching current criteria.</td></tr>
         <?php else: ?>
