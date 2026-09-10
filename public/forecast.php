@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $startTime = microtime(true);
     $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
 
-    $python = getenv('PYTHON_PATH') ?: $_ENV['PYTHON_PATH'] ?: 'python';
+    $python = getenv('PYTHON_PATH') ?: ($_ENV['PYTHON_PATH'] ?? null) ?: (file_exists(__DIR__ . '/../.venv/Scripts/python.exe') ? __DIR__ . '/../.venv/Scripts/python.exe' : 'python');
     $script = __DIR__ . '/../scripts/forecast_arima.py';
     $cmd = escapeshellarg($python) . ' ' . escapeshellarg($script) .
         ' --series-key ' . escapeshellarg($seriesKey) .
@@ -704,7 +704,7 @@ if ($summary) {
     </div>
   </div>
 
-  <form class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4" method="post">
+  <form id="arimaForecastForm" class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4" method="post">
     <div class="md:col-span-2">
       <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">What to forecast</label>
       <select name="series_key" class="mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
@@ -1104,209 +1104,229 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
   </div>
 </div>
 
-<?php if ($summary): ?>
-  <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+<!-- ============================================================ -->
+<!-- SECTION 4: ARIMA RESULTS & ERROR METRICS DISPLAY              -->
+<!-- ============================================================ -->
+<div id="arimaResultsSection" class="<?= $summary ? '' : 'hidden' ?>">
+  <div class="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
     <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
       <div>
-        <div class="text-xs uppercase tracking-widest text-slate-500">What The Forecast Says</div>
-        <p class="mt-2 text-lg font-medium text-slate-900"><?= h($summary['intro']) ?></p>
-        <div class="mt-3 text-sm text-slate-600">
-          Based on <?= h($summary['history_points']) ?> days of history from <?= h($summary['history_start']) ?> to <?= h($summary['history_end']) ?>, with the most recent <?= h($summary['training_points'] ?? $summary['history_points']) ?> days used for the model.
+        <div class="text-xs uppercase tracking-widest font-bold text-teal-700 flex items-center gap-1.5">
+          <i class="fas fa-robot"></i>
+          <span>What The ARIMA Model Says</span>
+        </div>
+        <p class="mt-2 text-lg font-medium text-slate-900" id="arimaIntroText"><?= h($summary['intro'] ?? '') ?></p>
+        <div class="mt-2 text-sm text-slate-600" id="arimaHistoryMeta">
+          <?php if ($summary): ?>
+            Based on <?= h($summary['history_points']) ?> days of history from <?= h($summary['history_start']) ?> to <?= h($summary['history_end']) ?>, with the most recent <?= h($summary['training_points'] ?? $summary['history_points']) ?> days used for model fitting.
+          <?php endif; ?>
         </div>
       </div>
       <div class="print:hidden">
-        <button class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow" type="button" onclick="window.print()">Print Forecast</button>
+        <button class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow transition" type="button" onclick="window.print()">
+          <i class="fas fa-print mr-1.5 text-xs"></i> Print Forecast
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Average Per Day</div>
-      <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['forecast_average'], 1)) ?></div>
-      <div class="text-sm text-slate-500 mt-1"><?= h($unitLabel) ?> expected each day</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mt-6">
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Average Per Day</div>
+      <div class="text-2xl font-bold mt-2 text-slate-900" id="arimaAvgPerDay"><?= h(number_format((float)($summary['forecast_average'] ?? 0), 1)) ?></div>
+      <div class="text-sm text-slate-500 mt-1" id="arimaUnitExpected"><?= h($unitLabel) ?> expected each day</div>
     </div>
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Expected Total</div>
-      <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['expected_total'], 1)) ?></div>
-      <div class="text-sm text-slate-500 mt-1">Across <?= h($horizon) ?> days</div>
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Expected Total</div>
+      <div class="text-2xl font-bold mt-2 text-slate-900" id="arimaExpectedTotal"><?= h(number_format((float)($summary['expected_total'] ?? 0), 1)) ?></div>
+      <div class="text-sm text-slate-500 mt-1" id="arimaHorizonDays">Across <?= h($horizon) ?> days</div>
     </div>
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Busiest Day</div>
-      <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['peak_value'], 1)) ?></div>
-      <div class="text-sm text-slate-500 mt-1"><?= h($summary['peak_date']) ?></div>
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Busiest Day (Peak)</div>
+      <div class="text-2xl font-bold mt-2 text-slate-900" id="arimaPeakValue"><?= h(number_format((float)($summary['peak_value'] ?? 0), 1)) ?></div>
+      <div class="text-sm text-slate-500 mt-1" id="arimaPeakDate"><?= h($summary['peak_date'] ?? '--') ?></div>
     </div>
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Compared To Recent Days</div>
-      <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['recent_average'], 1)) ?></div>
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Compared To Recent Days</div>
+      <div class="text-2xl font-bold mt-2 text-slate-900" id="arimaRecentAvg"><?= h(number_format((float)($summary['recent_average'] ?? 0), 1)) ?></div>
       <div class="text-sm text-slate-500 mt-1">Recent daily average</div>
     </div>
   </div>
 
   <!-- Model Evaluation & Error Metrics (MAE, RMSE, MAPE) Section -->
-  <?php if ($metrics && (isset($metrics['mae']) || isset($metrics['rmse']) || isset($metrics['mape']))): ?>
-    <div class="mt-6 bg-white p-6 rounded shadow border-l-4 border-teal-600">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-150">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded border border-teal-200">
-              <i class="fas fa-microchip mr-1"></i> Model Evaluation
-            </span>
-            <span class="text-xs text-slate-400">Quantitative Statistical Analysis</span>
-          </div>
-          <h3 class="text-xl font-bold text-slate-900 mt-1">Forecast Error Metrics: MAE, RMSE &amp; MAPE</h3>
-          <p class="text-sm text-slate-500 mt-0.5">
-            Model fit accuracy evaluated across <?= h($summary['training_points'] ?? 180) ?> daily data points in the training window.
-          </p>
+  <div class="mt-6 bg-white p-6 rounded-xl shadow border-l-4 border-teal-600 border border-slate-100" id="arimaMetricsCard">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-150">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded border border-teal-200">
+            <i class="fas fa-microchip mr-1"></i> Model Evaluation
+          </span>
+          <span class="text-xs text-slate-400">Quantitative Statistical Analysis</span>
         </div>
-        <div class="flex items-center gap-3">
-          <?php
-            $mapeVal = (float)($metrics['mape'] ?? 0);
-            $ratingText = $metrics['accuracy_rating'] ?? ($mapeVal < 10.0 ? 'High Accuracy' : ($mapeVal < 20.0 ? 'Good Fit' : ($mapeVal < 50.0 ? 'Reasonable' : 'High Variance')));
-            $badgeBg = $mapeVal < 20.0 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : ($mapeVal < 50.0 ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-amber-50 text-amber-800 border-amber-300');
-          ?>
-          <div class="text-left md:text-right">
-            <div class="text-xs text-slate-400 uppercase tracking-widest font-medium">Model Rating</div>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border mt-0.5 <?= $badgeBg ?>">
-              <span class="h-2 w-2 rounded-full bg-current"></span>
-              <?= h($ratingText) ?>
-            </span>
-          </div>
-        </div>
+        <h3 class="text-xl font-bold text-slate-900 mt-1">Forecast Error Metrics: MAE, RMSE &amp; MAPE</h3>
+        <p class="text-sm text-slate-500 mt-0.5" id="arimaTrainingCountMeta">
+          Model fit accuracy evaluated across <?= h($summary['training_points'] ?? 180) ?> daily data points in the training window.
+        </p>
       </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-        <!-- MAE Card -->
-        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
-          <div class="flex items-center justify-between">
-            <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Mean Absolute Error</span>
-            <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAE</span>
-          </div>
-          <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
-            <?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?>
-            <span class="text-sm font-normal text-slate-500 font-sans"><?= h($unitLabel) ?></span>
-          </div>
-          <p class="text-xs text-slate-600 mt-2 leading-relaxed">
-            On average, daily predictions deviate from actual activity by <strong>&plusmn;<?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?> <?= h($unitLabel) ?></strong>.
-          </p>
-          <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
-            <span>Formula: &Sigma;|y &minus; &ycirc;| / n</span>
-            <span class="text-teal-600 font-semibold">Linear Penalty</span>
-          </div>
-        </div>
-
-        <!-- RMSE Card -->
-        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
-          <div class="flex items-center justify-between">
-            <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Root Mean Squared Error</span>
-            <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">RMSE</span>
-          </div>
-          <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
-            <?= h(number_format((float)($metrics['rmse'] ?? 0), 2)) ?>
-            <span class="text-sm font-normal text-slate-500 font-sans"><?= h($unitLabel) ?></span>
-          </div>
-          <p class="text-xs text-slate-600 mt-2 leading-relaxed">
-            Measures residual spread; penalizes large sudden demand spikes or outlier days more heavily.
-          </p>
-          <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
-            <span>Formula: &radic;(&Sigma;(y &minus; &ycirc;)&sup2; / n)</span>
-            <span class="text-teal-600 font-semibold">Quadratic Penalty</span>
-          </div>
-        </div>
-
-        <!-- MAPE Card -->
-        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
-          <div class="flex items-center justify-between">
-            <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Mean Absolute % Error</span>
-            <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAPE</span>
-          </div>
-          <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
-            <?= h(number_format((float)($metrics['mape'] ?? 0), 1)) ?><span class="text-xl font-bold text-slate-500 font-sans">%</span>
-          </div>
-          <p class="text-xs text-slate-600 mt-2 leading-relaxed">
-            Relative percentage deviation across non-zero active days (Overall Accuracy: <strong><?= h(number_format(max(0, 100 - (float)($metrics['mape'] ?? 0)), 1)) ?>%</strong>).
-          </p>
-          <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
-            <span>Formula: &Sigma;(|y &minus; &ycirc;| / y) / n</span>
-            <span class="text-teal-600 font-semibold">Scale-Independent</span>
-          </div>
+      <div class="flex items-center gap-3">
+        <?php
+          $mapeVal = (float)($metrics['mape'] ?? 0);
+          $ratingText = $metrics['accuracy_rating'] ?? ($mapeVal < 10.0 ? 'High Accuracy' : ($mapeVal < 20.0 ? 'Good Fit' : ($mapeVal < 50.0 ? 'Reasonable' : 'High Variance')));
+          $badgeBg = $mapeVal < 20.0 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : ($mapeVal < 50.0 ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-amber-50 text-amber-800 border-amber-300');
+        ?>
+        <div class="text-left md:text-right">
+          <div class="text-xs text-slate-400 uppercase tracking-widest font-medium">Model Rating</div>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border mt-0.5 <?= $badgeBg ?>" id="arimaRatingBadge">
+            <span class="h-2 w-2 rounded-full bg-current"></span>
+            <span id="arimaRatingText"><?= h($ratingText) ?></span>
+          </span>
         </div>
       </div>
     </div>
-  <?php endif; ?>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+      <!-- MAE Card -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
+        <div class="flex items-center justify-between">
+          <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Mean Absolute Error</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAE</span>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+          <span id="arimaMaeVal"><?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?></span>
+          <span class="text-sm font-normal text-slate-500 font-sans arima-unit-label"><?= h($unitLabel) ?></span>
+        </div>
+        <p class="text-xs text-slate-600 mt-2 leading-relaxed" id="arimaMaeDesc">
+          On average, daily predictions deviate from actual activity by &plusmn;<strong id="arimaMaeStrong"><?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?></strong> <span class="arima-unit-label"><?= h($unitLabel) ?></span>.
+        </p>
+        <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
+          <span>Formula: &Sigma;|y &minus; &ycirc;| / n</span>
+          <span class="text-teal-600 font-semibold">Linear Penalty</span>
+        </div>
+      </div>
+
+      <!-- RMSE Card -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
+        <div class="flex items-center justify-between">
+          <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Root Mean Squared Error</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">RMSE</span>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+          <span id="arimaRmseVal"><?= h(number_format((float)($metrics['rmse'] ?? 0), 2)) ?></span>
+          <span class="text-sm font-normal text-slate-500 font-sans arima-unit-label"><?= h($unitLabel) ?></span>
+        </div>
+        <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+          Measures residual spread; penalizes large sudden demand spikes or outlier days more heavily.
+        </p>
+        <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
+          <span>Formula: &radic;(&Sigma;(y &minus; &ycirc;)&sup2; / n)</span>
+          <span class="text-teal-600 font-semibold">Quadratic Penalty</span>
+        </div>
+      </div>
+
+      <!-- MAPE Card -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
+        <div class="flex items-center justify-between">
+          <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Mean Absolute % Error</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAPE</span>
+        </div>
+        <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
+          <span id="arimaMapeVal"><?= h(number_format((float)($metrics['mape'] ?? 0), 1)) ?></span><span class="text-xl font-bold text-slate-500 font-sans">%</span>
+        </div>
+        <p class="text-xs text-slate-600 mt-2 leading-relaxed" id="arimaMapeDesc">
+          Relative percentage deviation across non-zero active days.
+        </p>
+        <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
+          <span>Formula: &Sigma;(|y &minus; &ycirc;| / y) / n</span>
+          <span class="text-teal-600 font-semibold">Scale-Independent</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-    <div class="xl:col-span-2 bg-white p-4 rounded shadow">
-      <div class="text-sm text-slate-500 mb-3">Recent History And Forecast</div>
-      <canvas id="forecastChart" height="140"></canvas>
+    <div class="xl:col-span-2 bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-semibold text-slate-800">Historical Telemetry &amp; ARIMA Forecast Range</div>
+        <span class="text-xs text-slate-400">95% Confidence Bounds</span>
+      </div>
+      <div class="h-72">
+        <canvas id="forecastChart"></canvas>
+      </div>
     </div>
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-sm text-slate-500">Planning Notes</div>
-      <ul class="mt-3 space-y-3 text-sm text-slate-700">
-        <?php foreach ($planningNotes as $note): ?>
-          <li class="border-b border-slate-100 pb-3 last:border-b-0 last:pb-0"><?= h($note) ?></li>
-        <?php endforeach; ?>
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Planning Notes</div>
+      <ul class="mt-4 space-y-3 text-sm text-slate-700" id="arimaPlanningNotes">
+        <?php if ($summary && !empty($planningNotes)): ?>
+          <?php foreach ($planningNotes as $note): ?>
+            <li class="border-b border-slate-100 pb-3 last:border-b-0 last:pb-0"><?= h($note) ?></li>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </ul>
     </div>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Next 7 Days</div>
-      <div class="text-2xl font-semibold mt-2"><?= h(number_format($firstWeekAverage, 1)) ?></div>
-      <div class="text-sm text-slate-500 mt-1">Average <?= h($unitLabel) ?> per day</div>
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Next 7 Days</div>
+      <div class="text-2xl font-bold mt-2 text-slate-900" id="arimaFirstWeekAvg"><?= isset($firstWeekAverage) ? h(number_format($firstWeekAverage, 1)) : '--' ?></div>
+      <div class="text-sm text-slate-500 mt-1"><span class="arima-unit-label"><?= h($unitLabel) ?></span> per day</div>
     </div>
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-xs uppercase tracking-widest text-slate-500">Rest Of Forecast</div>
-      <div class="text-2xl font-semibold mt-2"><?= h(number_format($laterAverage, 1)) ?></div>
-      <div class="text-sm text-slate-500 mt-1">Average <?= h($unitLabel) ?> per day</div>
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Rest Of Forecast Horizon</div>
+      <div class="text-2xl font-bold mt-2 text-slate-900" id="arimaLaterAvg"><?= isset($laterAverage) ? h(number_format($laterAverage, 1)) : '--' ?></div>
+      <div class="text-sm text-slate-500 mt-1"><span class="arima-unit-label"><?= h($unitLabel) ?></span> per day</div>
     </div>
   </div>
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-    <div class="xl:col-span-2 bg-white p-5 rounded shadow">
+    <div class="xl:col-span-2 bg-white p-5 rounded-xl shadow border border-slate-100">
       <div class="flex items-center justify-between">
         <div>
-          <div class="text-sm text-slate-500">Recent Forecast</div>
-          <div class="text-lg font-semibold">Next Few Days At A Glance</div>
+          <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold">Daily Projections</div>
+          <div class="text-lg font-bold text-slate-900 mt-1">Next Few Days At A Glance</div>
         </div>
-        <div class="text-sm text-slate-500">Upcoming <?= h(count($recentForecastRows)) ?> days</div>
+        <div class="text-xs text-slate-500" id="arimaUpcomingHeader">Upcoming days</div>
       </div>
-      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <?php foreach ($recentForecastRows as $row): ?>
-          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div class="text-xs uppercase tracking-widest text-slate-400"><?= h($row['date']) ?></div>
-            <div class="text-2xl font-semibold mt-2"><?= h(number_format($row['value'], 1)) ?></div>
-            <div class="text-sm text-slate-500 mt-1"><?= h($unitLabel) ?> expected</div>
-            <div class="text-xs text-slate-400 mt-3">Range: <?= h(number_format($row['lower'], 1)) ?> to <?= h(number_format($row['upper'], 1)) ?></div>
-          </div>
-        <?php endforeach; ?>
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" id="arimaUpcomingCards">
+        <?php if (!empty($forecastRows)): ?>
+          <?php foreach (array_slice($forecastRows, 0, 6) as $row): ?>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+              <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold"><?= h($row['date']) ?></div>
+              <div class="text-2xl font-bold mt-1.5 text-slate-900"><?= h(number_format($row['value'], 1)) ?></div>
+              <div class="text-xs text-slate-500 mt-1"><?= h($unitLabel) ?> expected</div>
+              <div class="text-[11px] text-slate-400 mt-2 font-mono">Range: <?= h(number_format($row['lower'], 1)) ?> to <?= h(number_format($row['upper'], 1)) ?></div>
+            </div>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </div>
     </div>
-    <div class="bg-white p-5 rounded shadow">
-      <div class="text-sm text-slate-500">Print Notes</div>
-      <div class="text-lg font-semibold">Report Summary</div>
-      <ul class="mt-4 space-y-3 text-sm text-slate-700">
-        <li class="border-b border-slate-100 pb-3">Forecast generated on <?= h($result['generated_on'] ?? date('Y-m-d')) ?>.</li>
-        <li class="border-b border-slate-100 pb-3">Series selected: <?= h($seriesOptions[$seriesKey] ?? $seriesKey) ?>.</li>
-        <li class="border-b border-slate-100 pb-3">Planning horizon: <?= h($horizon) ?> days.</li>
-        <li>Use this report for staffing, medicine preparation, and short-term scheduling.</li>
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-100">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Report Summary</div>
+      <ul class="mt-4 space-y-3 text-xs text-slate-700" id="arimaReportSummary">
+        <li class="border-b border-slate-100 pb-2.5">Forecast generated on <?= h($result['generated_on'] ?? date('Y-m-d')) ?>.</li>
+        <li class="border-b border-slate-100 pb-2.5">Series selected: <?= h($seriesOptions[$seriesKey] ?? $seriesKey) ?>.</li>
+        <li class="border-b border-slate-100 pb-2.5">Planning horizon: <?= h($horizon) ?> days.</li>
+        <li>Use this statistical projection for staffing, clinical inventory preparation, and scheduling.</li>
       </ul>
     </div>
   </div>
+</div>
 
-  <script>
-    const historyRows = <?= json_encode($historyRows) ?>;
-    const forecastRows = <?= json_encode($forecastRows) ?>;
+<script>
+  let forecastChartInstance = null;
+
+  function initOrUpdateForecastChart(historyRows, forecastRows) {
+    const canvas = document.getElementById('forecastChart');
+    if (!canvas) return;
 
     const historyLabels = historyRows.map((row) => row.date);
     const forecastLabels = forecastRows.map((row) => row.date);
     const labels = [...historyLabels, ...forecastLabels];
 
-    const historyValues = historyRows.map((row) => row.value);
-    const forecastValues = forecastRows.map((row) => row.value);
-    const lowerValues = forecastRows.map((row) => row.lower);
-    const upperValues = forecastRows.map((row) => row.upper);
+    const historyValues = historyRows.map((row) => Number(row.value));
+    const forecastValues = forecastRows.map((row) => Number(row.value));
+    const lowerValues = forecastRows.map((row) => Number(row.lower));
+    const upperValues = forecastRows.map((row) => Number(row.upper));
     const lastHistoryValue = historyValues.length ? historyValues[historyValues.length - 1] : null;
 
     const historyDataset = [...historyValues, ...Array(forecastValues.length).fill(null)];
@@ -1314,13 +1334,17 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
     const lowerDataset = [...Array(historyValues.length).fill(null), ...lowerValues];
     const upperDataset = [...Array(historyValues.length).fill(null), ...upperValues];
 
-    new Chart(document.getElementById('forecastChart'), {
+    if (forecastChartInstance) {
+      forecastChartInstance.destroy();
+    }
+
+    forecastChartInstance = new Chart(canvas, {
       type: 'line',
       data: {
         labels,
         datasets: [
           {
-            label: 'Recent actual',
+            label: 'Actual Telemetry',
             data: historyDataset,
             borderColor: '#0f172a',
             backgroundColor: 'rgba(15,23,42,0.08)',
@@ -1329,7 +1353,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderWidth: 2
           },
           {
-            label: 'Forecast range (low)',
+            label: 'Lower Bound (95% CI)',
             data: lowerDataset,
             borderColor: 'rgba(14,165,164,0)',
             backgroundColor: 'rgba(14,165,164,0.12)',
@@ -1337,7 +1361,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderWidth: 0
           },
           {
-            label: 'Forecast range (high)',
+            label: 'Upper Bound (95% CI)',
             data: upperDataset,
             borderColor: 'rgba(14,165,164,0)',
             backgroundColor: 'rgba(14,165,164,0.12)',
@@ -1346,90 +1370,191 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             fill: '-1'
           },
           {
-            label: 'Forecast',
+            label: 'ARIMA Forecast',
             data: forecastDataset,
             borderColor: '#0ea5a4',
             backgroundColor: 'rgba(14,165,164,0.08)',
             tension: 0.3,
-            pointRadius: 1.5,
-            borderDash: [6, 4],
-            borderWidth: 2
+            pointRadius: 2,
+            borderDash: [5, 4],
+            borderWidth: 2.5
           }
         ]
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { position: 'bottom' }
         },
         scales: {
-          x: {
-            ticks: { maxTicksLimit: 10 }
-          },
-          y: {
-            beginAtZero: true
-          }
+          x: { ticks: { maxTicksLimit: 12 } },
+          y: { beginAtZero: true }
         }
       }
     });
-  </script>
-<?php endif; ?>
+  }
 
-<script>
-  (function () {
-    if (typeof Swal === 'undefined') return;
+  <?php if ($summary && !empty($historyRows) && !empty($forecastRows)): ?>
+    initOrUpdateForecastChart(<?= json_encode($historyRows) ?>, <?= json_encode($forecastRows) ?>);
+  <?php endif; ?>
 
-    var forecastForm = document.querySelector('form[method="post"]');
-    if (!forecastForm) return;
+  // ============================================================
+  // ASYNC ARIMA MODEL RUNNER WITH SWEETALERT LOADING
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', function () {
+    const arimaForm = document.getElementById('arimaForecastForm');
+    if (!arimaForm) return;
 
-    forecastForm.addEventListener('submit', function () {
-      Swal.fire({
-        title: 'Generating forecast',
-        text: 'Please wait while the forecasting model runs.',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: function () {
-          Swal.showLoading();
-        }
+    arimaForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const seriesKey = arimaForm.querySelector('select[name="series_key"]').value;
+      const horizon = arimaForm.querySelector('input[name="horizon"]').value || '30';
+      const unit = snapshotUnitMap[seriesKey] || 'items';
+      const label = snapshotSeriesLabelMap[seriesKey] || seriesKey;
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Training ARIMA Model...',
+          html: `
+            <div class="py-2 text-center text-sm text-slate-600">
+              <div class="mb-3 inline-flex p-3.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200 shadow-2xs">
+                <i class="fas fa-brain fa-spin text-2xl"></i>
+              </div>
+              <p class="font-bold text-slate-800 text-base">Fitting auto-ARIMA for ${label}</p>
+              <p class="text-xs text-slate-400 mt-1">Analyzing historical daily telemetry &amp; calculating 95% confidence bounds across ${horizon} days...</p>
+            </div>
+          `,
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+      }
+
+      const body = new URLSearchParams({
+        series_key: seriesKey,
+        horizon: horizon
       });
+
+      fetch('/HealthLogs/public/forecast_run.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok || data.error || !data.summary || !data.forecast) {
+            throw new Error(data.error || 'Failed to generate ARIMA forecast.');
+          }
+
+          const summary = data.summary || {};
+          const metrics = data.metrics || summary;
+          const forecast = data.forecast || [];
+          const history = data.history || [];
+
+          // 1. Update text & summary values
+          document.getElementById('arimaIntroText').textContent = summary.intro || '';
+          document.getElementById('arimaHistoryMeta').textContent = `Based on ${summary.history_points || history.length} days of history from ${summary.history_start || '--'} to ${summary.history_end || '--'}, with the most recent ${summary.training_points || history.length} days used for model fitting.`;
+
+          document.getElementById('arimaAvgPerDay').textContent = Number(summary.forecast_average || 0).toFixed(1);
+          document.getElementById('arimaUnitExpected').textContent = `${unit} expected each day`;
+          document.getElementById('arimaExpectedTotal').textContent = Number(summary.expected_total || 0).toFixed(1);
+          document.getElementById('arimaHorizonDays').textContent = `Across ${horizon} days`;
+          document.getElementById('arimaPeakValue').textContent = Number(summary.peak_value || 0).toFixed(1);
+          document.getElementById('arimaPeakDate').textContent = summary.peak_date || '--';
+          document.getElementById('arimaRecentAvg').textContent = Number(summary.recent_average || 0).toFixed(1);
+
+          // 2. Update error metrics
+          document.querySelectorAll('.arima-unit-label').forEach(el => el.textContent = unit);
+          document.getElementById('arimaMaeVal').textContent = metrics.mae !== undefined ? Number(metrics.mae).toFixed(2) : '--';
+          document.getElementById('arimaMaeStrong').textContent = metrics.mae !== undefined ? Number(metrics.mae).toFixed(2) : '--';
+          document.getElementById('arimaRmseVal').textContent = metrics.rmse !== undefined ? Number(metrics.rmse).toFixed(2) : '--';
+          document.getElementById('arimaMapeVal').textContent = metrics.mape !== undefined ? Number(metrics.mape).toFixed(1) : '--';
+
+          const mapeNum = Number(metrics.mape || 0);
+          const rating = metrics.accuracy_rating || (mapeNum < 10 ? 'High Accuracy' : (mapeNum < 20 ? 'Good Fit' : (mapeNum < 50 ? 'Reasonable' : 'High Variance')));
+          document.getElementById('arimaRatingText').textContent = rating;
+          document.getElementById('arimaRatingBadge').className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border mt-0.5 ${mapeNum < 20 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : (mapeNum < 50 ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-amber-50 text-amber-800 border-amber-300')}`;
+
+          // 3. Update planning notes & averages
+          const firstWeek = forecast.slice(0, Math.min(7, forecast.length));
+          const laterPeriod = forecast.length > 7 ? forecast.slice(7) : [];
+          const firstWeekAvg = firstWeek.length ? (firstWeek.reduce((a, b) => a + Number(b.value), 0) / firstWeek.length) : 0;
+          const laterAvg = laterPeriod.length ? (laterPeriod.reduce((a, b) => a + Number(b.value), 0) / laterPeriod.length) : Number(summary.forecast_average || 0);
+
+          document.getElementById('arimaFirstWeekAvg').textContent = firstWeekAvg.toFixed(1);
+          document.getElementById('arimaLaterAvg').textContent = laterAvg.toFixed(1);
+
+          const changeVsRecent = Number(summary.forecast_average || 0) - Number(summary.recent_average || 0);
+          const changeWord = Math.abs(changeVsRecent) < 0.5 ? 'about the same as' : (changeVsRecent > 0 ? 'higher than' : 'lower than');
+
+          document.getElementById('arimaPlanningNotes').innerHTML = `
+            <li class="border-b border-slate-100 pb-3">Plan for around <strong>${Number(summary.forecast_average || 0).toFixed(1)} ${unit}</strong> per day.</li>
+            <li class="border-b border-slate-100 pb-3">That is <strong>${changeWord}</strong> the recent daily average of ${Number(summary.recent_average || 0).toFixed(1)}.</li>
+            <li class="border-b border-slate-100 pb-3">The peak single-day projection is <strong>${Number(summary.peak_value || 0).toFixed(1)}</strong> on ${summary.peak_date || '--'}.</li>
+          `;
+
+          // 4. Update upcoming daily cards
+          const upcomingSlice = forecast.slice(0, 6);
+          document.getElementById('arimaUpcomingCards').innerHTML = upcomingSlice.map(r => `
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+              <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold">${r.date}</div>
+              <div class="text-2xl font-bold mt-1.5 text-slate-900">${Number(r.value).toFixed(1)}</div>
+              <div class="text-xs text-slate-500 mt-1">${unit} expected</div>
+              <div class="text-[11px] text-slate-400 mt-2 font-mono">Range: ${Number(r.lower).toFixed(1)} to ${Number(r.upper).toFixed(1)}</div>
+            </div>
+          `).join('');
+
+          // 5. Update report summary list
+          document.getElementById('arimaReportSummary').innerHTML = `
+            <li class="border-b border-slate-100 pb-2.5">Forecast generated on ${data.generated_on || new Date().toISOString().split('T')[0]}.</li>
+            <li class="border-b border-slate-100 pb-2.5">Series selected: ${label}.</li>
+            <li class="border-b border-slate-100 pb-2.5">Planning horizon: ${horizon} days.</li>
+            <li class="border-b border-slate-100 pb-2.5">Fitted Model: <strong>ARIMA${summary.model || '(auto)'}</strong>.</li>
+            <li>Use this statistical projection for staffing, clinical inventory preparation, and scheduling.</li>
+          `;
+
+          // 6. Reveal section and update chart
+          const resultsSection = document.getElementById('arimaResultsSection');
+          resultsSection.classList.remove('hidden');
+          initOrUpdateForecastChart(history, forecast);
+
+          // 7. Smooth scroll into view
+          resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          if (typeof Swal !== 'undefined') {
+            Swal.close();
+            const Toast = Swal.mixin({
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 4000,
+              timerProgressBar: true
+            });
+            Toast.fire({
+              icon: 'success',
+              title: `ARIMA Model Fitted: ARIMA${summary.model || ''} (${horizon} Days)`
+            });
+          }
+        })
+        .catch(err => {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              icon: 'error',
+              title: 'ARIMA Forecast Failed',
+              text: err.message || 'An error occurred while running the ARIMA model.'
+            });
+          } else {
+            alert(err.message || 'Failed to generate forecast.');
+          }
+        });
     });
-  })();
-</script>
-
-<script>
-  (function () {
-    if (typeof Swal === 'undefined') return;
-
-    var forecastError = <?= json_encode($error) ?>;
-    var forecastGenerated = <?= json_encode($forecastGenerated) ?>;
-    var seriesLabel = <?= json_encode($seriesOptions[$seriesKey] ?? $seriesKey) ?>;
-    var horizonValue = <?= json_encode($horizon) ?>;
-
-    if (forecastError) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Forecast failed',
-        text: forecastError
-      });
-      return;
-    }
-
-    if (forecastGenerated) {
-      const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3500,
-        timerProgressBar: true
-      });
-      Toast.fire({
-        icon: 'success',
-        title: `Forecast ready: ${seriesLabel} for ${horizonValue} days`
-      });
-    }
-  })();
+  });
 </script>
 
 <script>

@@ -1,7 +1,13 @@
 <?php
-ob_start();
 require __DIR__ . '/partials/bootstrap.php';
 require_once __DIR__ . '/../app/Core/ForecastLogger.php';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: /HealthLogs/public/forecast.php');
+    exit;
+}
+
+ob_start();
 
 function load_daily_series(PDO $pdo, string $seriesKey, int $days = 84): array
 {
@@ -220,7 +226,7 @@ try {
     $startTime = microtime(true);
     $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
 
-    $python = getenv('PYTHON_PATH') ?: $_ENV['PYTHON_PATH'] ?: 'python';
+    $python = getenv('PYTHON_PATH') ?: ($_ENV['PYTHON_PATH'] ?? null) ?: (file_exists(__DIR__ . '/../.venv/Scripts/python.exe') ? __DIR__ . '/../.venv/Scripts/python.exe' : 'python');
     $script = __DIR__ . '/../scripts/forecast_arima.py';
     $cmd = escapeshellarg($python) . ' ' . escapeshellarg($script) .
         ' --series-key ' . escapeshellarg($seriesKey) .
