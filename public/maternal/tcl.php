@@ -416,8 +416,8 @@ require __DIR__ . '/../partials/header.php';
   }
 
   .tcl-table th {
-    background-color: #f1f5f9;
-    color: #1e293b;
+    background-color: #f8fafc;
+    color: #334155;
     font-weight: 700;
     text-align: center;
     vertical-align: middle;
@@ -437,8 +437,8 @@ require __DIR__ . '/../partials/header.php';
   }
   .tcl-date-val {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-weight: 700;
-    color: #be123c;
+    font-weight: 600;
+    color: #1e293b;
     font-size: 11px;
   }
 </style>
@@ -447,8 +447,8 @@ require __DIR__ . '/../partials/header.php';
 <div class="bg-white p-5 sm:p-6 rounded-xl shadow border border-slate-100 print:hidden">
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
-      <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
-        <i class="fas fa-person-pregnant"></i> DOH Maternal Care Standard Register
+      <div class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+        <i class="fas fa-person-pregnant text-slate-500"></i> DOH Maternal Care Standard Register
       </div>
       <h2 class="text-2xl font-bold text-slate-900 mt-2">8 - ANC Target Client List for Maternal Care and Services</h2>
       <p class="text-xs text-slate-500 mt-0.5">Official Department of Health (DOH) standard master register tracking prenatal 8-ANC visits, nutrition, Td immunization, laboratory screenings, and 4PNC postnatal care.</p>
@@ -457,8 +457,8 @@ require __DIR__ . '/../partials/header.php';
       <a href="/HealthLogs/public/maternal.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs">
         <i class="fas fa-arrow-left"></i> Maternal Hub
       </a>
-      <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow transition">
-        <i class="fas fa-file-csv"></i> Export CSV
+      <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
+        <i class="fas fa-file-csv text-slate-600"></i> Export CSV
       </a>
       <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition">
         <i class="fas fa-print"></i> Print TCL Register (Landscape)
@@ -473,17 +473,17 @@ require __DIR__ . '/../partials/header.php';
       <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['total']) ?></div>
       <div class="text-[10px] text-slate-400">Total registered mothers</div>
     </div>
-    <div class="rounded-xl border border-rose-200 bg-rose-50/70 p-3.5">
-      <div class="text-[11px] uppercase font-bold text-rose-700">Ongoing Pregnancies</div>
-      <div class="text-2xl font-extrabold text-rose-900 mt-1"><?= number_format($stats['ongoing']) ?></div>
-      <div class="text-[10px] text-rose-700">Active prenatal monitoring</div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+      <div class="text-[11px] uppercase font-bold text-slate-600">Ongoing Pregnancies</div>
+      <div class="text-2xl font-extrabold text-slate-900 mt-1"><?= number_format($stats['ongoing']) ?></div>
+      <div class="text-[10px] text-slate-500">Active prenatal monitoring</div>
     </div>
-    <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5">
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
       <div class="text-[11px] uppercase font-bold text-amber-700">Sensitive Watchlist (6–7m)</div>
       <div class="text-2xl font-extrabold text-amber-900 mt-1"><?= number_format($stats['sensitive_6_7']) ?></div>
       <div class="text-[10px] text-amber-700">24–31 weeks gestation</div>
     </div>
-    <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5">
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
       <div class="text-[11px] uppercase font-bold text-emerald-700">Completed 8-ANC</div>
       <div class="text-2xl font-extrabold text-emerald-900 mt-1"><?= number_format($stats['completed_8anc']) ?></div>
       <div class="text-[10px] text-emerald-700">Full prenatal care received</div>
@@ -494,19 +494,19 @@ require __DIR__ . '/../partials/header.php';
 <!-- Sheet View Tabs -->
 <div class="mt-4 flex items-center gap-2 overflow-x-auto pb-1 print:hidden">
   <span class="text-xs font-bold text-slate-500 mr-1 uppercase">DOH TCL Parts:</span>
-  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '1'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-bold transition <?= $activeSheet === '1' ? 'bg-rose-700 text-white shadow-xs' : 'bg-white border text-slate-700 hover:bg-slate-50' ?>">
+  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '1'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === '1' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
     <i class="fas fa-clipboard-check mr-1.5"></i> Part 1: 8-ANC Prenatal Visits
   </a>
-  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '2'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-bold transition <?= $activeSheet === '2' ? 'bg-rose-700 text-white shadow-xs' : 'bg-white border text-slate-700 hover:bg-slate-50' ?>">
+  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '2'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === '2' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
     <i class="fas fa-syringe mr-1.5"></i> Part 2: Nutrition, Td Vaccine &amp; IFA
   </a>
-  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '3'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-bold transition <?= $activeSheet === '3' ? 'bg-rose-700 text-white shadow-xs' : 'bg-white border text-slate-700 hover:bg-slate-50' ?>">
+  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '3'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === '3' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
     <i class="fas fa-vial mr-1.5"></i> Part 3: Screenings &amp; Outcomes
   </a>
-  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '4'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-bold transition <?= $activeSheet === '4' ? 'bg-rose-700 text-white shadow-xs' : 'bg-white border text-slate-700 hover:bg-slate-50' ?>">
+  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '4'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === '4' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
     <i class="fas fa-baby mr-1.5"></i> Part 4: Delivery &amp; Postnatal (4PNC)
   </a>
-  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => 'all'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-bold transition <?= $activeSheet === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border text-slate-700 hover:bg-slate-50' ?>">
+  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => 'all'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
     <i class="fas fa-table mr-1.5"></i> Master All-in-One View
   </a>
 </div>
@@ -518,14 +518,14 @@ require __DIR__ . '/../partials/header.php';
   <div class="flex-1">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Search Mother / Address / Serial</label>
     <div class="relative">
-      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search name or address..." class="w-full border rounded-lg pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-rose-500" />
+      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search name or address..." class="w-full border rounded-lg pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-slate-400" />
       <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
     </div>
   </div>
 
   <div class="w-full md:w-48">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Barangay</label>
-    <select name="barangay" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white">
+    <select name="barangay" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
       <option value="">All Barangays</option>
       <?php foreach ($barangays as $b): ?>
         <option value="<?= h($b) ?>" <?= $barangayFilter === $b ? 'selected' : '' ?>><?= h($b) ?></option>
@@ -535,7 +535,7 @@ require __DIR__ . '/../partials/header.php';
 
   <div class="w-full md:w-44">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Pregnancy Status</label>
-    <select name="status" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white">
+    <select name="status" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
       <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>All Pregnancies</option>
       <option value="ongoing" <?= $statusFilter === 'ongoing' ? 'selected' : '' ?>>Ongoing</option>
       <option value="sensitive" <?= $statusFilter === 'sensitive' ? 'selected' : '' ?>>Sensitive (6–7 Mos)</option>
@@ -546,7 +546,7 @@ require __DIR__ . '/../partials/header.php';
 
   <div class="w-full md:w-32">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Year</label>
-    <select name="year" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-rose-500 bg-white">
+    <select name="year" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
       <option value="all" <?= $yearFilter === 'all' ? 'selected' : '' ?>>All Years</option>
       <?php for ($y = (int)date('Y'); $y >= (int)date('Y') - 5; $y--): ?>
         <option value="<?= $y ?>" <?= (string)$yearFilter === (string)$y ? 'selected' : '' ?>><?= $y ?></option>
@@ -555,7 +555,7 @@ require __DIR__ . '/../partials/header.php';
   </div>
 
   <div class="flex items-end gap-2">
-    <button type="submit" class="bg-rose-700 hover:bg-rose-800 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow transition">Filter</button>
+    <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow transition">Filter</button>
     <a href="/HealthLogs/public/maternal/tcl.php" class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs">Reset</a>
   </div>
 </form>
@@ -596,26 +596,26 @@ require __DIR__ . '/../partials/header.php';
             <th rowspan="3" class="min-w-[75px]">LMP<br><span class="text-[8px] font-normal">(mm/dd/yy)</span><br>G - P</th>
             <th rowspan="3" class="min-w-[75px]">EDD<br><span class="text-[8px] font-normal">(mm/dd/yy)</span></th>
 
-            <th colspan="8" class="bg-rose-100 text-rose-950 font-extrabold uppercase py-1.5">
+            <th colspan="8" class="bg-slate-100 text-slate-800 font-extrabold uppercase py-1.5">
               Date of Prenatal Check-up (8 ANC) <span class="text-[10px] font-normal lowercase">(mm/dd/yy)</span>
             </th>
-            <th rowspan="3" class="w-16 bg-emerald-100 text-emerald-950">
+            <th rowspan="3" class="w-16 bg-slate-100 text-slate-800">
               Completed<br>8ANC?<br><span class="text-[9px] font-normal">(1-Yes, 0-No)</span>
             </th>
             <?php if ($activeSheet === 'all'): ?>
-              <th rowspan="3" class="min-w-[65px] bg-sky-100 text-sky-950">BMI<br>1st Tri</th>
-              <th colspan="5" class="bg-teal-100 text-teal-950">Tetanus Diphtheria (Td)</th>
-              <th rowspan="3" class="w-10 bg-teal-200">FIM</th>
-              <th colspan="4" class="bg-indigo-100 text-indigo-950">Postnatal Care (4PNC)</th>
-              <th rowspan="3" class="w-16 bg-emerald-200 text-emerald-950">Completed<br>4PNC?</th>
+              <th rowspan="3" class="min-w-[65px] bg-slate-100 text-slate-800">BMI<br>1st Tri</th>
+              <th colspan="5" class="bg-slate-100 text-slate-800">Tetanus Diphtheria (Td)</th>
+              <th rowspan="3" class="w-10 bg-slate-100 text-slate-800">FIM</th>
+              <th colspan="4" class="bg-slate-100 text-slate-800">Postnatal Care (4PNC)</th>
+              <th rowspan="3" class="w-16 bg-slate-100 text-slate-800">Completed<br>4PNC?</th>
             <?php endif; ?>
           </tr>
 
           <!-- Sheet 1 Trimester Subheaders -->
           <tr>
-            <th class="bg-rose-50 text-rose-900 text-[10px] py-1">1st Trimester</th>
-            <th colspan="2" class="bg-amber-50 text-amber-900 text-[10px] py-1">2nd Trimester</th>
-            <th colspan="5" class="bg-purple-50 text-purple-900 text-[10px] py-1">3rd Trimester</th>
+            <th class="bg-slate-50 text-slate-700 text-[10px] py-1">1st Trimester</th>
+            <th colspan="2" class="bg-slate-50 text-slate-700 text-[10px] py-1">2nd Trimester</th>
+            <th colspan="5" class="bg-slate-50 text-slate-700 text-[10px] py-1">3rd Trimester</th>
             <?php if ($activeSheet === 'all'): ?>
               <th rowspan="2" class="text-[9px]">Td1</th>
               <th rowspan="2" class="text-[9px]">Td2</th>
@@ -631,14 +631,14 @@ require __DIR__ . '/../partials/header.php';
 
           <!-- Sheet 1 Recommended Timings -->
           <tr>
-            <th class="text-[9px] font-semibold py-1 bg-rose-50/50 min-w-[55px]">Visit 1<br><span class="text-[8px] font-normal">8-12 wks</span></th>
-            <th class="text-[9px] font-semibold py-1 bg-amber-50/50 min-w-[55px]">Visit 2<br><span class="text-[8px] font-normal">14-20 wks</span></th>
-            <th class="text-[9px] font-semibold py-1 bg-amber-50/50 min-w-[55px]">Visit 3<br><span class="text-[8px] font-normal">21-27 wks</span></th>
-            <th class="text-[9px] font-semibold py-1 bg-purple-50/50 min-w-[55px]">Visit 4<br><span class="text-[8px] font-normal">28-30 wks</span></th>
-            <th class="text-[9px] font-semibold py-1 bg-purple-50/50 min-w-[55px]">Visit 5<br><span class="text-[8px] font-normal">31-34 wks</span></th>
-            <th class="text-[9px] font-semibold py-1 bg-purple-50/50 min-w-[55px]">Visit 6<br><span class="text-[8px] font-normal">35 wks</span></th>
-            <th class="text-[9px] font-semibold py-1 bg-purple-50/50 min-w-[55px]">Visit 7<br><span class="text-[8px] font-normal">36 wks</span></th>
-            <th class="text-[9px] font-semibold py-1 bg-purple-50/50 min-w-[55px]">Visit 8<br><span class="text-[8px] font-normal">37-40 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 1<br><span class="text-[8px] font-normal">8-12 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 2<br><span class="text-[8px] font-normal">14-20 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 3<br><span class="text-[8px] font-normal">21-27 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 4<br><span class="text-[8px] font-normal">28-30 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 5<br><span class="text-[8px] font-normal">31-34 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 6<br><span class="text-[8px] font-normal">35 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 7<br><span class="text-[8px] font-normal">36 wks</span></th>
+            <th class="text-[9px] font-semibold py-1 bg-slate-50/70 min-w-[55px]">Visit 8<br><span class="text-[8px] font-normal">37-40 wks</span></th>
           </tr>
 
         <?php elseif ($activeSheet === '2'): ?>
@@ -646,28 +646,28 @@ require __DIR__ . '/../partials/header.php';
           <tr>
             <th rowspan="2" class="w-8">No.</th>
             <th rowspan="2" class="min-w-[150px]">Full Name</th>
-            <th colspan="3" class="bg-sky-100 text-sky-950">Nutritional Assessment (BMI 1st Tri)</th>
+            <th colspan="3" class="bg-slate-100 text-slate-800">Nutritional Assessment (BMI 1st Tri)</th>
             <th rowspan="2" class="w-16">Remarks<br><span class="text-[8px] font-normal">A-Trans In<br>B-Trans Out</span></th>
-            <th colspan="5" class="bg-teal-100 text-teal-950">Date Tetanus Diphtheria (Td) Given (mm/dd/yy)</th>
-            <th rowspan="2" class="w-12 bg-teal-200 text-teal-950">FIM<br>Status<br>(&check;/X)</th>
-            <th rowspan="2" class="min-w-[65px] bg-amber-100 text-amber-950">Deworming<br>Tablet<br><span class="text-[8px] font-normal">1-Yes, 0-No</span></th>
-            <th colspan="6" class="bg-rose-100 text-rose-950">Iron Folic Acid (IFA) Supplementation (#: Tablets, d: Date)</th>
+            <th colspan="5" class="bg-slate-100 text-slate-800">Date Tetanus Diphtheria (Td) Given (mm/dd/yy)</th>
+            <th rowspan="2" class="w-12 bg-slate-100 text-slate-800">FIM<br>Status<br>(&check;/X)</th>
+            <th rowspan="2" class="min-w-[65px] bg-slate-100 text-slate-800">Deworming<br>Tablet<br><span class="text-[8px] font-normal">1-Yes, 0-No</span></th>
+            <th colspan="6" class="bg-slate-100 text-slate-800">Iron Folic Acid (IFA) Supplementation (#: Tablets, d: Date)</th>
           </tr>
           <tr>
-            <th class="text-[9px] bg-sky-50">Low &lt;18.5</th>
-            <th class="text-[9px] bg-sky-50">Normal 18.5-22.9</th>
-            <th class="text-[9px] bg-sky-50">High &gt;23.5</th>
-            <th class="text-[9px] bg-teal-50">Td1 / TT1</th>
-            <th class="text-[9px] bg-teal-50">Td2 / TT2</th>
-            <th class="text-[9px] bg-teal-50">Td3 / TT3</th>
-            <th class="text-[9px] bg-teal-50">Td4 / TT4</th>
-            <th class="text-[9px] bg-teal-50">Td5 / TT5</th>
-            <th class="text-[9px] bg-rose-50">1st visit (1st tri)</th>
-            <th class="text-[9px] bg-rose-50">2nd visit (2nd tri)</th>
-            <th class="text-[9px] bg-rose-50">3rd visit (2nd tri)</th>
-            <th class="text-[9px] bg-rose-50">4th visit (3rd tri)</th>
-            <th class="text-[9px] bg-rose-50">5th visit (3rd tri)</th>
-            <th class="text-[9px] bg-rose-50">6th visit (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">Low &lt;18.5</th>
+            <th class="text-[9px] bg-slate-50">Normal 18.5-22.9</th>
+            <th class="text-[9px] bg-slate-50">High &gt;23.5</th>
+            <th class="text-[9px] bg-slate-50">Td1 / TT1</th>
+            <th class="text-[9px] bg-slate-50">Td2 / TT2</th>
+            <th class="text-[9px] bg-slate-50">Td3 / TT3</th>
+            <th class="text-[9px] bg-slate-50">Td4 / TT4</th>
+            <th class="text-[9px] bg-slate-50">Td5 / TT5</th>
+            <th class="text-[9px] bg-slate-50">1st visit (1st tri)</th>
+            <th class="text-[9px] bg-slate-50">2nd visit (2nd tri)</th>
+            <th class="text-[9px] bg-slate-50">3rd visit (2nd tri)</th>
+            <th class="text-[9px] bg-slate-50">4th visit (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">5th visit (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">6th visit (3rd tri)</th>
           </tr>
 
         <?php elseif ($activeSheet === '3'): ?>
@@ -675,26 +675,26 @@ require __DIR__ . '/../partials/header.php';
           <tr>
             <th rowspan="2" class="w-8">No.</th>
             <th rowspan="2" class="min-w-[150px]">Full Name</th>
-            <th colspan="6" class="bg-purple-100 text-purple-950">Multiple Micronutrient Supplementation (MMS)</th>
-            <th colspan="3" class="bg-amber-100 text-amber-950">High Risk: Calcium Carbonate (CC)</th>
-            <th colspan="3" class="bg-indigo-100 text-indigo-950">Laboratory Screenings (1-Positive/Reactive, 0-Negative)</th>
-            <th colspan="2" class="bg-emerald-100 text-emerald-950">Pregnancy Outcome</th>
+            <th colspan="6" class="bg-slate-100 text-slate-800">Multiple Micronutrient Supplementation (MMS)</th>
+            <th colspan="3" class="bg-slate-100 text-slate-800">High Risk: Calcium Carbonate (CC)</th>
+            <th colspan="3" class="bg-slate-100 text-slate-800">Laboratory Screenings (1-Positive/Reactive, 0-Negative)</th>
+            <th colspan="2" class="bg-slate-100 text-slate-800">Pregnancy Outcome</th>
           </tr>
           <tr>
-            <th class="text-[9px] bg-purple-50">1st (1st tri)</th>
-            <th class="text-[9px] bg-purple-50">2nd (2nd tri)</th>
-            <th class="text-[9px] bg-purple-50">3rd (2nd tri)</th>
-            <th class="text-[9px] bg-purple-50">4th (3rd tri)</th>
-            <th class="text-[9px] bg-purple-50">5th (3rd tri)</th>
-            <th class="text-[9px] bg-purple-50">6th (3rd tri)</th>
-            <th class="text-[9px] bg-amber-50">2nd (2nd tri)</th>
-            <th class="text-[9px] bg-amber-50">3rd (3rd tri)</th>
-            <th class="text-[9px] bg-amber-50">4th (3rd tri)</th>
-            <th class="text-[9px] bg-indigo-50">Hepatitis B</th>
-            <th class="text-[9px] bg-indigo-50">CBC/Hgb (Anemia)</th>
-            <th class="text-[9px] bg-indigo-50">Gest. Diabetes</th>
-            <th class="text-[9px] bg-emerald-50">Date Terminated</th>
-            <th class="text-[9px] bg-emerald-50">Outcome (FT/PT/FD/AB)</th>
+            <th class="text-[9px] bg-slate-50">1st (1st tri)</th>
+            <th class="text-[9px] bg-slate-50">2nd (2nd tri)</th>
+            <th class="text-[9px] bg-slate-50">3rd (2nd tri)</th>
+            <th class="text-[9px] bg-slate-50">4th (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">5th (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">6th (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">2nd (2nd tri)</th>
+            <th class="text-[9px] bg-slate-50">3rd (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">4th (3rd tri)</th>
+            <th class="text-[9px] bg-slate-50">Hepatitis B</th>
+            <th class="text-[9px] bg-slate-50">CBC/Hgb (Anemia)</th>
+            <th class="text-[9px] bg-slate-50">Gest. Diabetes</th>
+            <th class="text-[9px] bg-slate-50">Date Terminated</th>
+            <th class="text-[9px] bg-slate-50">Outcome (FT/PT/FD/AB)</th>
           </tr>
 
         <?php elseif ($activeSheet === '4'): ?>
@@ -702,24 +702,24 @@ require __DIR__ . '/../partials/header.php';
           <tr>
             <th rowspan="2" class="w-8">No.</th>
             <th rowspan="2" class="min-w-[150px]">Full Name</th>
-            <th class="min-w-[70px] bg-sky-100">Delivery Type<br><span class="text-[8px] font-normal">CS/VD/CVCD</span></th>
-            <th class="min-w-[65px] bg-sky-100">Birth Weight<br><span class="text-[8px] font-normal">Grams &bull; A/B/C</span></th>
-            <th class="min-w-[100px] bg-sky-100">Place of Delivery<br><span class="text-[8px] font-normal">Health Facility / Home</span></th>
-            <th class="min-w-[70px] bg-sky-100">Birth Attendant<br><span class="text-[8px] font-normal">MD/RN/MW</span></th>
-            <th class="min-w-[80px] bg-sky-100">Delivery Date &amp; Time</th>
-            <th colspan="4" class="bg-indigo-100 text-indigo-950">Postnatal Care (4PNC) (mm/dd/yy)</th>
-            <th rowspan="2" class="w-16 bg-emerald-100 text-emerald-950">Completed<br>4PNC?</th>
-            <th colspan="3" class="bg-rose-100 text-rose-950">Postpartum Supplementation</th>
+            <th class="min-w-[70px] bg-slate-100 text-slate-800">Delivery Type<br><span class="text-[8px] font-normal">CS/VD/CVCD</span></th>
+            <th class="min-w-[65px] bg-slate-100 text-slate-800">Birth Weight<br><span class="text-[8px] font-normal">Grams &bull; A/B/C</span></th>
+            <th class="min-w-[100px] bg-slate-100 text-slate-800">Place of Delivery<br><span class="text-[8px] font-normal">Health Facility / Home</span></th>
+            <th class="min-w-[70px] bg-slate-100 text-slate-800">Birth Attendant<br><span class="text-[8px] font-normal">MD/RN/MW</span></th>
+            <th class="min-w-[80px] bg-slate-100 text-slate-800">Delivery Date &amp; Time</th>
+            <th colspan="4" class="bg-slate-100 text-slate-800">Postnatal Care (4PNC) (mm/dd/yy)</th>
+            <th rowspan="2" class="w-16 bg-slate-100 text-slate-800">Completed<br>4PNC?</th>
+            <th colspan="3" class="bg-slate-100 text-slate-800">Postpartum Supplementation</th>
           </tr>
           <tr>
             <th></th><th></th><th></th><th></th><th></th>
-            <th class="text-[9px] bg-indigo-50">Contact 1 (&lt;24h)</th>
-            <th class="text-[9px] bg-indigo-50">Contact 2 (Day 3)</th>
-            <th class="text-[9px] bg-indigo-50">Contact 3 (7-14d)</th>
-            <th class="text-[9px] bg-indigo-50">Contact 4 (6w)</th>
-            <th class="text-[9px] bg-rose-50">IFA 1st Visit</th>
-            <th class="text-[9px] bg-rose-50">IFA 2nd Visit</th>
-            <th class="text-[9px] bg-rose-50">Vit A Given?</th>
+            <th class="text-[9px] bg-slate-50">Contact 1 (&lt;24h)</th>
+            <th class="text-[9px] bg-slate-50">Contact 2 (Day 3)</th>
+            <th class="text-[9px] bg-slate-50">Contact 3 (7-14d)</th>
+            <th class="text-[9px] bg-slate-50">Contact 4 (6w)</th>
+            <th class="text-[9px] bg-slate-50">IFA 1st Visit</th>
+            <th class="text-[9px] bg-slate-50">IFA 2nd Visit</th>
+            <th class="text-[9px] bg-slate-50">Vit A Given?</th>
           </tr>
         <?php endif; ?>
       </thead>
@@ -743,18 +743,18 @@ require __DIR__ . '/../partials/header.php';
                 <td class="font-mono text-[10px] text-slate-600 whitespace-nowrap"><?= h($d['reg_date']) ?></td>
                 <td class="font-mono text-[10px] text-slate-600 whitespace-nowrap"><?= h($d['family_serial']) ?></td>
                 <td class="text-left font-bold text-slate-900 whitespace-nowrap">
-                  <a href="/HealthLogs/public/patients/index.php?q=<?= urlencode($pr['last_name']) ?>" class="hover:text-rose-700 hover:underline">
+                  <a href="/HealthLogs/public/patients/index.php?q=<?= urlencode($pr['last_name']) ?>" class="hover:text-slate-700 hover:underline">
                     <?= h($fullName) ?>
                   </a>
                   <?php if ($pr['status'] === 'ongoing' && $pr['current_weeks'] >= 24 && $pr['current_weeks'] <= 31): ?>
-                    <span class="inline-block ml-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-200">6–7m</span>
+                    <span class="inline-block ml-1 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">6–7m</span>
                   <?php endif; ?>
                 </td>
                 <td class="text-left text-[10px] text-slate-600 whitespace-nowrap"><?= h($pr['barangay']) ?></td>
                 <td class="font-semibold text-slate-700"><?= h($d['age']) ?></td>
                 <td class="font-bold text-slate-800"><?= h($d['age_group']) ?></td>
                 <td class="text-center font-mono text-[10px] whitespace-nowrap">
-                  <div class="text-rose-800 font-bold"><?= h($d['lmp']) ?></div>
+                  <div class="text-slate-800 font-semibold"><?= h($d['lmp']) ?></div>
                   <div class="text-slate-400 font-normal"><?= h($d['gp']) ?></div>
                 </td>
                 <td class="font-mono text-[10px] font-semibold text-slate-800 whitespace-nowrap"><?= h($d['edd']) ?></td>
@@ -770,7 +770,7 @@ require __DIR__ . '/../partials/header.php';
                 <td class="tcl-date-val"><?= $d['visits']['v8'] ? h($d['visits']['v8']) : '' ?></td>
 
                 <!-- Completed 8 ANC -->
-                <td class="font-bold text-emerald-800 bg-emerald-50/40">
+                <td class="font-semibold text-emerald-700 bg-emerald-50/50">
                   <?= $d['completed_8anc'] ? '1' : '0' ?>
                 </td>
 
@@ -781,12 +781,12 @@ require __DIR__ . '/../partials/header.php';
                   <td class="tcl-date-val"><?= $d['td']['td3'] ?? '' ?></td>
                   <td class="tcl-date-val"><?= $d['td']['td4'] ?? '' ?></td>
                   <td class="tcl-date-val"><?= $d['td']['td5'] ?? '' ?></td>
-                  <td class="font-bold text-teal-800"><?= $d['fim'] ? '&check;' : 'X' ?></td>
+                  <td class="font-bold text-slate-800"><?= $d['fim'] ? '&check;' : 'X' ?></td>
                   <td class="tcl-date-val"><?= $d['postnatal']['c1'] ?? '' ?></td>
                   <td class="tcl-date-val"><?= $d['postnatal']['c2'] ?? '' ?></td>
                   <td class="tcl-date-val"><?= $d['postnatal']['c3'] ?? '' ?></td>
                   <td class="tcl-date-val"><?= $d['postnatal']['c4'] ?? '' ?></td>
-                  <td class="font-bold text-emerald-800"><?= $d['completed_4pnc'] ? '1' : '0' ?></td>
+                  <td class="font-semibold text-emerald-700"><?= $d['completed_4pnc'] ? '1' : '0' ?></td>
                 <?php endif; ?>
 
               <?php elseif ($activeSheet === '2'): ?>

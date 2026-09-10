@@ -422,7 +422,7 @@ require __DIR__ . '/../partials/header.php';
   .tcl-date-val {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-weight: 700;
-    color: #be123c;
+    color: #1e293b;
     font-size: 11px;
   }
 </style>
@@ -431,7 +431,7 @@ require __DIR__ . '/../partials/header.php';
 <div class="bg-white p-5 sm:p-6 rounded-xl shadow border border-slate-100 print:hidden">
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
-      <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200">
+      <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
         <i class="fas fa-syringe"></i> DOH EPI Standard Register
       </div>
       <h2 class="text-2xl font-bold text-slate-900 mt-2">Target Client List for Child Immunization - 2</h2>
@@ -441,7 +441,7 @@ require __DIR__ . '/../partials/header.php';
       <a href="/HealthLogs/public/immunization.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs">
         <i class="fas fa-arrow-left"></i> Module Hub
       </a>
-      <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow transition">
+      <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
         <i class="fas fa-file-csv"></i> Export CSV
       </a>
       <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition">
@@ -457,20 +457,20 @@ require __DIR__ . '/../partials/header.php';
       <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['total_children']) ?></div>
       <div class="text-[10px] text-slate-400">Total children in registry</div>
     </div>
-    <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5">
-      <div class="text-[11px] uppercase font-bold text-emerald-700">Fully Immunized (FIC)</div>
-      <div class="text-2xl font-extrabold text-emerald-900 mt-1"><?= number_format($stats['fic_count']) ?></div>
-      <div class="text-[10px] text-emerald-700">Completed ≤ 12 months</div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+      <div class="text-[11px] uppercase font-bold text-slate-500">Fully Immunized (FIC)</div>
+      <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['fic_count']) ?></div>
+      <div class="text-[10px] text-slate-500">Completed ≤ 12 months</div>
     </div>
-    <div class="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
-      <div class="text-[11px] uppercase font-bold text-blue-700">Completely Immunized (CIC)</div>
-      <div class="text-2xl font-extrabold text-blue-900 mt-1"><?= number_format($stats['cic_count']) ?></div>
-      <div class="text-[10px] text-blue-700">Completed 13-23 months</div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+      <div class="text-[11px] uppercase font-bold text-slate-500">Completely Immunized (CIC)</div>
+      <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['cic_count']) ?></div>
+      <div class="text-[10px] text-slate-500">Completed 13-23 months</div>
     </div>
-    <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5">
-      <div class="text-[11px] uppercase font-bold text-amber-700">In Progress / Due</div>
-      <div class="text-2xl font-extrabold text-amber-900 mt-1"><?= number_format($stats['pending_count']) ?></div>
-      <div class="text-[10px] text-amber-700">Pending upcoming doses</div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+      <div class="text-[11px] uppercase font-bold text-slate-500">In Progress / Due</div>
+      <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['pending_count']) ?></div>
+      <div class="text-[10px] text-slate-500">Pending upcoming doses</div>
     </div>
   </div>
 </div>
@@ -480,14 +480,14 @@ require __DIR__ . '/../partials/header.php';
   <div class="flex-1">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Search Child / Mother / Address</label>
     <div class="relative">
-      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search name or address..." class="w-full border rounded-lg pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-teal-500" />
+      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search name or address..." class="w-full border rounded-lg pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-slate-400" />
       <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
     </div>
   </div>
 
   <div class="w-full md:w-48">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Barangay</label>
-    <select name="barangay" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-teal-500 bg-white">
+    <select name="barangay" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
       <option value="">All Barangays</option>
       <?php foreach ($barangays as $b): ?>
         <option value="<?= h($b) ?>" <?= $barangayFilter === $b ? 'selected' : '' ?>><?= h($b) ?></option>
@@ -497,7 +497,7 @@ require __DIR__ . '/../partials/header.php';
 
   <div class="w-full md:w-36">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Birth Year</label>
-    <select name="year" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-teal-500 bg-white">
+    <select name="year" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
       <option value="all" <?= $yearFilter === 'all' ? 'selected' : '' ?>>All Years</option>
       <?php for ($y = (int)date('Y'); $y >= (int)date('Y') - 5; $y--): ?>
         <option value="<?= $y ?>" <?= (string)$yearFilter === (string)$y ? 'selected' : '' ?>><?= $y ?></option>
@@ -507,7 +507,7 @@ require __DIR__ . '/../partials/header.php';
 
   <div class="w-full md:w-40">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Immunization Status</label>
-    <select name="status" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-teal-500 bg-white">
+    <select name="status" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
       <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>All Children</option>
       <option value="fic" <?= $statusFilter === 'fic' ? 'selected' : '' ?>>FIC (Fully Immunized)</option>
       <option value="cic" <?= $statusFilter === 'cic' ? 'selected' : '' ?>>CIC (Completely Immunized)</option>
@@ -547,56 +547,56 @@ require __DIR__ . '/../partials/header.php';
           <th rowspan="3" class="w-8">Sex</th>
           <th rowspan="3" class="min-w-[120px]">Address / Barangay</th>
           
-          <th colspan="17" class="bg-slate-200 text-slate-900 font-extrabold uppercase tracking-wide py-1.5">
+          <th colspan="17" class="bg-slate-100 text-slate-800 font-extrabold uppercase tracking-wide py-1.5">
             Immunization <span class="text-[10px] font-normal lowercase">(mm/dd/yy)</span>
           </th>
           
-          <th rowspan="3" class="w-16 bg-emerald-100/70 text-emerald-950">
-            FIC<br><span class="text-[9px] font-medium">(0-12 mos)</span>
+          <th rowspan="3" class="w-16 bg-slate-100 text-slate-800">
+            FIC<br><span class="text-[9px] font-medium text-slate-500">(0-12 mos)</span>
           </th>
-          <th rowspan="3" class="w-16 bg-blue-100/70 text-blue-950">
-            CIC<br><span class="text-[9px] font-medium">(13-23 mos)</span>
+          <th rowspan="3" class="w-16 bg-slate-100 text-slate-800">
+            CIC<br><span class="text-[9px] font-medium text-slate-500">(13-23 mos)</span>
           </th>
           <th rowspan="3" class="min-w-[140px]">Remarks / Action Taken</th>
         </tr>
 
         <!-- Master Header Row 2: Vaccine Categories -->
         <tr>
-          <th colspan="2" class="bg-teal-50 text-teal-900">BCG</th>
-          <th colspan="2" class="bg-blue-50 text-blue-900">Hepa B</th>
-          <th colspan="3" class="bg-amber-50 text-amber-900">DPT-HiB-HepB</th>
-          <th colspan="3" class="bg-emerald-50 text-emerald-900">OPV</th>
-          <th colspan="2" class="bg-indigo-50 text-indigo-900">IPV</th>
-          <th colspan="3" class="bg-cyan-50 text-cyan-900">PCV</th>
-          <th colspan="2" class="bg-rose-50 text-rose-900">MMR</th>
+          <th colspan="2" class="bg-slate-100 text-slate-800 font-bold">BCG</th>
+          <th colspan="2" class="bg-slate-100 text-slate-800 font-bold">Hepa B</th>
+          <th colspan="3" class="bg-slate-100 text-slate-800 font-bold">DPT-HiB-HepB</th>
+          <th colspan="3" class="bg-slate-100 text-slate-800 font-bold">OPV</th>
+          <th colspan="2" class="bg-slate-100 text-slate-800 font-bold">IPV</th>
+          <th colspan="3" class="bg-slate-100 text-slate-800 font-bold">PCV</th>
+          <th colspan="2" class="bg-slate-100 text-slate-800 font-bold">MMR</th>
         </tr>
 
         <!-- Master Header Row 3: Timings & Doses -->
         <tr>
           <!-- BCG -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-teal-50/50 min-w-[55px]">within<br>0-28 days</th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-teal-50/50 min-w-[55px]">29 days to<br>1 year old</th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[55px]">within<br>0-28 days</th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[55px]">29 days to<br>1 year old</th>
           <!-- Hepa B -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-blue-50/50 min-w-[55px]">within 24h<br>after birth</th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-blue-50/50 min-w-[55px]">&gt;24 hrs up<br>to 14 days</th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[55px]">within 24h<br>after birth</th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[55px]">&gt;24 hrs up<br>to 14 days</th>
           <!-- DPT-HiB-HepB -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-amber-50/50 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-amber-50/50 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-amber-50/50 min-w-[50px]">3<sup>rd</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">3<sup>rd</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
           <!-- OPV -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-emerald-50/50 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-emerald-50/50 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-emerald-50/50 min-w-[50px]">3<sup>rd</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">3<sup>rd</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
           <!-- IPV -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-indigo-50/50 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-indigo-50/50 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
           <!-- PCV -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-cyan-50/50 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-cyan-50/50 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-cyan-50/50 min-w-[50px]">3<sup>rd</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">3<sup>rd</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
           <!-- MMR -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-rose-50/50 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">9 mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-rose-50/50 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">12 mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">9 mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">12 mos</span></th>
         </tr>
       </thead>
 
@@ -617,7 +617,7 @@ require __DIR__ . '/../partials/header.php';
             <tr>
               <td class="font-mono text-slate-500 font-semibold"><?= $idx++ ?></td>
               <td class="text-left font-bold text-slate-900 whitespace-nowrap">
-                <a href="/HealthLogs/public/patients/view.php?id=<?= $c['id'] ?>" class="hover:text-teal-700 hover:underline">
+                <a href="/HealthLogs/public/patients/view.php?id=<?= $c['id'] ?>" class="hover:text-slate-700 hover:underline">
                   <?= h($fullName) ?>
                 </a>
               </td>
@@ -659,10 +659,10 @@ require __DIR__ . '/../partials/header.php';
               <td class="tcl-date-val"><?= $d['mmr_2'] ? h($d['mmr_2']) : '' ?></td>
 
               <!-- FIC / CIC -->
-              <td class="font-bold text-emerald-800 bg-emerald-50/40">
+              <td class="font-semibold text-slate-800 bg-slate-50/50">
                 <?= $d['fic_date'] ? h($d['fic_date']) : '' ?>
               </td>
-              <td class="font-bold text-blue-800 bg-blue-50/40">
+              <td class="font-semibold text-slate-800 bg-slate-50/50">
                 <?= $d['cic_date'] ? h($d['cic_date']) : '' ?>
               </td>
 
