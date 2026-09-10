@@ -7,21 +7,39 @@ class Recaptcha {
 
     private static bool $envLoaded = false;
 
+    public static function isOfflineMode(): bool {
+        self::loadEnv();
+        $val = strtolower(trim((string)(getenv('OFFLINE_MODE') ?: '')));
+        return in_array($val, ['1', 'true', 'yes', 'on'], true);
+    }
+
     public static function siteKey(): string {
+        if (self::isOfflineMode()) {
+            return '';
+        }
         self::loadEnv();
         return trim((string)(getenv('RECAPTCHA_SITE_KEY') ?: ''));
     }
 
     public static function secretKey(): string {
+        if (self::isOfflineMode()) {
+            return '';
+        }
         self::loadEnv();
         return trim((string)(getenv('RECAPTCHA_SECRET_KEY') ?: ''));
     }
 
     public static function isConfigured(): bool {
+        if (self::isOfflineMode()) {
+            return false;
+        }
         return self::siteKey() !== '' && self::secretKey() !== '';
     }
 
     public static function verifyResponse(string $response, ?string $remoteIp = null): bool {
+        if (self::isOfflineMode()) {
+            return true;
+        }
         $secret = self::secretKey();
         $response = trim($response);
 

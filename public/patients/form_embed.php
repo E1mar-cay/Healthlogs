@@ -14,7 +14,7 @@ if ($id) {
 }
 
 if (!$patient && ($_SESSION['role'] ?? '') === 'admin') {
-    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><script src="https://cdn.tailwindcss.com"></script></head><body class="p-8 font-sans text-center text-rose-600 bg-slate-50"><div class="p-6 bg-white rounded-xl shadow border border-rose-200 inline-block font-semibold"><i class="fas fa-lock mr-2"></i>Only Barangay Health Workers (BHW) are authorized to register new patients.</div></body></html>';
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><script src="/HealthLogs/public/assets/js/tailwind.js"></script><link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css"></head><body class="p-8 font-sans text-center text-rose-600 bg-slate-50"><div class="p-6 bg-white rounded-xl shadow border border-rose-200 inline-block font-semibold"><i class="fas fa-lock mr-2"></i>Only Barangay Health Workers (BHW) are authorized to register new patients.</div></body></html>';
     exit;
 }
 
@@ -27,8 +27,9 @@ $title = $patient ? 'Edit Patient' : 'New Patient';
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <base target="_top" />
   <title><?= h($title) ?></title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
+  <script src="/HealthLogs/public/assets/js/sweetalert2.all.min.js"></script>
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
 </head>
 <body class="bg-slate-50 p-4 text-slate-900">
   <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm max-w-4xl mx-auto">

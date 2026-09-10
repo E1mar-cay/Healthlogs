@@ -18,13 +18,13 @@ $recaptchaSiteKey = Recaptcha::siteKey();
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - HealthLogs</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Local Assets for 100% Offline Support -->
+  <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
   <?php if ($recaptchaSiteKey !== ''): ?>
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <?php endif; ?>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
     
     :root {
       --bg-1: #eef2ff;

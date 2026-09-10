@@ -13,12 +13,12 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HealthLogs</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Local Assets for 100% Offline Support -->
+  <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
+  <script src="/HealthLogs/public/assets/js/chart.umd.min.js"></script>
+  <script src="/HealthLogs/public/assets/js/sweetalert2.all.min.js"></script>
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
     :root {
       --bg-1: #eef2ff;
