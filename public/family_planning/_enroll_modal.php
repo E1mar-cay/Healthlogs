@@ -27,7 +27,7 @@ try {
     <!-- Modal Header -->
     <div class="px-5 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <span class="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center text-sm font-bold shadow-xs">
+        <span class="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center text-sm font-bold shadow-xs">
           <i class="fas fa-user-plus"></i>
         </span>
         <div>
@@ -46,13 +46,13 @@ try {
 
       <!-- Section 1: Identification -->
       <div>
-        <div class="text-xs uppercase font-bold text-purple-700 tracking-wider mb-2.5 flex items-center gap-1.5 border-b pb-1">
-          <i class="fas fa-id-card text-purple-600"></i> 1. Client Identification
+        <div class="text-xs uppercase font-bold text-slate-700 tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-slate-200 pb-1">
+          <i class="fas fa-id-card text-slate-500"></i> 1. Client Identification
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
-            <select name="patient_id" id="modalPatientSelect" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-purple-500">
+            <select name="patient_id" id="modalPatientSelect" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
               <option value="">-- Choose Registered Patient --</option>
               <?php foreach ($modalPatients as $p): ?>
                 <?php 
@@ -67,21 +67,21 @@ try {
 
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Client Code *</label>
-            <input type="text" name="client_code" value="<?= h($modalNextCode) ?>" required class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500" />
+            <input type="text" name="client_code" value="<?= h($modalNextCode) ?>" required class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-slate-400" />
             <span class="text-[10px] text-slate-400">Clinic Tracking Number</span>
           </div>
 
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Registration Date *</label>
-            <input type="date" name="registration_date" value="<?= date('Y-m-d') ?>" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500" />
+            <input type="date" name="registration_date" value="<?= date('Y-m-d') ?>" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" />
           </div>
         </div>
       </div>
 
       <!-- Section 2: Method & Acceptance -->
       <div>
-        <div class="text-xs uppercase font-bold text-purple-700 tracking-wider mb-2.5 flex items-center gap-1.5 border-b pb-1">
-          <i class="fas fa-pills text-purple-600"></i> 2. Family Planning Acceptance
+        <div class="text-xs uppercase font-bold text-slate-700 tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-slate-200 pb-1">
+          <i class="fas fa-pills text-slate-500"></i> 2. Family Planning Acceptance
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -135,8 +135,8 @@ try {
 
       <!-- Section 3: Partner & Children -->
       <div>
-        <div class="text-xs uppercase font-bold text-purple-700 tracking-wider mb-2.5 flex items-center gap-1.5 border-b pb-1">
-          <i class="fas fa-heart text-purple-600"></i> 3. Partner &amp; Children Information
+        <div class="text-xs uppercase font-bold text-slate-700 tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-slate-200 pb-1">
+          <i class="fas fa-heart text-slate-500"></i> 3. Partner &amp; Children Information
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -172,10 +172,10 @@ try {
 
       <!-- Modal Footer -->
       <div class="pt-4 border-t flex items-center justify-end gap-2.5">
-        <button type="button" onclick="closeEnrollModal()" class="px-4 py-2 rounded border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
+        <button type="button" onclick="closeEnrollModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
           Cancel
         </button>
-        <button type="submit" class="px-4 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition flex items-center gap-1.5">
+        <button type="submit" class="px-5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition flex items-center gap-1.5">
           <i class="fas fa-check"></i> Enroll Client
         </button>
       </div>

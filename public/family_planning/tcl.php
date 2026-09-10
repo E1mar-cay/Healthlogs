@@ -162,7 +162,7 @@ require __DIR__ . '/../partials/header.php';
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500 font-semibold">
-        <a href="/HealthLogs/public/family_planning.php" class="text-purple-600 hover:underline">&larr; Back to FP Dashboard</a>
+        <a href="/HealthLogs/public/family_planning.php" class="text-slate-500 hover:text-slate-800 hover:underline">&larr; Back to FP Dashboard</a>
       </div>
       <div class="text-2xl font-bold text-slate-900 mt-1">Target Client List for Family Planning (TCL-FP)</div>
       <p class="text-sm text-slate-500 mt-1">DOH Official Clinical Form 1 &bull; Monitoring of Acceptors, Contraceptive Services, and Drop-outs.</p>
@@ -173,10 +173,10 @@ require __DIR__ . '/../partials/header.php';
         $exportQuery = $_GET;
         $exportQuery['export'] = 'csv';
       ?>
-      <a href="?<?= http_build_query($exportQuery) ?>" class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow transition">
-        <i class="fas fa-file-csv mr-1.5 text-sm"></i> Export to CSV
+      <a href="?<?= http_build_query($exportQuery) ?>" class="inline-flex items-center px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
+        <i class="fas fa-file-csv mr-1.5 text-slate-600"></i> Export to CSV
       </a>
-      <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold shadow transition">
+      <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition">
         <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll New Client
       </button>
     </div>
@@ -190,7 +190,7 @@ require __DIR__ . '/../partials/header.php';
   <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
     <div class="lg:col-span-2">
       <label class="block text-xs font-semibold text-slate-600 mb-1">Search Client / Partner</label>
-      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search name, code, partner..." class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500" />
+      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search name, code, partner..." class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" />
     </div>
 
     <div>
@@ -259,17 +259,17 @@ require __DIR__ . '/../partials/header.php';
     <div class="overflow-x-auto">
       <table class="w-full text-left text-xs min-w-[1200px] border-collapse">
         <thead>
-          <tr class="bg-purple-900 text-white text-[11px] uppercase tracking-wide">
-            <th class="py-3 px-3 font-semibold border-r border-purple-800">Date Reg</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800">Client Code</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800 min-w-[180px]">Client Name &amp; Age</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800">Barangay</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800">Type</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800">Method Accepted</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800">Partner Info</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800 text-center">Living Kids</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800 min-w-[220px]">Visit Timeline &amp; Dispensed</th>
-            <th class="py-3 px-3 font-semibold border-r border-purple-800">Next Service Due</th>
+          <tr class="bg-slate-100 border-b border-slate-300 text-slate-700 text-[11px] uppercase tracking-wider">
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Date Reg</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Client Code</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200 min-w-[180px]">Client Name &amp; Age</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Barangay</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Type</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Method Accepted</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Partner Info</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200 text-center">Living Kids</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200 min-w-[220px]">Visit Timeline &amp; Dispensed</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Next Service Due</th>
             <th class="py-3 px-3 font-semibold">Status / Drop-out</th>
           </tr>
         </thead>
@@ -279,21 +279,21 @@ require __DIR__ . '/../partials/header.php';
             $lastVisit = !empty($recVisits) ? end($recVisits) : null;
             $nextDue = $lastVisit['next_appointment_date'] ?? null;
           ?>
-            <tr class="hover:bg-purple-50/20 transition">
+            <tr class="hover:bg-slate-50 transition">
               <!-- Date Registered -->
-              <td class="py-2.5 px-3 whitespace-nowrap font-mono text-slate-600 border-r">
+              <td class="py-2.5 px-3 whitespace-nowrap font-mono text-slate-600 border-r border-slate-200">
                 <?= h($r['registration_date']) ?>
               </td>
 
               <!-- Client Code -->
-              <td class="py-2.5 px-3 whitespace-nowrap font-mono font-bold text-purple-700 border-r">
-                <a href="/HealthLogs/public/family_planning/visits/index.php?record_id=<?= $r['id'] ?>" class="hover:underline">
+              <td class="py-2.5 px-3 whitespace-nowrap font-mono font-semibold text-slate-800 border-r border-slate-200">
+                <a href="/HealthLogs/public/family_planning/visits/index.php?record_id=<?= $r['id'] ?>" class="hover:underline hover:text-slate-950">
                   <?= h($r['client_code']) ?>
                 </a>
               </td>
 
               <!-- Name & Age -->
-              <td class="py-2.5 px-3 whitespace-nowrap border-r">
+              <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200">
                 <div class="font-bold text-slate-900">
                   <?= h($r['last_name'] . ', ' . $r['first_name']) ?>
                   <?php if (!empty($r['middle_name'])): ?><?= h(' ' . substr($r['middle_name'], 0, 1) . '.') ?><?php endif; ?>
@@ -304,21 +304,21 @@ require __DIR__ . '/../partials/header.php';
               </td>
 
               <!-- Barangay -->
-              <td class="py-2.5 px-3 whitespace-nowrap border-r text-slate-600">
+              <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200 text-slate-600">
                 <?= h($r['barangay'] ?: '—') ?>
               </td>
 
               <!-- Client Type -->
-              <td class="py-2.5 px-3 whitespace-nowrap border-r uppercase font-bold text-[10px]">
+              <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200 uppercase font-semibold text-[10px]">
                 <?php
                   $typeBadges = [
-                      'new_acceptor' => 'text-emerald-700 bg-emerald-50',
-                      'current_user' => 'text-blue-700 bg-blue-50',
-                      'restart' => 'text-amber-700 bg-amber-50',
-                      'changing_method' => 'text-purple-700 bg-purple-50',
-                      'changing_clinic' => 'text-indigo-700 bg-indigo-50',
+                      'new_acceptor' => 'text-emerald-700 bg-emerald-50 border border-emerald-200/60',
+                      'current_user' => 'text-blue-700 bg-blue-50 border border-blue-200/60',
+                      'restart' => 'text-amber-700 bg-amber-50 border border-amber-200/60',
+                      'changing_method' => 'text-purple-700 bg-purple-50 border border-purple-200/60',
+                      'changing_clinic' => 'text-indigo-700 bg-indigo-50 border border-indigo-200/60',
                   ];
-                  $badge = $typeBadges[$r['client_type']] ?? 'text-slate-700 bg-slate-50';
+                  $badge = $typeBadges[$r['client_type']] ?? 'text-slate-700 bg-slate-50 border border-slate-200';
                 ?>
                 <span class="px-2 py-0.5 rounded <?= $badge ?>">
                   <?= h(str_replace('_', ' ', $r['client_type'])) ?>
@@ -326,7 +326,7 @@ require __DIR__ . '/../partials/header.php';
               </td>
 
               <!-- Method Accepted -->
-              <td class="py-2.5 px-3 whitespace-nowrap border-r font-semibold text-slate-900">
+              <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200 font-semibold text-slate-900">
                 <?= tcl_method_name($r['method_accepted']) ?>
                 <?php if (!empty($r['previous_method'])): ?>
                   <div class="text-[10px] text-slate-400 font-normal">Prev: <?= h($r['previous_method']) ?></div>
@@ -334,19 +334,19 @@ require __DIR__ . '/../partials/header.php';
               </td>
 
               <!-- Partner Info -->
-              <td class="py-2.5 px-3 whitespace-nowrap border-r text-slate-600">
+              <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200 text-slate-600">
                 <div><?= h($r['partner_name'] ?: '—') ?></div>
                 <div class="text-[10px] text-slate-400"><?= h($r['partner_occupation'] ?: '') ?></div>
               </td>
 
               <!-- Living Kids -->
-              <td class="py-2.5 px-3 whitespace-nowrap border-r text-center font-bold">
+              <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200 text-center font-bold">
                 <?= (int)$r['num_living_children'] ?>
                 <div class="text-[10px] text-slate-400 font-normal capitalize"><?= h($r['plan_more_children']) ?></div>
               </td>
 
               <!-- Visit Timeline -->
-              <td class="py-2.5 px-3 border-r">
+              <td class="py-2.5 px-3 border-r border-slate-200">
                 <?php if (empty($recVisits)): ?>
                   <span class="text-slate-400 italic">No visits logged</span>
                 <?php else: ?>
@@ -358,7 +358,7 @@ require __DIR__ . '/../partials/header.php';
                       </div>
                     <?php endforeach; ?>
                     <?php if (count($recVisits) > 2): ?>
-                      <a href="/HealthLogs/public/family_planning/visits/index.php?record_id=<?= $r['id'] ?>" class="text-[10px] text-purple-700 hover:underline">
+                      <a href="/HealthLogs/public/family_planning/visits/index.php?record_id=<?= $r['id'] ?>" class="text-[10px] text-slate-600 hover:text-slate-900 hover:underline">
                         +<?= count($recVisits) - 2 ?> earlier visit(s)
                       </a>
                     <?php endif; ?>
@@ -367,7 +367,7 @@ require __DIR__ . '/../partials/header.php';
               </td>
 
               <!-- Next Service Due -->
-              <td class="py-2.5 px-3 whitespace-nowrap border-r font-mono">
+              <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200 font-mono">
                 <?php if (!empty($nextDue)): ?>
                   <?php $isOverdue = ($nextDue < date('Y-m-d')); ?>
                   <span class="<?= $isOverdue ? 'text-rose-600 font-bold' : 'text-slate-800' ?>">
@@ -384,14 +384,14 @@ require __DIR__ . '/../partials/header.php';
               <!-- Status / Drop-out -->
               <td class="py-2.5 px-3 whitespace-nowrap">
                 <?php if ($r['status'] === 'active'): ?>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Active</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">Active</span>
                 <?php elseif ($r['status'] === 'dropped_out'): ?>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Dropped Out</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">Dropped Out</span>
                   <?php if (!empty($r['drop_out_reason'])): ?>
                     <div class="text-[10px] text-rose-600 capitalize mt-0.5"><?= h(str_replace('_', ' ', $r['drop_out_reason'])) ?></div>
                   <?php endif; ?>
                 <?php else: ?>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">Inactive</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">Inactive</span>
                 <?php endif; ?>
               </td>
             </tr>

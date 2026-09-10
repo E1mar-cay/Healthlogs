@@ -29,11 +29,18 @@ $stmt->execute($params);
 $rows = $stmt->fetchAll();
 ?>
 <?php display_flash_messages(); ?>
-<div class="flex items-center justify-between">
-  <div class="text-lg font-semibold">Immunization Records</div>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  <div>
+    <div class="text-xs uppercase tracking-wider font-bold text-slate-400">Child Health &bull; EPI</div>
+    <div class="text-xl font-bold text-slate-900">Immunization Records</div>
+  </div>
   <div class="flex items-center gap-2">
-    <a href="/HealthLogs/public/immunization/tcl.php" class="px-3 py-2 rounded border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition">View TCL-2</a>
-    <button type="button" id="recordModalOpenNew" data-embed-url="/HealthLogs/public/immunization/records/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-slate-800 transition">New Record</button>
+    <a href="/HealthLogs/public/immunization/tcl.php" class="bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition">
+      <i class="fas fa-table-list mr-1"></i> Target Client List (TCL-2)
+    </a>
+    <button type="button" id="recordModalOpenNew" data-embed-url="/HealthLogs/public/immunization/records/form_embed.php" class="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition">
+      + New Record
+    </button>
   </div>
 </div>
 <form method="get" class="mt-4 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">

@@ -89,18 +89,18 @@ require __DIR__ . '/../partials/header.php';
   </div>
 
   <!-- Reminders & SMS Card -->
-  <div class="bg-white p-5 rounded-xl shadow border border-purple-200 bg-gradient-to-br from-white to-purple-50/40 flex flex-col justify-between">
+  <div class="bg-white p-5 rounded-xl shadow border border-slate-200 flex flex-col justify-between">
     <div>
       <div class="flex items-center gap-3">
-        <span class="h-11 w-11 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-base shadow-xs">
+        <span class="h-11 w-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-base shadow-xs">
           <i class="fas fa-bell"></i>
         </span>
         <div>
-          <div class="text-xs uppercase tracking-widest text-purple-700 font-bold">SMS Reminders</div>
-          <div class="text-2xl font-bold mt-0.5 text-purple-950"><?= number_format($hwStats['pending_reminders']) ?></div>
+          <div class="text-xs uppercase tracking-widest text-slate-500 font-bold">SMS Reminders</div>
+          <div class="text-2xl font-bold mt-0.5 text-slate-900"><?= number_format($hwStats['pending_reminders']) ?></div>
         </div>
       </div>
-      <div class="text-xs text-purple-800 font-medium mt-3">
+      <div class="text-xs text-slate-600 font-medium mt-3">
         <?php if ($hwStats['due_today_reminders'] > 0): ?>
           <span class="text-rose-600 font-bold"><i class="fas fa-circle-exclamation mr-1"></i><?= $hwStats['due_today_reminders'] ?> due today</span> for outreach
         <?php else: ?>
@@ -108,7 +108,7 @@ require __DIR__ . '/../partials/header.php';
         <?php endif; ?>
       </div>
     </div>
-    <a class="w-full inline-flex items-center justify-center mt-4 px-3.5 py-2 rounded-lg bg-purple-700 text-white text-xs font-semibold shadow hover:bg-purple-800 transition" href="/HealthLogs/public/reminders.php">
+    <a class="w-full inline-flex items-center justify-center mt-4 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/reminders.php">
       Open Reminders
     </a>
   </div>
@@ -121,27 +121,33 @@ require __DIR__ . '/../partials/header.php';
           <i class="fas fa-pills"></i>
         </span>
         <div>
-          <div class="text-xs uppercase tracking-widest text-slate-400 font-bold">Inventory</div>
-          <div class="text-2xl font-bold mt-0.5 text-slate-900">Medicine</div>
+          <div class="text-xs uppercase tracking-widest text-slate-500 font-bold">Medicine Supplies</div>
+          <div class="text-2xl font-bold mt-0.5 text-slate-900"><?= number_format($hwStats['low_stock_medicines']) ?></div>
         </div>
       </div>
-      <div class="text-xs text-slate-500 mt-3">Dispense and track supplies.</div>
+      <div class="text-xs text-slate-600 font-medium mt-3">
+        <?php if ($hwStats['low_stock_medicines'] > 0): ?>
+          <span class="text-amber-700 font-bold"><i class="fas fa-triangle-exclamation mr-1"></i><?= $hwStats['low_stock_medicines'] ?> low stock item(s)</span>
+        <?php else: ?>
+          Supply stocks healthy
+        <?php endif; ?>
+      </div>
     </div>
     <a class="w-full inline-flex items-center justify-center mt-4 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/inventory.php">
-      Open Inventory
+      View Inventory
     </a>
   </div>
 </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-  <!-- Reminders List -->
-  <div class="bg-white p-5 rounded-xl shadow border border-slate-100 xl:col-span-2">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+  <!-- Reminders Follow-up Queue -->
+  <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow border border-slate-100">
     <div class="flex items-center justify-between border-b pb-3">
       <div>
-        <div class="text-xs uppercase font-bold tracking-wider text-purple-700">Patient Outreach Queue</div>
+        <div class="text-xs uppercase font-bold tracking-wider text-slate-500">Patient Outreach Queue</div>
         <div class="text-lg font-bold text-slate-900 mt-0.5">Upcoming Reminders &amp; Follow-ups</div>
       </div>
-      <a class="text-xs text-purple-700 hover:underline font-semibold" href="/HealthLogs/public/reminders.php">
+      <a class="text-xs text-slate-600 hover:text-slate-900 hover:underline font-semibold" href="/HealthLogs/public/reminders.php">
         View All Reminders &rarr;
       </a>
     </div>
@@ -162,7 +168,7 @@ require __DIR__ . '/../partials/header.php';
           ?>
           <div class="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition">
             <div class="flex items-center gap-3">
-              <span class="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shrink-0">
+              <span class="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm shrink-0">
                 <i class="fas fa-comment-sms"></i>
               </span>
               <div>
@@ -171,7 +177,7 @@ require __DIR__ . '/../partials/header.php';
                   <span class="text-xs font-normal text-slate-400">&bull; <?= h($rem['barangay']) ?></span>
                 </div>
                 <div class="text-xs text-slate-600 mt-0.5">
-                  <strong class="uppercase text-[11px] text-purple-700"><?= h($rem['reminder_type'] ?? 'General') ?>:</strong> 
+                  <strong class="uppercase text-[11px] text-slate-700"><?= h($rem['reminder_type'] ?? 'General') ?>:</strong> 
                   <?= h($rem['message']) ?>
                 </div>
               </div>
@@ -198,8 +204,8 @@ require __DIR__ . '/../partials/header.php';
         <a class="block px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/patients/form.php">
           <i class="fas fa-user-plus mr-2"></i>New Patient (BHW Intake)
         </a>
-        <a class="block px-4 py-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 hover:bg-purple-100 text-xs font-semibold transition" href="/HealthLogs/public/reminders.php">
-          <i class="fas fa-bell mr-2 text-purple-600"></i>Send SMS Reminder
+        <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/reminders.php">
+          <i class="fas fa-bell mr-2 text-slate-600"></i>Send SMS Reminder
         </a>
         <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/immunization/tcl.php">
           <i class="fas fa-table-list mr-2 text-teal-600"></i>Target Client List (TCL-2)

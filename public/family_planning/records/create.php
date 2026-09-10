@@ -102,7 +102,7 @@ require __DIR__ . '/../../partials/header.php';
 <div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
   <div class="flex items-center justify-between">
     <div>
-      <a href="/HealthLogs/public/family_planning/records/index.php" class="text-xs text-purple-600 font-semibold hover:underline">&larr; Back to Client Registry</a>
+      <a href="/HealthLogs/public/family_planning/records/index.php" class="text-xs text-slate-500 font-semibold hover:text-slate-800 hover:underline">&larr; Back to Client Registry</a>
       <div class="text-2xl font-bold text-slate-900 mt-1">Enroll Family Planning Client</div>
       <p class="text-sm text-slate-500 mt-1">Register a patient into the DOH Family Planning Program (Form 1 Profile).</p>
     </div>
@@ -124,13 +124,13 @@ require __DIR__ . '/../../partials/header.php';
   <form method="POST" class="space-y-6">
     <!-- Client Identification -->
     <div>
-      <h3 class="text-sm uppercase font-bold tracking-wider text-purple-700 border-b pb-2 mb-4">
+      <h3 class="text-sm uppercase font-bold tracking-wider text-slate-700 border-b border-slate-200 pb-2 mb-4">
         1. Client Identification
       </h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="sm:col-span-2">
           <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
-          <select name="patient_id" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-purple-500">
+          <select name="patient_id" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
             <option value="">-- Choose Patient --</option>
             <?php foreach ($patients as $p): ?>
               <?php 
@@ -146,20 +146,20 @@ require __DIR__ . '/../../partials/header.php';
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Client Code *</label>
-          <input type="text" name="client_code" value="<?= h($_POST['client_code'] ?? $nextCode) ?>" required class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500" />
+          <input type="text" name="client_code" value="<?= h($_POST['client_code'] ?? $nextCode) ?>" required class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-slate-400" />
           <span class="text-[11px] text-slate-400">Standard DOH Clinic ID</span>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Registration Date *</label>
-          <input type="date" name="registration_date" value="<?= h($_POST['registration_date'] ?? date('Y-m-d')) ?>" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500" />
+          <input type="date" name="registration_date" value="<?= h($_POST['registration_date'] ?? date('Y-m-d')) ?>" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" />
         </div>
       </div>
     </div>
 
     <!-- Contraceptive Method Profile -->
     <div>
-      <h3 class="text-sm uppercase font-bold tracking-wider text-purple-700 border-b pb-2 mb-4">
+      <h3 class="text-sm uppercase font-bold tracking-wider text-slate-700 border-b border-slate-200 pb-2 mb-4">
         2. Family Planning Acceptance
       </h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -214,7 +214,7 @@ require __DIR__ . '/../../partials/header.php';
 
     <!-- Partner & Family Profile -->
     <div>
-      <h3 class="text-sm uppercase font-bold tracking-wider text-purple-700 border-b pb-2 mb-4">
+      <h3 class="text-sm uppercase font-bold tracking-wider text-slate-700 border-b border-slate-200 pb-2 mb-4">
         3. Partner &amp; Reproductive Information
       </h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -248,7 +248,7 @@ require __DIR__ . '/../../partials/header.php';
 
     <div class="pt-4 border-t flex items-center justify-end gap-3">
       <a href="/HealthLogs/public/family_planning/records/index.php" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Cancel</a>
-      <button type="submit" class="px-5 py-2.5 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold shadow transition flex items-center gap-1.5">
+      <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition flex items-center gap-1.5">
         <i class="fas fa-check"></i> Enroll Client
       </button>
     </div>

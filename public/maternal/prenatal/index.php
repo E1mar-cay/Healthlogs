@@ -57,49 +57,59 @@ $sensitiveVisitsCount = (int)$pdo->query("
 
 <?php display_flash_messages(); ?>
 
-<div class="flex items-center justify-between">
-  <div class="text-lg font-semibold">Prenatal Visits</div>
-  <div class="flex items-center gap-2">
-    <?php if ($sensitiveVisitsCount > 0): ?>
-      <a href="/HealthLogs/public/maternal/prenatal/index.php?stage=sensitive" class="px-2.5 py-1.5 rounded text-xs font-semibold bg-rose-100 text-rose-800 hover:bg-rose-200 transition">
-        <?= $sensitiveVisitsCount ?> in 6–7 Mos Window
-      </a>
-    <?php endif; ?>
-    <button type="button" id="prenatalModalOpenNew" data-embed-url="/HealthLogs/public/maternal/prenatal/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-slate-800 transition">New Visit</button>
+<div class="bg-white p-6 rounded-xl shadow mb-6">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div>
+      <div class="text-sm text-slate-500 font-medium">Clinical Antenatal Care</div>
+      <div class="text-2xl font-semibold text-slate-900">Prenatal Checkup Visits</div>
+      <p class="text-sm text-slate-500 mt-1">Track vitals, maternal progression, and highlight sensitive 6–7 months visits.</p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <?php if ($sensitiveVisitsCount > 0): ?>
+        <a href="/HealthLogs/public/maternal/prenatal/index.php?stage=sensitive" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 hover:bg-rose-200 transition shadow-2xs">
+          <i class="fas fa-heartbeat text-rose-600 animate-pulse"></i>
+          <span><?= $sensitiveVisitsCount ?> Visits in 6–7 Mos Window</span>
+        </a>
+      <?php endif; ?>
+      <button type="button" id="prenatalModalOpenNew" data-embed-url="/HealthLogs/public/maternal/prenatal/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
+        <i class="fas fa-plus mr-1 text-xs"></i> New Visit
+      </button>
+    </div>
   </div>
 </div>
 
-<form method="get" class="mt-4 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">
-  <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2 text-sm" placeholder="Search patient name..." />
-  <select name="period" class="w-full md:w-44 border rounded px-3 py-2 text-sm">
+<form method="get" class="bg-white rounded-xl shadow p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+  <input name="q" value="<?= h($q) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Search patient name..." />
+  <select name="period" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All visit periods</option>
     <option value="30" <?= $periodFilter === '30' ? 'selected' : '' ?>>Last 30 days</option>
     <option value="90" <?= $periodFilter === '90' ? 'selected' : '' ?>>Last 90 days</option>
   </select>
-  <select name="stage" class="w-full md:w-56 border rounded px-3 py-2 text-sm">
+  <select name="stage" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All Visit Categories</option>
-    <option value="sensitive" <?= $stageFilter === 'sensitive' ? 'selected' : '' ?>>Sensitive (6–7 Mos)</option>
-    <option value="high_bp" <?= $stageFilter === 'high_bp' ? 'selected' : '' ?>>High BP (&ge;140/90)</option>
+    <option value="sensitive" <?= $stageFilter === 'sensitive' ? 'selected' : '' ?>>⚠️ Sensitive (6–7 Months / 24–31 wks)</option>
+    <option value="high_bp" <?= $stageFilter === 'high_bp' ? 'selected' : '' ?>>High BP (≥140/90 mmHg)</option>
   </select>
   <div class="flex gap-2">
-    <button class="bg-slate-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-slate-800 transition" type="submit">Search</button>
-    <a class="px-4 py-2 rounded border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition" href="/HealthLogs/public/maternal/prenatal/index.php">Clear</a>
+    <button class="flex-1 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition" type="submit">Filter</button>
+    <a class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm text-center hover:bg-slate-50 transition" href="/HealthLogs/public/maternal/prenatal/index.php">Clear</a>
   </div>
 </form>
 
-<div class="mt-4 bg-white rounded shadow overflow-x-auto">
-  <table class="min-w-full text-sm">
-    <thead class="bg-slate-50 text-slate-600">
-      <tr>
-        <th class="text-left px-4 py-2">Patient</th>
-        <th class="text-left px-4 py-2">Visit Date & Time</th>
-        <th class="text-left px-4 py-2">Gestational Age</th>
-        <th class="text-left px-4 py-2">Blood Pressure</th>
-        <th class="text-left px-4 py-2">Weight</th>
-        <th class="text-left px-4 py-2">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+<div class="mt-6 bg-white rounded-xl shadow overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+        <tr>
+          <th class="text-left px-4 py-3 font-semibold">Patient</th>
+          <th class="text-left px-4 py-3 font-semibold">Visit Date & Time</th>
+          <th class="text-left px-4 py-3 font-semibold">Gestational Age</th>
+          <th class="text-left px-4 py-3 font-semibold">Blood Pressure</th>
+          <th class="text-left px-4 py-3 font-semibold">Weight</th>
+          <th class="text-right px-4 py-3 font-semibold">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
         <?php if (empty($rows)): ?>
           <tr><td class="px-4 py-6 text-center text-slate-500" colspan="6">No prenatal visits found matching current filter.</td></tr>
         <?php else: ?>

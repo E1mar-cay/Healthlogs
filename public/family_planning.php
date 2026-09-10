@@ -215,7 +215,7 @@ function fp_format_method_label(?string $m): string {
                   <?php endif; ?>
                 </div>
               </div>
-              <span class="text-xs font-mono font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+              <span class="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                 <?= h($visit['client_code']) ?>
               </span>
             </div>
