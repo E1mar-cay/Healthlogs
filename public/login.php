@@ -204,19 +204,15 @@ $recaptchaSiteKey = Recaptcha::siteKey();
     }
   </style>
 </head>
-<body class="app-body">
-  <div class="min-h-screen flex items-center justify-center px-3 py-3 sm:px-4 sm:py-10 login-shell">
-    <span class="hero-orb -left-24 -top-32"></span>
-    <span class="hero-orb -right-32 top-32"></span>
-
-    <div class="login-card w-full max-w-md md:max-w-5xl overflow-hidden relative">
+<body class="flex items-center justify-center p-3 sm:p-4 md:p-6 min-h-screen">
+  <div class="w-full max-w-4xl mx-auto my-auto">
+    <div class="bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden">
       <div class="grid grid-cols-1 md:grid-cols-2">
         <!-- Left Side: Login Form -->
-        <div class="p-6 sm:p-8 md:p-10">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 4v16"></path>
-              <path d="M4 12h16"></path>
+        <div class="p-6 sm:p-8 md:p-10 flex flex-col justify-center">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 mb-6">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
               <path d="M7 7h10v10H7z"></path>
             </svg>
           </div>
@@ -247,8 +243,16 @@ $recaptchaSiteKey = Recaptcha::siteKey();
             </div>
 
             <?php if ($recaptchaSiteKey !== ''): ?>
-            <div class="flex justify-center sm:justify-start">
-              <div class="g-recaptcha" data-sitekey="<?= htmlspecialchars($recaptchaSiteKey, ENT_QUOTES, 'UTF-8') ?>"></div>
+            <div id="recaptchaSection" class="mt-3 min-h-[76px] flex flex-col justify-center">
+              <div id="recaptchaContainer" class="flex justify-center sm:justify-start"></div>
+              <div id="recaptchaOfflineNotice" class="hidden text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5 items-center gap-2">
+                <i class="fas fa-wifi-slash text-slate-400"></i>
+                <span>Offline Mode active &bull; Security check bypassed</span>
+              </div>
+              <div id="recaptchaLoadingNotice" class="text-xs text-slate-400 flex items-center gap-2 py-2">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <span>Checking security verification...</span>
+              </div>
             </div>
             <?php endif; ?>
             
@@ -320,6 +324,110 @@ $recaptchaSiteKey = Recaptcha::siteKey();
             icon.classList.toggle('fa-eye-slash', isPassword);
           }
           toggleBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+        });
+      }
+    })();
+
+    // Dynamic reCAPTCHA Auto Online/Offline Handler
+    (function () {
+      var siteKey = <?= json_encode($recaptchaSiteKey) ?>;
+      if (!siteKey) return;
+
+      var container = document.getElementById('recaptchaContainer');
+      var offlineNotice = document.getElementById('recaptchaOfflineNotice');
+      var loadingNotice = document.getElementById('recaptchaLoadingNotice');
+      var widgetId = null;
+      var scriptInjected = false;
+
+      function setOfflineState() {
+        if (loadingNotice) loadingNotice.style.display = 'none';
+        if (container) container.style.display = 'none';
+        if (offlineNotice) {
+          offlineNotice.classList.remove('hidden');
+          offlineNotice.style.display = 'flex';
+        }
+      }
+
+      function setOnlineState() {
+        if (offlineNotice) {
+          offlineNotice.classList.add('hidden');
+          offlineNotice.style.display = 'none';
+        }
+        if (container) container.style.display = 'block';
+      }
+
+      window.onRecaptchaLoaded = function () {
+        if (loadingNotice) loadingNotice.style.display = 'none';
+        setOnlineState();
+        if (container && widgetId === null && window.grecaptcha) {
+          try {
+            widgetId = grecaptcha.render('recaptchaContainer', {
+              'sitekey': siteKey
+            });
+          } catch (e) {
+            console.warn('reCAPTCHA render notice:', e);
+          }
+        }
+      };
+
+      function checkAndLoadRecaptcha() {
+        if (!navigator.onLine) {
+          setOfflineState();
+          return;
+        }
+
+        if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+          window.onRecaptchaLoaded();
+          return;
+        }
+
+        if (!scriptInjected) {
+          scriptInjected = true;
+          var script = document.createElement('script');
+          script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoaded&render=explicit';
+          script.async = true;
+          script.defer = true;
+
+          var fallbackTimer = setTimeout(function () {
+            if (widgetId === null && (!window.grecaptcha || typeof window.grecaptcha.render !== 'function')) {
+              setOfflineState();
+            }
+          }, 3500);
+
+          script.onerror = function () {
+            clearTimeout(fallbackTimer);
+            setOfflineState();
+          };
+
+          document.head.appendChild(script);
+        } else {
+          setOnlineState();
+        }
+      }
+
+      // Real-time network transitions
+      window.addEventListener('online', function () {
+        checkAndLoadRecaptcha();
+      });
+
+      window.addEventListener('offline', function () {
+        setOfflineState();
+      });
+
+      // Initial check on page load
+      checkAndLoadRecaptcha();
+
+      // Form validation
+      var form = container ? container.closest('form') : null;
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          if (navigator.onLine && widgetId !== null && window.grecaptcha && container.style.display !== 'none') {
+            var response = grecaptcha.getResponse(widgetId);
+            if (!response) {
+              e.preventDefault();
+              alert('Please complete the reCAPTCHA verification to log in.');
+            }
+          }
         });
       }
     })();

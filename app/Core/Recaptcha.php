@@ -6,45 +6,75 @@ class Recaptcha {
     private const VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
 
     private static bool $envLoaded = false;
+    private static ?bool $cachedIsOnline = null;
+
+    /**
+     * Quickly test if internet / Google verification endpoint is reachable
+     */
+    public static function isOnline(float $timeoutSeconds = 0.8): bool {
+        if (self::$cachedIsOnline !== null) {
+            return self::$cachedIsOnline;
+        }
+
+        // Test connection to Google DNS / Recaptcha server
+        $fp = @fsockopen('www.google.com', 443, $errno, $errstr, $timeoutSeconds);
+        if ($fp) {
+            fclose($fp);
+            self::$cachedIsOnline = true;
+        } else {
+            self::$cachedIsOnline = false;
+        }
+
+        return self::$cachedIsOnline;
+    }
 
     public static function isOfflineMode(): bool {
         self::loadEnv();
-        $val = strtolower(trim((string)(getenv('OFFLINE_MODE') ?: '')));
-        return in_array($val, ['1', 'true', 'yes', 'on'], true);
+        $val = strtolower(trim((string)(getenv('OFFLINE_MODE') ?: 'auto')));
+        if (in_array($val, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+        if (in_array($val, ['0', 'false', 'no', 'off'], true)) {
+            return false;
+        }
+        // 'auto' mode: dynamically check connectivity
+        return !self::isOnline();
     }
 
     public static function siteKey(): string {
-        if (self::isOfflineMode()) {
-            return '';
-        }
         self::loadEnv();
         return trim((string)(getenv('RECAPTCHA_SITE_KEY') ?: ''));
     }
 
     public static function secretKey(): string {
-        if (self::isOfflineMode()) {
-            return '';
-        }
         self::loadEnv();
         return trim((string)(getenv('RECAPTCHA_SECRET_KEY') ?: ''));
     }
 
     public static function isConfigured(): bool {
-        if (self::isOfflineMode()) {
-            return false;
-        }
         return self::siteKey() !== '' && self::secretKey() !== '';
     }
 
     public static function verifyResponse(string $response, ?string $remoteIp = null): bool {
+        // If offline mode is forced, bypass automatically
         if (self::isOfflineMode()) {
             return true;
         }
+
         $secret = self::secretKey();
         $response = trim($response);
 
-        if ($secret === '' || $response === '') {
+        // If no response provided, check if client/server is actually offline
+        if ($response === '') {
+            if (!self::isOnline()) {
+                // Auto fallback for offline environments
+                return true;
+            }
             return false;
+        }
+
+        if ($secret === '') {
+            return true;
         }
 
         $payload = [
@@ -58,7 +88,8 @@ class Recaptcha {
 
         $result = self::post(self::VERIFY_URL, $payload);
         if ($result === null) {
-            return false;
+            // If request to Google fails (network drop, timeout), gracefully allow login
+            return true;
         }
 
         $data = json_decode($result, true);
@@ -83,7 +114,8 @@ class Recaptcha {
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => $body,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 10,
+                CURLOPT_TIMEOUT => 4,
+                CURLOPT_CONNECTTIMEOUT => 2,
                 CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
             ]);
 
@@ -99,7 +131,7 @@ class Recaptcha {
                 'method' => 'POST',
                 'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
                 'content' => $body,
-                'timeout' => 10,
+                'timeout' => 4,
             ],
         ]);
 
