@@ -43,12 +43,12 @@
       <input name="barangay" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('barangay', $patient['barangay'] ?? '')) ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Contact No</label>
-      <input name="contact_no" placeholder="09XXXXXXXXX" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('contact_no', $patient['contact_no'] ?? '')) ?>" />
+      <label class="block text-sm text-slate-600">Contact No <span class="text-xs text-slate-400 font-normal">(Optional)</span></label>
+      <input name="contact_no" placeholder="09XXXXXXXXX (Optional)" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('contact_no', $patient['contact_no'] ?? '')) ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Email</label>
-      <input name="email" type="email" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('email', $patient['email'] ?? '')) ?>" />
+      <label class="block text-sm text-slate-600">Email <span class="text-xs text-slate-400 font-normal">(Optional)</span></label>
+      <input name="email" type="email" placeholder="e.g. parent/guardian email (Optional)" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('email', $patient['email'] ?? '')) ?>" />
     </div>
     <div>
       <label class="block text-sm text-slate-600">Address Line</label>

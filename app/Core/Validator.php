@@ -19,11 +19,15 @@ if (!function_exists('validate_required')) {
 
 if (!function_exists('validate_email')) {
     /**
-     * Validate email address
+     * Validate email address (optional; allows empty, whitespace, or N/A placeholders)
      */
     function validate_email(?string $email): bool {
-        if (empty($email)) {
-            return true; // Allow empty (use validate_required separately if needed)
+        if ($email === null) {
+            return true;
+        }
+        $email = trim($email);
+        if ($email === '' || in_array(strtolower($email), ['n/a', 'na', 'none', '-', 'nil', 'null'], true)) {
+            return true; // Optional by default
         }
         return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
@@ -31,11 +35,15 @@ if (!function_exists('validate_email')) {
 
 if (!function_exists('validate_phone')) {
     /**
-     * Validate Philippine phone number (10-11 digits)
+     * Validate Philippine phone number (optional; 10-11 digits)
      */
     function validate_phone(?string $phone): bool {
-        if (empty($phone)) {
-            return true; // Allow empty
+        if ($phone === null) {
+            return true;
+        }
+        $phone = trim($phone);
+        if ($phone === '' || in_array(strtolower($phone), ['n/a', 'na', 'none', '-', 'nil', 'null'], true)) {
+            return true; // Optional by default
         }
         // Remove common separators
         $cleaned = preg_replace('/[\s\-\(\)]+/', '', $phone);
@@ -217,25 +225,35 @@ if (!function_exists('sanitize_string')) {
 
 if (!function_exists('sanitize_email')) {
     /**
-     * Sanitize email input
+     * Sanitize email input (returns null if empty or placeholder)
      */
     function sanitize_email(?string $email): ?string {
         if ($email === null) {
             return null;
         }
-        return filter_var(trim($email), FILTER_SANITIZE_EMAIL);
+        $email = trim($email);
+        if ($email === '' || in_array(strtolower($email), ['n/a', 'na', 'none', '-', 'nil', 'null'], true)) {
+            return null;
+        }
+        $sanitized = filter_var($email, FILTER_SANITIZE_EMAIL);
+        return $sanitized !== false && $sanitized !== '' ? $sanitized : null;
     }
 }
 
 if (!function_exists('sanitize_phone')) {
     /**
-     * Sanitize phone number (remove non-numeric except +)
+     * Sanitize phone number (returns null if empty or placeholder)
      */
     function sanitize_phone(?string $phone): ?string {
         if ($phone === null) {
             return null;
         }
-        return preg_replace('/[^0-9+]/', '', $phone);
+        $phone = trim($phone);
+        if ($phone === '' || in_array(strtolower($phone), ['n/a', 'na', 'none', '-', 'nil', 'null'], true)) {
+            return null;
+        }
+        $cleaned = preg_replace('/[^0-9+]/', '', $phone);
+        return $cleaned !== '' ? $cleaned : null;
     }
 }
 
