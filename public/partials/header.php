@@ -381,6 +381,10 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           <span class="nav-icon">FP</span>
           <span class="nav-text font-medium">Family Planning</span>
         </a>
+        <a class="nav-link <?= $isActive('/HealthLogs/public/ncd') ? 'active' : '' ?>" href="/HealthLogs/public/ncd.php" title="Non-Communicable Diseases">
+          <span class="nav-icon">NC</span>
+          <span class="nav-text font-medium">Non-Communicable</span>
+        </a>
 
         <a class="nav-link <?= $isActive('/HealthLogs/public/inventory') ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicine Inventory">
           <span class="nav-icon">IN</span>

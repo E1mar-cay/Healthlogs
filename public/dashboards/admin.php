@@ -9,6 +9,7 @@ $adminStats = [
     'active_users' => 0,
     'pending_reminders' => 0,
     'ongoing_pregnancies' => 0,
+    'ncd_clients' => 0,
 ];
 
 try {
@@ -48,6 +49,10 @@ try {
     $adminStats['ongoing_pregnancies'] = (int)$pdo->query(
         "SELECT COUNT(*) FROM pregnancies WHERE status = 'ongoing'"
     )->fetchColumn();
+
+    $adminStats['ncd_clients'] = (int)$pdo->query(
+        "SELECT COUNT(*) FROM ncd_records WHERE status IN ('active', 'controlled', 'uncontrolled')"
+    )->fetchColumn();
 } catch (Throwable $e) {
     // Keep dashboard usable even if a summary query fails.
 }
@@ -67,7 +72,7 @@ try {
   </div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
   <div class="bg-white p-5 rounded shadow">
     <div class="text-xs uppercase tracking-widest text-slate-400">Patients</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['total_patients'])) ?></div>
@@ -77,6 +82,11 @@ try {
     <div class="text-xs uppercase tracking-widest text-slate-400">Visits</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['monthly_visits'])) ?></div>
     <div class="text-sm text-slate-500">This month</div>
+  </div>
+  <div class="bg-white p-5 rounded shadow">
+    <div class="text-xs uppercase tracking-widest text-slate-400">NCD Clients</div>
+    <div class="text-2xl font-semibold mt-1 text-indigo-600"><?= h(number_format($adminStats['ncd_clients'])) ?></div>
+    <div class="text-sm text-slate-500">HPN, Diabetes &amp; CKD</div>
   </div>
   <div class="bg-white p-5 rounded shadow">
     <div class="text-xs uppercase tracking-widest text-slate-400">Low Stock</div>
@@ -96,7 +106,7 @@ try {
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['pending_reminders'])) ?></div>
     <div class="text-sm text-slate-500">Pending and due now</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded shadow sm:col-span-2 xl:col-span-1">
     <div class="text-xs uppercase tracking-widest text-slate-400">Maternal</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['ongoing_pregnancies'])) ?></div>
     <div class="text-sm text-slate-500">Ongoing pregnancies</div>
@@ -110,29 +120,33 @@ try {
         <div class="text-sm text-slate-500">Program Performance</div>
         <div class="text-lg font-semibold">Visits & Outreach</div>
       </div>
-      <a class="text-blue-700 text-sm" href="/HealthLogs/public/forecast.php">View Forecast</a>
+      <a class="text-blue-700 text-sm font-medium" href="/HealthLogs/public/forecast.php">View Forecast &rarr;</a>
     </div>
-    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <div class="text-xs uppercase tracking-widest text-slate-400">Immunization</div>
         <div class="text-xl font-semibold mt-1">On Track</div>
-        <p class="text-slate-500 text-sm mt-1">Coverage above last quarter.</p>
+        <p class="text-slate-500 text-xs mt-1">Child vaccine coverage active.</p>
       </div>
       <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <div class="text-xs uppercase tracking-widest text-slate-400">Maternal Health</div>
         <div class="text-xl font-semibold mt-1">Stable</div>
-        <p class="text-slate-500 text-sm mt-1">Prenatal visits consistent.</p>
+        <p class="text-slate-500 text-xs mt-1">Prenatal checkups consistent.</p>
       </div>
-
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div class="text-xs uppercase tracking-widest text-slate-400">NCD / PhilPEN</div>
+        <div class="text-xl font-semibold mt-1 text-indigo-700"><?= number_format($adminStats['ncd_clients']) ?> Active</div>
+        <p class="text-slate-500 text-xs mt-1">HPN &amp; Diabetes monitoring.</p>
+      </div>
       <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <div class="text-xs uppercase tracking-widest text-slate-400">Medicine Demand</div>
         <div class="text-xl font-semibold mt-1">Rising</div>
-        <p class="text-slate-500 text-sm mt-1">Expect higher demand next month.</p>
+        <p class="text-slate-500 text-xs mt-1">Expect higher demand next month.</p>
       </div>
       <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <div class="text-xs uppercase tracking-widest text-slate-400">Roles</div>
         <div class="text-xl font-semibold mt-1">2 Active</div>
-        <p class="text-slate-500 text-sm mt-1">Admin and Health Worker access levels.</p>
+        <p class="text-slate-500 text-xs mt-1">Admin and Health Worker access levels.</p>
       </div>
     </div>
   </div>

@@ -18,6 +18,7 @@ $seeders = [
     'seed_immunization.php' => 'Immunization Module',
     'seed_maternal.php' => 'Maternal Health Module',
     'seed_family_planning.php' => 'Family Planning Module',
+    'seed_ncd.php' => 'Non-Communicable Disease (NCD) Module',
     'seed_inventory.php' => 'Medicine Inventory Module',
     'build_timeseries.php' => 'Time Series Data',
 ];

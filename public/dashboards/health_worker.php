@@ -8,6 +8,7 @@ $hwStats = [
     'pending_reminders' => 0,
     'due_today_reminders' => 0,
     'low_stock_medicines' => 0,
+    'ncd_patients' => 0,
 ];
 
 $upcomingReminders = [];
@@ -17,6 +18,7 @@ try {
     $hwStats['scheduled_vaccines'] = (int)$pdo->query("SELECT COUNT(*) FROM immunization_schedule WHERE status = 'scheduled'")->fetchColumn();
     $hwStats['pending_reminders'] = (int)$pdo->query("SELECT COUNT(*) FROM reminders WHERE status = 'pending'")->fetchColumn();
     $hwStats['due_today_reminders'] = (int)$pdo->query("SELECT COUNT(*) FROM reminders WHERE status = 'pending' AND due_date <= CURDATE()")->fetchColumn();
+    $hwStats['ncd_patients'] = (int)$pdo->query("SELECT COUNT(*) FROM ncd_records WHERE status IN ('active', 'controlled', 'uncontrolled')")->fetchColumn();
     
     $hwStats['low_stock_medicines'] = (int)$pdo->query("
         SELECT COUNT(*) FROM (
@@ -59,62 +61,75 @@ require __DIR__ . '/../partials/header.php';
 </div>
 
 <!-- Primary Program Navigation Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/patients/index.php">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
+  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/patients/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-base">
-        <i class="fas fa-users text-lg"></i>
+      <span class="h-10 w-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-base">
+        <i class="fas fa-users text-base"></i>
       </span>
       <div>
-        <div class="text-sm text-slate-500">Registry</div>
-        <div class="text-lg font-semibold text-slate-900">Patient Directory</div>
+        <div class="text-[11px] text-slate-500 font-semibold">Registry</div>
+        <div class="text-base font-bold text-slate-900">Patients</div>
       </div>
     </div>
-    <div class="text-xs text-slate-500 mt-4">Search profiles, family serials &amp; health history.</div>
+    <div class="text-xs text-slate-500 mt-3">Directory &amp; serials.</div>
   </a>
 
-  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/immunization.php">
+  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/immunization.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base">
-        <i class="fas fa-syringe text-lg"></i>
+      <span class="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base">
+        <i class="fas fa-syringe text-base"></i>
       </span>
       <div>
-        <div class="text-sm text-slate-500">EPI Program</div>
-        <div class="text-lg font-semibold text-slate-900">Immunization</div>
+        <div class="text-[11px] text-slate-500 font-semibold">EPI Program</div>
+        <div class="text-base font-bold text-slate-900">Immunization</div>
       </div>
     </div>
-    <div class="text-xs text-slate-500 mt-4">Child vaccine schedules, doses &amp; TCL-2.</div>
+    <div class="text-xs text-slate-500 mt-3">Vaccines &amp; TCL-2.</div>
   </a>
 
-  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/maternal.php">
+  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/maternal.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-base">
-        <i class="fas fa-person-pregnant text-lg"></i>
+      <span class="h-10 w-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-base">
+        <i class="fas fa-person-pregnant text-base"></i>
       </span>
       <div>
-        <div class="text-sm text-slate-500">ANC Program</div>
-        <div class="text-lg font-semibold text-slate-900">Maternal Care</div>
+        <div class="text-[11px] text-slate-500 font-semibold">ANC Program</div>
+        <div class="text-base font-bold text-slate-900">Maternal</div>
       </div>
     </div>
-    <div class="text-xs text-slate-500 mt-4">8-ANC prenatal checkups, vitamins &amp; delivery.</div>
+    <div class="text-xs text-slate-500 mt-3">Prenatal &amp; delivery.</div>
   </a>
 
-  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/family_planning.php">
+  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/family_planning.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-base">
-        <i class="fas fa-heart text-lg"></i>
+      <span class="h-10 w-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-base">
+        <i class="fas fa-heart text-base"></i>
       </span>
       <div>
-        <div class="text-sm text-slate-500">Reproductive</div>
-        <div class="text-lg font-semibold text-slate-900">Family Planning</div>
+        <div class="text-[11px] text-slate-500 font-semibold">Reproductive</div>
+        <div class="text-base font-bold text-slate-900">Family Planning</div>
       </div>
     </div>
-    <div class="text-xs text-slate-500 mt-4">Contraceptive dispensing, users &amp; DOH Form 1.</div>
+    <div class="text-xs text-slate-500 mt-3">Methods &amp; DOH Form 1.</div>
+  </a>
+
+  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/ncd.php">
+    <div class="flex items-center gap-3">
+      <span class="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-base">
+        <i class="fas fa-heart-pulse text-base"></i>
+      </span>
+      <div>
+        <div class="text-[11px] text-slate-500 font-semibold">Chronic Care</div>
+        <div class="text-base font-bold text-slate-900">Non-Communicable</div>
+      </div>
+    </div>
+    <div class="text-xs text-slate-500 mt-3">HPN, Diabetes &amp; PhilPEN.</div>
   </a>
 </div>
 
 <!-- Summary Metric Cards -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-6">
   <div class="bg-white p-4 rounded shadow">
     <div class="text-xs text-slate-500 font-medium">Registered Patients</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['total_patients']) ?></div>
@@ -128,6 +143,12 @@ require __DIR__ . '/../partials/header.php';
   </div>
 
   <div class="bg-white p-4 rounded shadow">
+    <div class="text-xs text-slate-500 font-medium">NCD Patients</div>
+    <div class="text-2xl font-bold text-indigo-600 mt-1"><?= number_format($hwStats['ncd_patients']) ?></div>
+    <div class="text-xs text-slate-400 mt-1">HPN, DM &amp; chronic care</div>
+  </div>
+
+  <div class="bg-white p-4 rounded shadow">
     <div class="text-xs text-slate-500 font-medium">Pending Reminders</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['pending_reminders']) ?></div>
     <div class="text-xs text-slate-400 mt-1">
@@ -135,7 +156,7 @@ require __DIR__ . '/../partials/header.php';
     </div>
   </div>
 
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded shadow col-span-2 sm:col-span-1">
     <div class="text-xs text-slate-500 font-medium">Low Stock Medicines</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['low_stock_medicines']) ?></div>
     <div class="text-xs text-slate-400 mt-1">
