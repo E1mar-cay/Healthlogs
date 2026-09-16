@@ -347,6 +347,7 @@ try {
       <head>
         <meta charset="utf-8">
         <title>Executive Administrative & Program Summary Report</title>
+        <link rel="icon" type="image/jpeg" href="/HealthLogs/public/assets/images/logo.jpeg">
         <style>
           @page {
             size: auto;
@@ -507,16 +508,8 @@ try {
       </head>
       <body>
         <div class="official-header">
-          <div>
-            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="46" fill="#0f766e" stroke="#115e59" stroke-width="2"/>
-              <circle cx="50" cy="50" r="41" fill="#ffffff" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="3 2"/>
-              <path d="M43 25 h14 v18 h18 v14 h-18 v18 h-14 v-18 h-18 v-14 h18 z" fill="#0ea5a4" opacity="0.3"/>
-              <rect x="44" y="24" width="12" height="52" rx="2" fill="#0f766e"/>
-              <rect x="24" y="44" width="52" height="12" rx="2" fill="#0f766e"/>
-              <circle cx="50" cy="50" r="7" fill="#ffffff"/>
-              <path d="M50 45 L52 49 L56 50 L52 52 L50 56 L48 52 L44 50 L48 49 Z" fill="#0f766e"/>
-            </svg>
+          <div style="display: flex; align-items: center;">
+            <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" style="width: 58px; height: 58px; object-fit: cover; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
           </div>
           <div class="header-center">
             <div class="rep-title">Republic of the Philippines</div>

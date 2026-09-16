@@ -451,8 +451,24 @@ if ($summary) {
   </div>
 <?php endif; ?>
 
+<!-- Printable Official Header (Visible only when full-page printing) -->
+<div class="hidden print:flex mb-6 border-b-2 border-slate-800 pb-4 items-center justify-between gap-4">
+  <div class="shrink-0 flex items-center gap-3">
+    <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-14 h-14 rounded-xl object-cover border border-slate-300 shadow-2xs">
+    <div>
+      <div class="text-[11px] uppercase tracking-widest text-slate-600 font-bold">Republic of the Philippines &bull; Department of Health</div>
+      <div class="text-base font-bold text-slate-900">Barangay Health Center &amp; Care Hub &bull; HealthLogs</div>
+      <div class="text-xs font-semibold text-teal-800">Predictive Analytics &amp; 3-Month Demand Forecasting Report</div>
+    </div>
+  </div>
+  <div class="shrink-0 text-right text-xs text-slate-500">
+    <div><strong>Date:</strong> <?= date('M d, Y') ?></div>
+    <div><strong>Time:</strong> <?= date('h:i A') ?></div>
+  </div>
+</div>
+
 <!-- Page Banner -->
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow print:hidden">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-xs font-bold uppercase tracking-wider text-teal-700">Predictive Health Analytics</div>

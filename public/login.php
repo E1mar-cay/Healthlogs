@@ -18,6 +18,7 @@ $recaptchaSiteKey = Recaptcha::siteKey();
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - HealthLogs</title>
+  <link rel="icon" type="image/jpeg" href="/HealthLogs/public/assets/images/logo.jpeg">
   <!-- Local Assets for 100% Offline Support -->
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
   <?php if ($recaptchaSiteKey !== ''): ?>
@@ -210,11 +211,8 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       <div class="grid grid-cols-1 md:grid-cols-2">
         <!-- Left Side: Login Form -->
         <div class="p-6 sm:p-8 md:p-10 flex flex-col justify-center">
-          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 mb-6">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-              <path d="M7 7h10v10H7z"></path>
-            </svg>
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl overflow-hidden shadow-lg shadow-teal-500/20 mb-5 border border-slate-200/80 bg-white">
+            <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-full h-full object-cover">
           </div>
           <div class="brand text-2xl sm:text-3xl font-semibold text-slate-900">HealthLogs</div>
           <p class="text-xs sm:text-sm text-slate-600 mt-2">Secure access for Barangay Health Units.</p>
@@ -267,23 +265,24 @@ $recaptchaSiteKey = Recaptcha::siteKey();
         <!-- Right Side: Info (Hidden on Mobile) -->
         <div class="hidden md:flex flex-col justify-between p-8 md:p-10 relative overflow-hidden" style="background: linear-gradient(145deg, rgba(14,165,164,0.18), rgba(37,99,235,0.18));">
           <!-- Background Watermark Logo -->
-          <div class="absolute -right-10 -bottom-10 pointer-events-none opacity-[0.14] select-none transform rotate-12">
-            <svg class="w-80 h-80 text-teal-900" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="46" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-width="4"/>
-              <circle cx="50" cy="50" r="38" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4"/>
-              <rect x="42" y="20" width="16" height="60" rx="3" fill="currentColor"/>
-              <rect x="20" y="42" width="60" height="16" rx="3" fill="currentColor"/>
-              <circle cx="50" cy="50" r="9" fill="#ffffff" fill-opacity="0.9"/>
-              <path d="M50 43 L53 48 L58 50 L53 52 L50 57 L47 52 L42 50 L47 48 Z" fill="currentColor"/>
-            </svg>
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.14] select-none overflow-hidden">
+            <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="" class="w-80 h-80 object-cover rounded-full mix-blend-multiply">
           </div>
 
           <div class="relative z-10">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-600/15 border border-teal-600/25 text-teal-900 text-xs uppercase tracking-widest font-semibold">
-              <i class="fas fa-heartbeat text-teal-700"></i>
-              Health Insights
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-12 h-12 rounded-xl overflow-hidden shadow-md border border-white/50 bg-white shrink-0">
+                <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-full h-full object-cover">
+              </div>
+              <div>
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-600/15 border border-teal-600/25 text-teal-900 text-[11px] uppercase tracking-widest font-semibold">
+                  <i class="fas fa-heartbeat text-teal-700"></i>
+                  Health Insights
+                </div>
+                <div class="text-xs text-slate-600 font-medium">Digital Primary Care & Telemetry</div>
+              </div>
             </div>
-            <div class="text-2xl font-bold text-slate-900 mt-3">Barangay Health Care Hub</div>
+            <div class="text-2xl font-bold text-slate-900 mt-2">Barangay Health Care Hub</div>
             <p class="text-sm text-slate-700 mt-2 leading-relaxed">
               Track immunization, maternal health, consultations, and medicine inventory in one centralized platform.
             </p>

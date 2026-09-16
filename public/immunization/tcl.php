@@ -536,7 +536,13 @@ require __DIR__ . '/../partials/header.php';
 <!-- Printable DOH Header (visible on print or export layout) -->
 <div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow border border-slate-200">
   <div class="text-center pb-4 mb-3 border-b border-slate-200">
-    <div class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Republic of the Philippines &bull; Department of Health</div>
+    <div class="flex items-center justify-center gap-3 mb-2">
+      <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-12 h-12 rounded-full object-cover border border-slate-300 shadow-2xs">
+      <div class="text-left">
+        <div class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Republic of the Philippines &bull; Department of Health</div>
+        <div class="text-xs font-bold text-slate-800">Barangay Health Center & Care Hub &bull; HealthLogs</div>
+      </div>
+    </div>
     <h1 class="text-lg sm:text-xl font-extrabold uppercase text-slate-900 tracking-wider mt-0.5">TARGET CLIENT LIST FOR CHILD IMMUNIZATION - 2</h1>
     <div class="text-xs text-slate-600 mt-1 flex items-center justify-center gap-4 flex-wrap">
       <span>Barangay: <strong><?= $barangayFilter ?: 'All Barangays' ?></strong></span>

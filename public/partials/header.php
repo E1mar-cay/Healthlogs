@@ -13,6 +13,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HealthLogs</title>
+  <link rel="icon" type="image/jpeg" href="/HealthLogs/public/assets/images/logo.jpeg">
   <!-- Local Assets for 100% Offline Support -->
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
   <script src="/HealthLogs/public/assets/js/chart.umd.min.js"></script>
@@ -341,13 +342,9 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
     <aside id="appSidebar" class="flex flex-col app-sidebar fixed inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0">
       <div class="px-5 py-5 flex items-center justify-between app-brand-container">
         <div class="flex items-center gap-3 overflow-hidden">
-          <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-600 text-white font-bold flex items-center justify-center shadow-sm shrink-0">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 4v16"></path>
-              <path d="M4 12h16"></path>
-              <path d="M7 7h10v10H7z"></path>
-            </svg>
-          </span>
+          <div class="w-10 h-10 rounded-xl overflow-hidden shadow-sm shrink-0 border border-white/20 bg-white/10 flex items-center justify-center">
+            <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-full h-full object-cover">
+          </div>
           <div class="app-brand-text overflow-hidden">
             <div class="app-brand text-xl font-bold text-white tracking-wide truncate">HealthLogs</div>
             <div class="app-brand-badge mt-1">Barangay Care Hub</div>

@@ -313,7 +313,13 @@ require __DIR__ . '/../partials/header.php';
 <!-- TCL Master Table -->
 <div class="bg-white rounded-xl shadow overflow-hidden">
   <div class="print-tcl-header text-center pb-3 mb-3 border-b border-slate-300">
-    <div class="text-[11px] uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines &bull; Department of Health</div>
+    <div class="flex items-center justify-center gap-3 mb-2">
+      <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-12 h-12 rounded-full object-cover border border-slate-300 shadow-2xs">
+      <div class="text-left">
+        <div class="text-[11px] uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines &bull; Department of Health</div>
+        <div class="text-xs font-bold text-slate-800">Barangay Health Center & Care Hub &bull; HealthLogs</div>
+      </div>
+    </div>
     <h1 class="text-lg font-extrabold uppercase text-slate-900 tracking-wider mt-1">TARGET CLIENT LIST FOR FAMILY PLANNING (TCL-FP)</h1>
     <div class="text-xs text-slate-600 mt-1">
       Barangay: <strong><?= h($barangayFilter ?: 'All Barangays') ?></strong>
