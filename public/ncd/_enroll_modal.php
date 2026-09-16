@@ -52,7 +52,7 @@ try {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
-            <select name="patient_id" id="modalPatientSelect" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
+            <select name="patient_id" id="modalPatientSelect" required data-searchable-select data-search-placeholder="Search patient name or barangay..." class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
               <option value="">-- Choose Registered Patient --</option>
               <?php foreach ($modalPatients as $p): ?>
                 <?php 

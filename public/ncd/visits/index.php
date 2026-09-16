@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $findings_complaints = trim($_POST['findings_complaints'] ?? '');
     $management_plan = trim($_POST['management_plan'] ?? '');
     $next_appointment_date = trim($_POST['next_appointment_date'] ?? '');
+    $next_appointment_time = trim($_POST['next_appointment_time'] ?? '');
     $recorded_by = $_SESSION['user_id'] ?? null;
 
     if ($ncd_record_id > 0 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $visit_date)) {
@@ -72,7 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $cStmt->execute([$ncd_record_id]);
                 $cl = $cStmt->fetch();
                 if ($cl && !empty($cl['patient_id'])) {
-                    $reminderMsg = "Good day! Reminder from Barangay Health Station: Your NCD checkup and maintenance medication refill is scheduled on " . date('M d, Y', strtotime($next_appointment_date)) . ". Please bring your monitoring card.";
+                    $timeText = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $next_appointment_time) ? ' at ' . date('g:i A', strtotime($next_appointment_time)) : '';
+                    $reminderMsg = "Good day! Reminder from Barangay Health Station: Your NCD checkup and maintenance medication refill is scheduled on " . date('M d, Y', strtotime($next_appointment_date)) . $timeText . ". Please bring your monitoring card.";
                     $remStmt = $pdo->prepare("
                         INSERT INTO reminders (patient_id, reminder_type, due_date, message, status)
                         VALUES (?, 'non_communicable', ?, ?, 'pending')
@@ -408,6 +410,10 @@ require __DIR__ . '/../../partials/header.php';
         </label>
         <input type="date" name="next_appointment_date" value="<?= date('Y-m-d', strtotime('+30 days')) ?>" class="w-full border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white" />
         <span class="text-[10px] text-slate-400 block mt-0.5">Automatically schedules an SMS follow-up reminder</span>
+      </div>
+      <div class="w-full sm:w-52">
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Appointment Time</label>
+        <input type="time" name="next_appointment_time" class="w-full border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white" />
       </div>
 
       <div class="flex items-center gap-3 w-full sm:w-auto justify-end">

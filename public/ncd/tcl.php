@@ -234,8 +234,8 @@ require __DIR__ . '/../partials/header.php';
 <style>
   @media print {
     @page {
-      size: landscape;
-      margin: 8mm 6mm;
+      size: A4 landscape;
+      margin: 4mm;
     }
     body {
       background: #fff !important;
@@ -252,22 +252,44 @@ require __DIR__ . '/../partials/header.php';
     .app-content {
       padding: 0 !important;
       max-width: 100% !important;
+      width: 100% !important;
+      overflow: visible !important;
+    }
+    .overflow-x-auto {
+      overflow: visible !important;
     }
     .tcl-table {
       width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
       border-collapse: collapse !important;
-      font-size: 8px !important;
+      font-size: 5.5px !important;
     }
     .tcl-table th, .tcl-table td {
       border: 1px solid #000 !important;
-      padding: 3px 4px !important;
+      padding: 1px 1.5px !important;
       color: #000 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+      line-height: 1.05 !important;
     }
     .tcl-header {
       display: block !important;
       text-align: center;
       margin-bottom: 8px;
     }
+    .screen-tcl-table {
+      display: none !important;
+    }
+    .print-tcl-table {
+      display: table !important;
+    }
+  }
+
+  .print-tcl-table {
+    display: none;
   }
 
   .tcl-table th {
@@ -424,7 +446,7 @@ require __DIR__ . '/../partials/header.php';
 
   <!-- Official DOH TCL Multi-Header Format Table -->
   <div class="overflow-x-auto -mx-4 sm:mx-0">
-    <table class="w-full tcl-table min-w-[1360px]">
+    <table class="w-full tcl-table screen-tcl-table min-w-[1360px]">
       <thead>
         <!-- Master Group Row 1 -->
         <tr>
@@ -648,6 +670,40 @@ require __DIR__ . '/../partials/header.php';
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
+      </tbody>
+    </table>
+    <table class="w-full tcl-table print-tcl-table">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>NCD Code</th>
+          <th>Date Registered</th>
+          <th>Client Name</th>
+          <th>Age / Sex</th>
+          <th>Barangay</th>
+          <th>Diagnosis</th>
+          <th>Risk Level</th>
+          <th>Latest BP</th>
+          <th>Blood Sugar</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($records as $index => $r): ?>
+          <tr>
+            <td class="text-center"><?= $index + 1 ?></td>
+            <td><?= h($r['ncd_code']) ?></td>
+            <td><?= h(date('m/d/y', strtotime($r['registration_date']))) ?></td>
+            <td><?= h($r['last_name'] . ', ' . $r['first_name'] . ($r['middle_name'] ? ' ' . substr($r['middle_name'], 0, 1) . '.' : '')) ?></td>
+            <td class="text-center"><?= (int)$r['age'] ?> / <?= h(strtoupper(substr($r['sex'], 0, 1))) ?></td>
+            <td><?= h($r['barangay'] ?: '—') ?></td>
+            <td><?= h(tcl_ncd_diag_label($r['diagnosis_type'])) ?></td>
+            <td><?= h(ucwords(str_replace('_', ' ', $r['philpen_risk_level']))) ?></td>
+            <td><?= $r['last_bp_sys'] && $r['last_bp_dia'] ? h($r['last_bp_sys'] . '/' . $r['last_bp_dia']) : '—' ?></td>
+            <td><?= $r['last_bs_mgdl'] ? h(number_format($r['last_bs_mgdl'], 1) . ' ' . strtoupper($r['last_bs_type'])) : '—' ?></td>
+            <td><?= h(ucwords(str_replace('_', ' ', $r['status']))) ?></td>
+          </tr>
+        <?php endforeach; ?>
       </tbody>
     </table>
   </div>

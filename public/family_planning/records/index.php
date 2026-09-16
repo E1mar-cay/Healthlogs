@@ -26,8 +26,12 @@ $query = "
 $params = [];
 
 if ($search !== '') {
-    $query .= " AND (r.client_code LIKE :search OR p.first_name LIKE :search OR p.last_name LIKE :search OR r.partner_name LIKE :search)";
-    $params['search'] = "%{$search}%";
+  $query .= " AND (r.client_code LIKE :client_code_search OR p.first_name LIKE :first_name_search OR p.last_name LIKE :last_name_search OR r.partner_name LIKE :partner_name_search)";
+  $searchValue = "%{$search}%";
+  $params['client_code_search'] = $searchValue;
+  $params['first_name_search'] = $searchValue;
+  $params['last_name_search'] = $searchValue;
+  $params['partner_name_search'] = $searchValue;
 }
 
 if ($methodFilter !== '') {
@@ -199,6 +203,12 @@ function fp_format_method(?string $m): string {
                   <a href="/HealthLogs/public/family_planning/records/edit.php?id=<?= $c['id'] ?>" class="text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg font-semibold transition" title="Edit Profile">
                     <i class="fas fa-edit"></i>
                   </a>
+                  <form method="post" action="/HealthLogs/public/family_planning/records/delete.php" class="inline" data-confirm="Delete this Family Planning client and all recorded visits? This cannot be undone." data-confirm-title="Delete Family Planning client" data-confirm-cta="Yes, delete">
+                    <input type="hidden" name="id" value="<?= (int)$c['id'] ?>" />
+                    <button type="submit" class="text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg font-semibold transition" title="Delete Client">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
                 </div>
               </td>
             </tr>

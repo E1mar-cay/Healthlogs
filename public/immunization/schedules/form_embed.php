@@ -40,7 +40,7 @@ $title = $rec ? 'Edit Schedule' : 'New Schedule';
       <?php if ($rec): ?><input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" /><?php endif; ?>
       <div>
         <label class="block text-sm text-slate-600">Patient</label>
-        <select name="patient_id" required class="mt-1 w-full border rounded px-3 py-2">
+        <select name="patient_id" required data-searchable-select data-search-placeholder="Search patient name or barangay..." class="mt-1 w-full border rounded px-3 py-2">
           <?php foreach ($patients as $p): ?>
             <option value="<?= (int)$p['id'] ?>" <?= old('patient_id', $rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : '' ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?></option>
           <?php endforeach; ?>
@@ -63,6 +63,10 @@ $title = $rec ? 'Edit Schedule' : 'New Schedule';
         <input name="scheduled_date" type="date" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('scheduled_date', $rec['scheduled_date'] ?? '')) ?>" />
       </div>
       <div>
+        <label class="block text-sm text-slate-600">Visit Time</label>
+        <input name="scheduled_time" type="time" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('scheduled_time', '')) ?>" />
+      </div>
+      <div>
         <label class="block text-sm text-slate-600">Status</label>
         <?php $status = old('status', $rec['status'] ?? 'scheduled'); ?>
         <select name="status" class="mt-1 w-full border rounded px-3 py-2">
@@ -79,4 +83,5 @@ $title = $rec ? 'Edit Schedule' : 'New Schedule';
     </form>
   </div>
 </body>
+<script src="/HealthLogs/public/assets/js/searchable-select.js"></script>
 </html>

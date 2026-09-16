@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/partials/bootstrap.php';
 require_once __DIR__ . '/../app/Core/ForecastLogger.php';
+require_once __DIR__ . '/../app/Core/PythonRunner.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: /HealthLogs/public/forecast.php');
@@ -226,12 +227,12 @@ try {
     $startTime = microtime(true);
     $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
 
-    $python = getenv('PYTHON_PATH') ?: ($_ENV['PYTHON_PATH'] ?? null) ?: (file_exists(__DIR__ . '/../.venv/Scripts/python.exe') ? __DIR__ . '/../.venv/Scripts/python.exe' : 'python');
+    $python = PythonRunner::executable(__DIR__ . '/..');
     $script = __DIR__ . '/../scripts/forecast_arima.py';
-    $cmd = escapeshellarg($python) . ' ' . escapeshellarg($script) .
-        ' --series-key ' . escapeshellarg($seriesKey) .
-        ' --horizon ' . escapeshellarg((string)$horizon) .
-        ' 2>&1';
+    $cmd = PythonRunner::buildCommand($python, $script, [
+        '--series-key' => $seriesKey,
+        '--horizon' => (string)$horizon,
+    ]);
 
     $output = shell_exec($cmd);
     $executionTime = round(microtime(true) - $startTime, 3);

@@ -140,7 +140,7 @@ require __DIR__ . '/../../partials/header.php';
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="sm:col-span-2">
           <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
-          <select name="patient_id" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
+          <select name="patient_id" required data-searchable-select data-search-placeholder="Search patient name or barangay..." class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
             <option value="">-- Choose Patient --</option>
             <?php foreach ($patients as $p): ?>
               <?php 

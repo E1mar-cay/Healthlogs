@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $method_prescribed = trim($_POST['method_prescribed'] ?? '');
     $quantity = (int)($_POST['quantity_dispensed'] ?? 1);
     $next_appointment_date = trim($_POST['next_appointment_date'] ?? '');
+    $next_appointment_time = trim($_POST['next_appointment_time'] ?? '');
     $bp_systolic = !empty($_POST['bp_systolic']) ? (int)$_POST['bp_systolic'] : null;
     $bp_diastolic = !empty($_POST['bp_diastolic']) ? (int)$_POST['bp_diastolic'] : null;
     $weight_kg = !empty($_POST['weight_kg']) ? (float)$_POST['weight_kg'] : null;
@@ -51,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $cStmt->execute([$fp_record_id]);
                 $cl = $cStmt->fetch();
                 if ($cl && !empty($cl['patient_id'])) {
-                    $reminderMsg = "Good day! Reminder from Barangay Health Center: Your Family Planning follow-up/refill ({$method_prescribed}) is scheduled on " . date('M d, Y', strtotime($next_appointment_date)) . ". Please bring your FP card.";
+                    $timeText = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $next_appointment_time) ? ' at ' . date('g:i A', strtotime($next_appointment_time)) : '';
+                    $reminderMsg = "Good day! Reminder from Barangay Health Center: Your Family Planning follow-up/refill ({$method_prescribed}) is scheduled on " . date('M d, Y', strtotime($next_appointment_date)) . $timeText . ". Please bring your FP card.";
                     $remStmt = $pdo->prepare("
                         INSERT INTO reminders (patient_id, reminder_type, due_date, message, status)
                         VALUES (?, 'family_planning', ?, ?, 'pending')
@@ -271,6 +273,10 @@ require __DIR__ . '/../../partials/header.php';
         <label class="block text-xs font-semibold text-slate-700 mb-1">Next Appointment Date</label>
         <input type="date" name="next_appointment_date" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" />
         <span class="text-[11px] text-slate-500">Creates an automated SMS reminder in follow-up queue</span>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Next Appointment Time</label>
+        <input type="time" name="next_appointment_time" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" />
       </div>
 
       <div>

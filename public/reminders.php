@@ -8,19 +8,48 @@ $scheduledTime = SchedulerSettings::getScheduledTime();
 $formattedScheduledTime = SchedulerSettings::getFormattedTime();
 $lastRunTime = SchedulerSettings::getLastRunTime();
 
+// Backfill reminders for scheduled immunizations created before schedule syncing was added.
+$missingImmunizationReminders = $pdo->query("
+  SELECT s.patient_id, s.scheduled_date, s.dose_no, v.name AS vaccine_name,
+       p.first_name, p.last_name
+  FROM immunization_schedule s
+  JOIN patients p ON p.id = s.patient_id
+  JOIN vaccines v ON v.id = s.vaccine_id
+  LEFT JOIN reminders r
+    ON r.patient_id = s.patient_id
+   AND r.reminder_type = 'immunization'
+   AND r.due_date = s.scheduled_date
+  WHERE s.status = 'scheduled'
+    AND r.id IS NULL
+")->fetchAll(PDO::FETCH_ASSOC);
+
+if (!empty($missingImmunizationReminders)) {
+  $insertReminder = $pdo->prepare("INSERT INTO reminders (patient_id, reminder_type, due_date, message, status) VALUES (?, 'immunization', ?, ?, 'pending')");
+  foreach ($missingImmunizationReminders as $schedule) {
+    $message = "Reminder: {$schedule['vaccine_name']} dose {$schedule['dose_no']} scheduled for {$schedule['first_name']} {$schedule['last_name']}";
+    $insertReminder->execute([$schedule['patient_id'], $schedule['scheduled_date'], $message]);
+  }
+}
+
 $pendingCount = (int)$pdo->query("SELECT COUNT(*) FROM reminders WHERE status = 'pending'")->fetchColumn();
 
 $sql = "SELECT r.*, p.first_name, p.last_name, p.contact_no
         FROM reminders r
         JOIN patients p ON p.id = r.patient_id
-        ORDER BY r.due_date DESC";
+  WHERE r.status <> 'cancelled'
+  ORDER BY r.created_at DESC, r.id DESC";
 $rows = $pdo->query($sql)->fetchAll();
 $statusOptions = [];
+$typeOptions = [];
 if (!empty($rows)) {
     $statusOptions = array_values(array_unique(array_map(function ($row) {
         return strtolower((string)$row['status']);
     }, $rows)));
     sort($statusOptions);
+    $typeOptions = array_values(array_unique(array_map(function ($row) {
+      return strtolower((string)$row['reminder_type']);
+    }, $rows)));
+    sort($typeOptions);
 }
 ?>
 
@@ -60,13 +89,30 @@ if (!empty($rows)) {
           <option value="<?= h($status) ?>"><?= h(ucwords($status)) ?></option>
         <?php endforeach; ?>
       </select>
+      <select id="reminderType" class="w-full sm:w-52 border rounded-lg px-3 py-2 text-sm bg-white">
+        <option value="all">All Reminder Types</option>
+        <?php foreach ($typeOptions as $type): ?>
+          <option value="<?= h($type) ?>"><?= h(ucwords(str_replace('_', ' ', $type))) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
   </div>
+
+  <form id="bulkReminderDeleteForm" method="post" action="/HealthLogs/public/reminders/delete.php" class="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100" data-confirm="Delete the selected reminders? This cannot be undone." data-confirm-title="Delete selected reminders" data-confirm-cta="Yes, delete">
+    <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+      <input type="checkbox" id="selectAllReminders" class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500">
+      Select all visible
+    </label>
+    <button type="submit" id="bulkDeleteReminders" disabled class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed">
+      <i class="fas fa-trash"></i> Delete selected
+    </button>
+  </form>
 
   <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
     <table id="remindersTable" class="min-w-full text-sm min-w-[650px]">
     <thead class="bg-slate-50 text-slate-600">
       <tr>
+        <th class="text-center px-3 py-2.5 w-10"><span class="sr-only">Select</span></th>
         <th class="text-left px-4 py-2.5">Patient</th>
         <th class="text-left px-4 py-2.5">Contact No</th>
         <th class="text-left px-4 py-2.5">Type</th>
@@ -77,7 +123,7 @@ if (!empty($rows)) {
     </thead>
     <tbody>
       <?php if (empty($rows)): ?>
-        <tr data-empty><td class="px-4 py-4" colspan="6">No reminders found.</td></tr>
+        <tr data-empty><td class="px-4 py-4" colspan="7">No reminders found.</td></tr>
       <?php else: ?>
         <?php foreach ($rows as $r): ?>
           <?php
@@ -92,8 +138,12 @@ if (!empty($rows)) {
             class="border-t hover:bg-slate-50/80 transition"
             data-row="1"
             data-status="<?= h($status) ?>"
+            data-type="<?= h(strtolower((string)$r['reminder_type'])) ?>"
             data-search="<?= h(strtolower($r['last_name'] . ' ' . $r['first_name'] . ' ' . ($r['contact_no'] ?? '') . ' ' . str_replace('_', ' ', $r['reminder_type']) . ' ' . $r['reminder_type'] . ' ' . $r['due_date'] . ' ' . $r['status'])) ?>"
           >
+            <td class="px-3 py-3 text-center">
+              <input type="checkbox" name="ids[]" value="<?= (int)$r['id'] ?>" form="bulkReminderDeleteForm" class="reminder-checkbox h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500">
+            </td>
             <td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></td>
             <td class="px-4 py-3 text-slate-600 font-mono text-xs whitespace-nowrap"><?= h($r['contact_no'] ?: '—') ?></td>
             <td class="px-4 py-3 capitalize whitespace-nowrap"><?= h(str_replace('_', ' ', $r['reminder_type'])) ?></td>
@@ -140,6 +190,7 @@ if (!empty($rows)) {
     </tbody>
   </table>
   </div>
+  <div id="remindersPagination" class="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100"></div>
 </div>
 
 <div class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow">
@@ -239,38 +290,114 @@ if (!empty($rows)) {
   (function () {
     const searchInput = document.getElementById('reminderSearch');
     const statusSelect = document.getElementById('reminderStatus');
+    const typeSelect = document.getElementById('reminderType');
     const table = document.getElementById('remindersTable');
     const countEl = document.getElementById('remindersCount');
-    if (!searchInput || !statusSelect || !table || !countEl) return;
+    const pagination = document.getElementById('remindersPagination');
+    if (!searchInput || !statusSelect || !typeSelect || !table || !countEl || !pagination) return;
 
     const rows = Array.from(table.querySelectorAll('tbody tr[data-row="1"]'));
     const emptyRow = table.querySelector('tbody tr[data-empty]');
+    const rowsPerPage = 10;
+    let currentPage = 1;
 
-    const applyFilters = () => {
+    function getFilteredRows() {
       const query = searchInput.value.trim().toLowerCase();
       const status = statusSelect.value;
-      let visible = 0;
+      const type = typeSelect.value;
 
-      rows.forEach((row) => {
+      return rows.filter((row) => {
         const rowStatus = row.getAttribute('data-status') || '';
+        const rowType = row.getAttribute('data-type') || '';
         const rowSearch = row.getAttribute('data-search') || '';
-        const matchesQuery = !query || rowSearch.includes(query);
-        const matchesStatus = status === 'all' || rowStatus === status;
-        const shouldShow = matchesQuery && matchesStatus;
-        row.classList.toggle('hidden', !shouldShow);
-        if (shouldShow) visible += 1;
+        return (!query || rowSearch.includes(query)) &&
+          (status === 'all' || rowStatus === status) &&
+          (type === 'all' || rowType === type);
       });
+    }
+
+    const applyFilters = () => {
+      const filteredRows = getFilteredRows();
+      const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+      currentPage = Math.min(currentPage, totalPages);
+      const start = (currentPage - 1) * rowsPerPage;
+      const visibleRows = filteredRows.slice(start, start + rowsPerPage);
+
+      rows.forEach((row) => row.classList.add('hidden'));
+      visibleRows.forEach((row) => row.classList.remove('hidden'));
 
       if (emptyRow) {
-        emptyRow.classList.toggle('hidden', visible !== 0);
+        emptyRow.classList.toggle('hidden', filteredRows.length !== 0);
       }
 
-      countEl.textContent = `${visible} reminder${visible === 1 ? '' : 's'}`;
+      countEl.textContent = `${filteredRows.length} reminder${filteredRows.length === 1 ? '' : 's'}`;
+      renderPagination(filteredRows.length, totalPages, start);
     };
 
-    searchInput.addEventListener('input', applyFilters);
-    statusSelect.addEventListener('change', applyFilters);
+    function renderPagination(totalRows, totalPages, start) {
+      if (totalRows <= rowsPerPage) {
+        pagination.innerHTML = '';
+        return;
+      }
+
+      const from = start + 1;
+      const to = Math.min(start + rowsPerPage, totalRows);
+      let html = `<span class="text-xs text-slate-500">Showing ${from}-${to} of ${totalRows} reminders</span>`;
+      html += '<div class="flex items-center gap-1">';
+      html += `<button type="button" data-reminder-page="${currentPage - 1}" class="reminder-page-btn px-3 py-1.5 text-xs font-medium border rounded ${currentPage === 1 ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+
+      for (let page = 1; page <= totalPages; page += 1) {
+        html += `<button type="button" data-reminder-page="${page}" class="reminder-page-btn px-3 py-1.5 text-xs font-medium border rounded ${page === currentPage ? 'text-white bg-slate-900 border-slate-900' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}">${page}</button>`;
+      }
+
+      html += `<button type="button" data-reminder-page="${currentPage + 1}" class="reminder-page-btn px-3 py-1.5 text-xs font-medium border rounded ${currentPage === totalPages ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+      html += '</div>';
+      pagination.innerHTML = html;
+
+      pagination.querySelectorAll('.reminder-page-btn').forEach((button) => {
+        button.addEventListener('click', function () {
+          currentPage = Number(this.getAttribute('data-reminder-page'));
+          applyFilters();
+        });
+      });
+    }
+
+    searchInput.addEventListener('input', () => { currentPage = 1; applyFilters(); });
+    statusSelect.addEventListener('change', () => { currentPage = 1; applyFilters(); });
+    typeSelect.addEventListener('change', () => { currentPage = 1; applyFilters(); });
     applyFilters();
+  })();
+
+  (function () {
+    const selectAll = document.getElementById('selectAllReminders');
+    const bulkDelete = document.getElementById('bulkDeleteReminders');
+    const checkboxes = Array.from(document.querySelectorAll('.reminder-checkbox'));
+    if (!selectAll || !bulkDelete) return;
+
+    function updateBulkState() {
+      const visibleCheckboxes = checkboxes.filter(checkbox => !checkbox.closest('tr').classList.contains('hidden'));
+      const selectedVisible = visibleCheckboxes.filter(checkbox => checkbox.checked);
+      const selectedCount = checkboxes.filter(checkbox => checkbox.checked).length;
+      bulkDelete.disabled = selectedCount === 0;
+      selectAll.checked = visibleCheckboxes.length > 0 && selectedVisible.length === visibleCheckboxes.length;
+      selectAll.indeterminate = selectedVisible.length > 0 && selectedVisible.length < visibleCheckboxes.length;
+    }
+
+    selectAll.addEventListener('change', function () {
+      checkboxes.forEach(checkbox => {
+        if (!checkbox.closest('tr').classList.contains('hidden')) {
+          checkbox.checked = this.checked;
+        }
+      });
+      updateBulkState();
+    });
+
+    checkboxes.forEach(checkbox => checkbox.addEventListener('change', updateBulkState));
+    document.querySelectorAll('#reminderSearch, #reminderStatus, #reminderType').forEach(control => {
+      control.addEventListener('input', updateBulkState);
+      control.addEventListener('change', updateBulkState);
+    });
+    updateBulkState();
   })();
 
   (function () {

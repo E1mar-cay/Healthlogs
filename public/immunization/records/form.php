@@ -30,7 +30,7 @@ require __DIR__ . '/../../partials/header.php';
 
     <div>
       <label class="block text-sm text-slate-600">Patient</label>
-      <select name="patient_id" required class="mt-1 w-full border rounded px-3 py-2">
+      <select name="patient_id" required data-searchable-select data-search-placeholder="Search patient name or barangay..." class="mt-1 w-full border rounded px-3 py-2">
         <?php foreach ($patients as $p): ?>
           <?php $sel = old('patient_id', $rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?></option>

@@ -101,15 +101,11 @@ The ARIMA forecasting module runs on Python. Set up a local virtual environment 
    ```bash
    pip install -r scripts/requirements.txt
    ```
-4. Update your `.env` file to point `PYTHON_PATH` to your newly created virtual environment:
-   * **Windows:**
-     ```env
-     PYTHON_PATH=c:\xampp\htdocs\HealthLogs\.venv\Scripts\python.exe
-     ```
-   * **macOS / Linux:**
-     ```env
-     PYTHON_PATH=/path/to/HealthLogs/.venv/bin/python
-     ```
+4. The application automatically uses the project virtual environment (`.venv`) when it exists and starts successfully.
+   If `.venv\pyvenv.cfg` refers to Python from another computer, remove `.venv` and repeat steps 1-3 to recreate it on this laptop.
+    `PYTHON_PATH` is optional and should only be set when using a different Python installation:
+    * **Windows:** `PYTHON_PATH=C:\path\to\HealthLogs\.venv\Scripts\python.exe`
+    * **macOS / Linux:** `PYTHON_PATH=/path/to/HealthLogs/.venv/bin/python`
 5. Verify that the forecasting script is working correctly:
    ```bash
    php scripts/test_forecasting.php

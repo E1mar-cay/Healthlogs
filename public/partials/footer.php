@@ -176,5 +176,6 @@
       setInterval(checkReminders, 30000);
     })();
   </script>
+  <script src="/HealthLogs/public/assets/js/searchable-select.js"></script>
 </body>
 </html>

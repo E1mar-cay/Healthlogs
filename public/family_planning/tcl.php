@@ -158,7 +158,74 @@ if ($export) {
 require __DIR__ . '/../partials/header.php';
 ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
+<style>
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 4mm;
+    }
+    body {
+      background: #fff !important;
+      color: #000 !important;
+      font-size: 7px !important;
+    }
+    .print\:hidden, #appSidebar, .app-topbar, header, nav {
+      display: none !important;
+    }
+    .app-main, .app-content {
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: visible !important;
+    }
+    .overflow-x-auto {
+      overflow: visible !important;
+    }
+    .tcl-table {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      font-size: 6.5px !important;
+    }
+    .tcl-table th, .tcl-table td {
+      border: 1px solid #000 !important;
+      padding: 1px 1.5px !important;
+      color: #000 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+      line-height: 1.05 !important;
+    }
+    .screen-tcl-table {
+      display: none !important;
+    }
+    .print-tcl-table {
+      display: table !important;
+      font-size: 9px !important;
+    }
+    .print-tcl-header {
+      display: block !important;
+    }
+    .print-tcl-table th,
+    .print-tcl-table td {
+      padding: 2px 3px !important;
+      line-height: 1.2 !important;
+    }
+  }
+
+  .print-tcl-table {
+    display: none;
+  }
+
+  .print-tcl-header {
+    display: none;
+  }
+</style>
+
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6 print:hidden">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500 font-semibold">
@@ -176,6 +243,9 @@ require __DIR__ . '/../partials/header.php';
       <a href="?<?= http_build_query($exportQuery) ?>" class="inline-flex items-center px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
         <i class="fas fa-file-csv mr-1.5 text-slate-600"></i> Export to CSV
       </a>
+      <button type="button" onclick="window.print()" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition">
+        <i class="fas fa-print mr-1.5"></i> Print TCL Register (Landscape)
+      </button>
       <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition">
         <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll New Client
       </button>
@@ -186,7 +256,7 @@ require __DIR__ . '/../partials/header.php';
 <?php display_flash_messages(); ?>
 
 <!-- Filters Bar -->
-<div class="bg-white rounded-xl shadow p-4 sm:p-5 mb-6">
+<div class="bg-white rounded-xl shadow p-4 sm:p-5 mb-6 print:hidden">
   <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
     <div class="lg:col-span-2">
       <label class="block text-xs font-semibold text-slate-600 mb-1">Search Client / Partner</label>
@@ -242,7 +312,18 @@ require __DIR__ . '/../partials/header.php';
 
 <!-- TCL Master Table -->
 <div class="bg-white rounded-xl shadow overflow-hidden">
-  <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+  <div class="print-tcl-header text-center pb-3 mb-3 border-b border-slate-300">
+    <div class="text-[11px] uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines &bull; Department of Health</div>
+    <h1 class="text-lg font-extrabold uppercase text-slate-900 tracking-wider mt-1">TARGET CLIENT LIST FOR FAMILY PLANNING (TCL-FP)</h1>
+    <div class="text-xs text-slate-600 mt-1">
+      Barangay: <strong><?= h($barangayFilter ?: 'All Barangays') ?></strong>
+      <span class="mx-2">&bull;</span>
+      Year Enrolled: <strong><?= h($yearFilter === 'all' ? 'All Records' : $yearFilter) ?></strong>
+      <span class="mx-2">&bull;</span>
+      Date Generated: <strong><?= date('F d, Y') ?></strong>
+    </div>
+  </div>
+  <div class="p-4 border-b border-slate-100 flex items-center justify-between print:hidden">
     <div class="text-sm text-slate-600 font-semibold">
       Showing <strong><?= count($records) ?></strong> registered client row(s)
     </div>
@@ -257,7 +338,7 @@ require __DIR__ . '/../partials/header.php';
     </div>
   <?php else: ?>
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs min-w-[1200px] border-collapse">
+      <table class="w-full tcl-table screen-tcl-table text-left text-xs min-w-[1200px] border-collapse">
         <thead>
           <tr class="bg-slate-100 border-b border-slate-300 text-slate-700 text-[11px] uppercase tracking-wider">
             <th class="py-3 px-3 font-semibold border-r border-slate-200">Date Reg</th>
@@ -394,6 +475,38 @@ require __DIR__ . '/../partials/header.php';
                   <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">Inactive</span>
                 <?php endif; ?>
               </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+      <table class="w-full tcl-table print-tcl-table text-left border-collapse">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Date Registered</th>
+            <th>Client Name</th>
+            <th>Age</th>
+            <th>Barangay</th>
+            <th>Method Accepted</th>
+            <th>Next Service Due</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($records as $index => $r):
+            $recVisits = $visitsByRecord[$r['id']] ?? [];
+            $lastVisit = !empty($recVisits) ? end($recVisits) : null;
+            $nextDue = $lastVisit['next_appointment_date'] ?? null;
+          ?>
+            <tr>
+              <td class="text-center"><?= $index + 1 ?></td>
+              <td><?= h(date('m/d/y', strtotime($r['registration_date']))) ?></td>
+              <td><?= h($r['last_name'] . ', ' . $r['first_name'] . ($r['middle_name'] ? ' ' . substr($r['middle_name'], 0, 1) . '.' : '')) ?></td>
+              <td class="text-center"><?= (int)$r['age'] ?></td>
+              <td><?= h($r['barangay'] ?: '—') ?></td>
+              <td><?= h(tcl_method_name($r['method_accepted'])) ?></td>
+              <td><?= $nextDue ? h(date('m/d/y', strtotime($nextDue))) : '—' ?></td>
+              <td><?= h(ucwords(str_replace('_', ' ', $r['status']))) ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>

@@ -39,7 +39,7 @@ $title = $rec ? 'Edit Pregnancy' : 'New Pregnancy';
       <?php if ($rec): ?><input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" /><?php endif; ?>
       <div>
         <label class="block text-sm text-slate-600">Mother / Patient</label>
-        <select name="patient_id" required class="mt-1 w-full border rounded px-3 py-2">
+        <select name="patient_id" required data-searchable-select data-search-placeholder="Search mother name or barangay..." class="mt-1 w-full border rounded px-3 py-2">
           <?php foreach ($patients as $p): ?>
             <option value="<?= (int)$p['id'] ?>" <?= old('patient_id', $rec['patient_id'] ?? 0) == $p['id'] ? 'selected' : '' ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?></option>
           <?php endforeach; ?>
@@ -80,4 +80,5 @@ $title = $rec ? 'Edit Pregnancy' : 'New Pregnancy';
     </form>
   </div>
 </body>
+<script src="/HealthLogs/public/assets/js/searchable-select.js"></script>
 </html>

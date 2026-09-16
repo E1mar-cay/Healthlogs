@@ -34,7 +34,7 @@ if ($force) {
 }
 echo "-------------------------------------------\n\n";
 
-if (!$force && $currentTime < $scheduledTime) {
+if (!$force && !SchedulerSettings::isDue()) {
     echo "ℹ Current time ({$currentTime}) has not reached the scheduled dispatch time ({$scheduledTime}).\n";
     echo "Reminders will be dispatched after " . SchedulerSettings::getFormattedTime() . ".\n";
     echo "(Use --force or click 'Run Now' on the web dashboard to dispatch immediately)\n";

@@ -14,8 +14,7 @@ $modalPatients = [];
 try {
     $modalPatients = $pdo->query("
         SELECT id, first_name, last_name, middle_name, birth_date, barangay, sex, contact_no 
-        FROM patients 
-        WHERE status = 'active'
+      FROM patients
         ORDER BY last_name ASC, first_name ASC
     ")->fetchAll();
 } catch (Throwable $e) {}
@@ -52,14 +51,16 @@ try {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
-            <select name="patient_id" id="modalPatientSelect" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
+            <input type="search" id="modalPatientSearch" placeholder="Search by patient name or barangay..." class="mb-2 w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" autocomplete="off">
+            <select name="patient_id" id="modalPatientSelect" required size="6" class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
               <option value="">-- Choose Registered Patient --</option>
               <?php foreach ($modalPatients as $p): ?>
                 <?php 
                   $age = $p['birth_date'] ? (date('Y') - date('Y', strtotime($p['birth_date']))) : '';
+                  $patientLabel = $p['last_name'] . ', ' . $p['first_name'] . ' (' . ($p['sex'] === 'male' ? 'M' : 'F') . ', ' . $age . 'yo) - Brgy. ' . $p['barangay'];
                 ?>
-                <option value="<?= (int)$p['id'] ?>">
-                  <?= h($p['last_name'] . ', ' . $p['first_name'] . ' (' . ($p['sex'] === 'male' ? 'M' : 'F') . ', ' . $age . 'yo) - Brgy. ' . $p['barangay']) ?>
+                <option value="<?= (int)$p['id'] ?>" data-search-text="<?= h(strtolower($patientLabel . ' ' . ($p['middle_name'] ?? '') . ' ' . ($p['contact_no'] ?? ''))) ?>">
+                  <?= h($patientLabel) ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -202,6 +203,21 @@ function closeEnrollModal() {
     modal.classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
   }
+}
+
+const modalPatientSearch = document.getElementById('modalPatientSearch');
+const modalPatientSelect = document.getElementById('modalPatientSelect');
+if (modalPatientSearch && modalPatientSelect) {
+  modalPatientSearch.addEventListener('input', function () {
+    const term = this.value.trim().toLowerCase();
+    Array.from(modalPatientSelect.options).forEach(option => {
+      if (!option.value) {
+        option.hidden = false;
+        return;
+      }
+      option.hidden = term !== '' && !(option.dataset.searchText || '').includes(term);
+    });
+  });
 }
 
 // Close on escape key

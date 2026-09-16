@@ -38,8 +38,12 @@ $where = "";
 $params = [];
 
 if ($search !== '') {
-    $where .= " AND (r.ncd_code LIKE :search OR p.first_name LIKE :search OR p.last_name LIKE :search OR r.maintenance_meds LIKE :search)";
-    $params['search'] = "%{$search}%";
+  $where .= " AND (r.ncd_code LIKE :ncd_code_search OR p.first_name LIKE :first_name_search OR p.last_name LIKE :last_name_search OR r.maintenance_meds LIKE :maintenance_search)";
+  $searchValue = "%{$search}%";
+  $params['ncd_code_search'] = $searchValue;
+  $params['first_name_search'] = $searchValue;
+  $params['last_name_search'] = $searchValue;
+  $params['maintenance_search'] = $searchValue;
 }
 
 if ($diagnosisFilter !== '') {

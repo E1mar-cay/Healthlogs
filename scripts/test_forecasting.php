@@ -11,7 +11,8 @@ echo "=====================================\n\n";
 echo "1. Testing Python script directly...\n";
 require_once __DIR__ . '/../app/Core/EnvLoader.php';
 EnvLoader::load(__DIR__ . '/../.env');
-$python = getenv('PYTHON_PATH') ?: $_ENV['PYTHON_PATH'] ?: 'python';
+require_once __DIR__ . '/../app/Core/PythonRunner.php';
+$python = PythonRunner::executable(__DIR__ . '/..');
 $script = __DIR__ . '/forecast_arima.py';
 
 // Test visits forecast

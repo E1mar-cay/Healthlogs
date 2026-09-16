@@ -60,6 +60,7 @@ class SchedulerSettings {
 
         $settings = self::getSettings();
         $settings['scheduled_time'] = $time;
+        $settings['schedule_changed_at'] = date('Y-m-d H:i:s');
         $saved = file_put_contents(self::$configFile, json_encode($settings, JSON_PRETTY_PRINT)) !== false;
 
         // Also update or append REMINDER_SCHEDULED_TIME in .env
@@ -75,6 +76,32 @@ class SchedulerSettings {
         }
 
         return $saved;
+    }
+
+    /**
+     * Return whether the daily schedule is due for the current local date.
+     */
+    public static function isDue(): bool {
+        $settings = self::getSettings();
+        $today = date('Y-m-d');
+        $currentTime = date('H:i');
+        $scheduledTime = self::getScheduledTime();
+
+        $lastRunTime = $settings['last_run_time'] ?? null;
+        $changedAt = $settings['schedule_changed_at'] ?? null;
+        $scheduleChangedAfterLastRun = $changedAt
+            && $lastRunTime
+            && $changedAt > $lastRunTime;
+
+        if (($settings['last_run_date'] ?? null) === $today && !$scheduleChangedAfterLastRun) {
+            return false;
+        }
+
+        if ($changedAt && substr($changedAt, 0, 10) === $today && $currentTime >= $scheduledTime && $changedAt > $today . ' ' . $scheduledTime . ':00') {
+            return false;
+        }
+
+        return $currentTime >= $scheduledTime;
     }
 
     /**

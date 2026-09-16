@@ -2,6 +2,7 @@
 $pageTitle = 'Forecasting';
 require __DIR__ . '/partials/bootstrap.php';
 require_once __DIR__ . '/../app/Core/ForecastLogger.php';
+require_once __DIR__ . '/../app/Core/PythonRunner.php';
 require __DIR__ . '/partials/header.php';
 
 $seriesOptions = [
@@ -24,12 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $startTime = microtime(true);
     $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
 
-    $python = getenv('PYTHON_PATH') ?: ($_ENV['PYTHON_PATH'] ?? null) ?: (file_exists(__DIR__ . '/../.venv/Scripts/python.exe') ? __DIR__ . '/../.venv/Scripts/python.exe' : 'python');
+    $python = PythonRunner::executable(__DIR__ . '/..');
     $script = __DIR__ . '/../scripts/forecast_arima.py';
-    $cmd = escapeshellarg($python) . ' ' . escapeshellarg($script) .
-        ' --series-key ' . escapeshellarg($seriesKey) .
-        ' --horizon ' . escapeshellarg((string)$horizon) .
-        ' 2>&1';
+    $cmd = PythonRunner::buildCommand($python, $script, [
+        '--series-key' => $seriesKey,
+        '--horizon' => (string)$horizon,
+    ]);
     $output = shell_exec($cmd);
 
     $executionTime = round(microtime(true) - $startTime, 3);
@@ -438,6 +439,17 @@ if ($summary) {
 ?>
 
 <?php display_flash_messages(); ?>
+<?php if (!empty($error)): ?>
+  <div class="mb-6 bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl shadow-xs">
+    <div class="flex items-start gap-3">
+      <i class="fas fa-exclamation-circle text-rose-500 text-lg mt-0.5"></i>
+      <div>
+        <h4 class="text-sm font-bold text-rose-800">Forecasting Model Error</h4>
+        <p class="text-xs text-rose-700 mt-1"><?= h($error) ?></p>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 
 <!-- Page Banner -->
 <div class="bg-white p-4 sm:p-6 rounded-xl shadow">
@@ -601,6 +613,7 @@ if ($summary) {
         </tbody>
       </table>
     </div>
+    <div id="medicineForecastPagination" class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-3 py-3 border-t border-slate-200"></div>
   </div>
 </div>
 
@@ -776,6 +789,8 @@ if ($summary) {
   </div>
 </div>
 
+<div id="arimaResultsPlacement"></div>
+
 <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
   <div class="xl:col-span-2 bg-white p-6 rounded-xl shadow border border-slate-100">
     <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Seasonal Disease</div>
@@ -950,6 +965,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
       </tbody>
     </table>
   </div>
+  <div id="modelLogsPagination" class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-3 py-3 border-t border-slate-200"></div>
 </div>
 
 <!-- Modal for Model Log Details -->
@@ -1286,7 +1302,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold">Daily Projections</div>
           <div class="text-lg font-bold text-slate-900 mt-1">Next Few Days At A Glance</div>
         </div>
-        <div class="text-xs text-slate-500" id="arimaUpcomingHeader">Upcoming days</div>
+        <div class="text-xs text-slate-500" id="arimaUpcomingHeader">Showing <?= !empty($forecastRows) ? min(6, count($forecastRows)) . ' of ' . count($forecastRows) : 'upcoming' ?> forecast days</div>
       </div>
       <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" id="arimaUpcomingCards">
         <?php if (!empty($forecastRows)): ?>
@@ -1405,6 +1421,12 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
   // ASYNC ARIMA MODEL RUNNER WITH SWEETALERT LOADING
   // ============================================================
   document.addEventListener('DOMContentLoaded', function () {
+    const arimaResultsSection = document.getElementById('arimaResultsSection');
+    const arimaResultsPlacement = document.getElementById('arimaResultsPlacement');
+    if (arimaResultsSection && arimaResultsPlacement) {
+      arimaResultsPlacement.after(arimaResultsSection);
+    }
+
     const arimaForm = document.getElementById('arimaForecastForm');
     if (!arimaForm) return;
 
@@ -1458,6 +1480,10 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           const forecast = data.forecast || [];
           const history = data.history || [];
 
+          if (Number(data.horizon) !== Number(horizon) || forecast.length !== Number(horizon)) {
+            throw new Error(`ARIMA returned ${forecast.length} forecast days instead of the requested ${horizon}.`);
+          }
+
           // 1. Update text & summary values
           document.getElementById('arimaIntroText').textContent = summary.intro || '';
           document.getElementById('arimaHistoryMeta').textContent = `Based on ${summary.history_points || history.length} days of history from ${summary.history_start || '--'} to ${summary.history_end || '--'}, with the most recent ${summary.training_points || history.length} days used for model fitting.`;
@@ -1502,6 +1528,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
           // 4. Update upcoming daily cards
           const upcomingSlice = forecast.slice(0, 6);
+          document.getElementById('arimaUpcomingHeader').textContent = `Showing ${upcomingSlice.length} of ${forecast.length} forecast days`;
           document.getElementById('arimaUpcomingCards').innerHTML = upcomingSlice.map(r => `
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
               <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold">${r.date}</div>
@@ -1793,10 +1820,54 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
   // Medicine Risk Filter Buttons
   const medFilterBtns = document.querySelectorAll('.med-filter-btn');
-  const medRows = document.querySelectorAll('.med-row');
+  const medRows = Array.from(document.querySelectorAll('.med-row'));
+  const medPagination = document.getElementById('medicineForecastPagination');
+  const medicineRowsPerPage = 10;
+  let medicineCurrentPage = 1;
+  let medicineFilter = 'all';
+
+  function renderMedicinePagination() {
+    if (!medPagination) return;
+
+    const filteredRows = medRows.filter(row => medicineFilter === 'all' || row.getAttribute('data-med-status') === medicineFilter);
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / medicineRowsPerPage));
+    medicineCurrentPage = Math.min(medicineCurrentPage, totalPages);
+    const start = (medicineCurrentPage - 1) * medicineRowsPerPage;
+
+    medRows.forEach(row => row.classList.add('hidden'));
+    filteredRows.slice(start, start + medicineRowsPerPage).forEach(row => row.classList.remove('hidden'));
+
+    if (filteredRows.length <= medicineRowsPerPage) {
+      medPagination.innerHTML = '';
+      return;
+    }
+
+    const from = start + 1;
+    const to = Math.min(start + medicineRowsPerPage, filteredRows.length);
+    let paginationHtml = `<span class="text-xs text-slate-500">Showing ${from}-${to} of ${filteredRows.length} medicines</span>`;
+    paginationHtml += '<div class="flex items-center gap-1">';
+    paginationHtml += `<button type="button" data-med-page="${medicineCurrentPage - 1}" class="med-page-btn px-3 py-1.5 text-xs font-medium border rounded ${medicineCurrentPage === 1 ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}" ${medicineCurrentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+
+    for (let page = 1; page <= totalPages; page += 1) {
+      paginationHtml += `<button type="button" data-med-page="${page}" class="med-page-btn px-3 py-1.5 text-xs font-medium border rounded ${page === medicineCurrentPage ? 'text-white bg-slate-900 border-slate-900' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}">${page}</button>`;
+    }
+
+    paginationHtml += `<button type="button" data-med-page="${medicineCurrentPage + 1}" class="med-page-btn px-3 py-1.5 text-xs font-medium border rounded ${medicineCurrentPage === totalPages ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}" ${medicineCurrentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+    paginationHtml += '</div>';
+    medPagination.innerHTML = paginationHtml;
+
+    medPagination.querySelectorAll('.med-page-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        medicineCurrentPage = Number(this.getAttribute('data-med-page'));
+        renderMedicinePagination();
+      });
+    });
+  }
+
   medFilterBtns.forEach(btn => {
     btn.addEventListener('click', function() {
-      const filter = this.getAttribute('data-med-filter');
+      medicineFilter = this.getAttribute('data-med-filter');
+      medicineCurrentPage = 1;
       
       medFilterBtns.forEach(b => {
         b.classList.remove('bg-slate-900', 'text-white', 'font-semibold');
@@ -1805,16 +1876,10 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
       this.classList.remove('bg-slate-100', 'text-slate-700');
       this.classList.add('bg-slate-900', 'text-white', 'font-semibold');
 
-      medRows.forEach(row => {
-        const status = row.getAttribute('data-med-status');
-        if (filter === 'all' || status === filter) {
-          row.classList.remove('hidden');
-        } else {
-          row.classList.add('hidden');
-        }
-      });
+      renderMedicinePagination();
     });
   });
+  renderMedicinePagination();
 
   // 2. Patient Category 3-Month Forecast Chart
   const categoryForecastData = <?= json_encode($categoryForecast ?? []) ?>;
@@ -2052,23 +2117,24 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
   // Log Filter Tab Switching (Successful by default)
   const logFilterBtns = document.querySelectorAll('.log-filter-btn');
-  const logRows = document.querySelectorAll('.log-row');
+  const logRows = Array.from(document.querySelectorAll('.log-row'));
   const noFilteredLogsRow = document.getElementById('noFilteredLogsRow');
+  const modelLogsPagination = document.getElementById('modelLogsPagination');
+  const modelLogsPerPage = 10;
+  let modelLogsCurrentPage = 1;
+  let modelLogsFilter = 'success';
 
-  function applyLogFilter(filter) {
-    let visibleCount = 0;
-    logRows.forEach(row => {
-      const status = row.getAttribute('data-status');
-      if (filter === 'all' || status === filter) {
-        row.classList.remove('hidden');
-        visibleCount++;
-      } else {
-        row.classList.add('hidden');
-      }
-    });
+  function renderModelLogsPagination() {
+    const filteredRows = logRows.filter(row => modelLogsFilter === 'all' || row.getAttribute('data-status') === modelLogsFilter);
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / modelLogsPerPage));
+    modelLogsCurrentPage = Math.min(modelLogsCurrentPage, totalPages);
+    const start = (modelLogsCurrentPage - 1) * modelLogsPerPage;
+
+    logRows.forEach(row => row.classList.add('hidden'));
+    filteredRows.slice(start, start + modelLogsPerPage).forEach(row => row.classList.remove('hidden'));
 
     if (noFilteredLogsRow) {
-      if (visibleCount === 0) {
+      if (filteredRows.length === 0) {
         noFilteredLogsRow.classList.remove('hidden');
       } else {
         noFilteredLogsRow.classList.add('hidden');
@@ -2076,7 +2142,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
     }
 
     logFilterBtns.forEach(btn => {
-      const isSelected = btn.getAttribute('data-filter') === filter;
+      const isSelected = btn.getAttribute('data-filter') === modelLogsFilter;
       if (isSelected) {
         btn.classList.add('bg-white', 'text-slate-900', 'shadow-xs', 'font-semibold');
         btn.classList.remove('text-slate-600');
@@ -2085,6 +2151,40 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
         btn.classList.add('text-slate-600');
       }
     });
+
+    if (!modelLogsPagination) return;
+    if (filteredRows.length <= modelLogsPerPage) {
+      modelLogsPagination.innerHTML = '';
+      return;
+    }
+
+    const from = start + 1;
+    const to = Math.min(start + modelLogsPerPage, filteredRows.length);
+    let paginationHtml = `<span class="text-xs text-slate-500">Showing ${from}-${to} of ${filteredRows.length} logs</span>`;
+    paginationHtml += '<div class="flex items-center gap-1">';
+    paginationHtml += `<button type="button" data-log-page="${modelLogsCurrentPage - 1}" class="log-page-btn px-3 py-1.5 text-xs font-medium border rounded ${modelLogsCurrentPage === 1 ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}" ${modelLogsCurrentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+
+    for (let page = 1; page <= totalPages; page += 1) {
+      paginationHtml += `<button type="button" data-log-page="${page}" class="log-page-btn px-3 py-1.5 text-xs font-medium border rounded ${page === modelLogsCurrentPage ? 'text-white bg-slate-900 border-slate-900' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}">${page}</button>`;
+    }
+
+    paginationHtml += `<button type="button" data-log-page="${modelLogsCurrentPage + 1}" class="log-page-btn px-3 py-1.5 text-xs font-medium border rounded ${modelLogsCurrentPage === totalPages ? 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed' : 'text-slate-700 bg-white border-slate-300 hover:bg-slate-50'}" ${modelLogsCurrentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+    paginationHtml += '</div>';
+    modelLogsPagination.innerHTML = paginationHtml;
+
+    modelLogsPagination.querySelectorAll('.log-page-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        modelLogsCurrentPage = Number(this.getAttribute('data-log-page'));
+        renderModelLogsPagination();
+      });
+    });
+
+  }
+
+  function applyLogFilter(filter) {
+    modelLogsFilter = filter;
+    modelLogsCurrentPage = 1;
+    renderModelLogsPagination();
   }
 
   logFilterBtns.forEach(btn => {

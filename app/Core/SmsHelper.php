@@ -145,6 +145,7 @@ class SmsHelper {
         }
 
         if ($httpCode >= 200 && $httpCode < 300) {
+            error_log("TextBee accepted SMS request for {$to}: HTTP {$httpCode}; response=" . substr((string)$response, 0, 1000));
             return true;
         }
 

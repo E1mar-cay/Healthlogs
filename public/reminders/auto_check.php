@@ -8,14 +8,13 @@ header('Content-Type: application/json');
 
 date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'Asia/Manila');
 
-$currentTime = date('H:i');
 $scheduledTime = SchedulerSettings::getScheduledTime();
 
 // Check if current time has reached the scheduled time
-if ($currentTime < $scheduledTime) {
+if (!SchedulerSettings::isDue()) {
     echo json_encode([
         'status' => 'waiting',
-        'current_time' => $currentTime,
+        'current_time' => date('H:i'),
         'scheduled_time' => $scheduledTime,
         'message' => 'Scheduled time not yet reached.'
     ]);

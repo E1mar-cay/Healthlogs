@@ -379,8 +379,8 @@ require __DIR__ . '/../partials/header.php';
 <style>
   @media print {
     @page {
-      size: landscape;
-      margin: 8mm 6mm;
+      size: A4 landscape;
+      margin: 4mm;
     }
     body {
       background: #fff !important;
@@ -397,16 +397,28 @@ require __DIR__ . '/../partials/header.php';
     .app-content {
       padding: 0 !important;
       max-width: 100% !important;
+      width: 100% !important;
+      overflow: visible !important;
+    }
+    .overflow-x-auto {
+      overflow: visible !important;
     }
     .tcl-table {
       width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
       border-collapse: collapse !important;
-      font-size: 8px !important;
+      font-size: 6.5px !important;
     }
     .tcl-table th, .tcl-table td {
       border: 1px solid #000 !important;
-      padding: 2px 3px !important;
+      padding: 1px 1.5px !important;
       color: #000 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+      line-height: 1.05 !important;
     }
     .tcl-date-cell {
       color: #b91c1c !important;
