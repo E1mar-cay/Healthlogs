@@ -61,14 +61,7 @@
       <input name="address_line" class="mt-1 w-full border rounded px-3 py-2" value="<?= htmlspecialchars($patient['address_line'] ?? '') ?>" />
     </div>
 
-    <div>
-      <label class="block text-sm text-slate-600">PhilHealth No</label>
-      <input name="philhealth_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= htmlspecialchars($patient['philhealth_no'] ?? '') ?>" />
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">National ID</label>
-      <input name="national_id" class="mt-1 w-full border rounded px-3 py-2" value="<?= htmlspecialchars($patient['national_id'] ?? '') ?>" />
-    </div>
+
     <div>
       <label class="block text-sm text-slate-600">Blood Type</label>
       <input name="blood_type" class="mt-1 w-full border rounded px-3 py-2" value="<?= htmlspecialchars($patient['blood_type'] ?? '') ?>" />

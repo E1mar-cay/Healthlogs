@@ -55,14 +55,7 @@
       <input name="address_line" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('address_line', $patient['address_line'] ?? '')) ?>" />
     </div>
 
-    <div>
-      <label class="block text-sm text-slate-600">PhilHealth No</label>
-      <input name="philhealth_no" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('philhealth_no', $patient['philhealth_no'] ?? '')) ?>" />
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">National ID</label>
-      <input name="national_id" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('national_id', $patient['national_id'] ?? '')) ?>" />
-    </div>
+
     <div>
       <label class="block text-sm text-slate-600">Blood Type</label>
       <?php $currBlood = strtoupper((string)old('blood_type', $patient['blood_type'] ?? '')); ?>
