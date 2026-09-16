@@ -347,7 +347,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           </div>
           <div class="app-brand-text overflow-hidden">
             <div class="app-brand text-xl font-bold text-white tracking-wide truncate">HealthLogs</div>
-            <div class="app-brand-badge mt-1">Barangay Care Hub</div>
+            <div class="app-brand-badge mt-1">Brgy. Tangcul Care Hub</div>
           </div>
         </div>
         <button id="sidebarCollapseBtn" type="button" class="hidden md:inline-flex text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/80 transition shrink-0" title="Collapse / Expand Sidebar">

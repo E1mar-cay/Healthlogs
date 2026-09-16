@@ -5,6 +5,7 @@ require __DIR__ . '/../partials/bootstrap.php';
 $q = trim($_GET['q'] ?? '');
 $statusFilter = $_GET['status'] ?? '';
 $sexFilter = $_GET['sex'] ?? '';
+$purokFilter = $_GET['purok'] ?? '';
 $isPrintMode = (isset($_GET['print']) && $_GET['print'] === '1');
 
 $whereParts = [];
@@ -14,6 +15,10 @@ if ($q !== '') {
     $whereParts[] = "(first_name LIKE ? OR last_name LIKE ? OR middle_name LIKE ? OR barangay LIKE ? OR COALESCE(contact_no, '') LIKE ?)";
     $like = '%' . $q . '%';
     array_push($params, $like, $like, $like, $like, $like);
+}
+if ($purokFilter !== '') {
+    $whereParts[] = "barangay = ?";
+    $params[] = $purokFilter;
 }
 if (in_array($statusFilter, ['active', 'inactive', 'deceased'], true)) {
     $whereParts[] = "status = ?";
@@ -38,6 +43,7 @@ if ($isPrintMode) {
 
     $filterParts = [];
     if ($q !== '') $filterParts[] = 'Search: "' . $q . '"';
+    if ($purokFilter !== '') $filterParts[] = 'Purok: ' . $purokFilter;
     if ($statusFilter !== '') $filterParts[] = 'Status: ' . ucfirst($statusFilter);
     if ($sexFilter !== '') $filterParts[] = 'Gender: ' . ucfirst($sexFilter);
     $filterSummary = !empty($filterParts) ? implode(' | ', $filterParts) : 'All Patient Records (No Filters)';
@@ -172,9 +178,9 @@ if ($isPrintMode) {
           <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" style="width: 55px; height: 55px; object-fit: cover; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
         </div>
         <div class="header-center">
-          <div class="rep-title">Republic of the Philippines</div>
-          <div class="agency-title">Department of Health • Primary Care Services</div>
-          <div class="hub-title">Barangay Health Center & Care Hub</div>
+          <div class="rep-title">Republic of the Philippines • Province of Isabela • City of Ilagan</div>
+          <div class="agency-title">Barangay Tangcul Primary Care & Health Services</div>
+          <div class="hub-title">Barangay Tangcul Health Station & Care Hub</div>
           <div class="sys-title">HealthLogs Information Management System</div>
         </div>
         <div style="text-align: right; font-size: 9.5px; color: #64748b;">
@@ -185,7 +191,7 @@ if ($isPrintMode) {
 
       <div class="doc-meta-box">
         <div>
-          <div class="doc-title">Official Patient Records Master List</div>
+          <div class="doc-title">Official Patient Records Master List (Barangay Tangcul)</div>
           <div style="color: #475569; margin-top: 2px;"><strong>Filter Scope:</strong> <?= h($filterSummary) ?> (<?= count($allPatients) ?> total records)</div>
         </div>
         <div style="text-align: right; color: #475569;">
@@ -202,7 +208,7 @@ if ($isPrintMode) {
             <th>Sex</th>
             <th>Birth Date</th>
             <th>Age</th>
-            <th>Barangay</th>
+            <th>Purok</th>
             <th>Contact No</th>
             <th>Status</th>
           </tr>
@@ -248,13 +254,13 @@ if ($isPrintMode) {
         <div class="sig-box">
           <div class="sig-label">Approved by:</div>
           <div class="sig-name">___________________________</div>
-          <div class="sig-role">Municipal Health Officer / Physician</div>
+          <div class="sig-role">Municipal / City Health Officer</div>
           <div class="sig-date">Date: ____________________</div>
         </div>
       </div>
 
       <div class="watermark-footer">
-        Official HealthLogs System Generated Document • Certified Master Records • Timestamp: <?= h($currentDateTimeFormatted) ?>
+        Official HealthLogs System Generated Document • Certified Master Records • Barangay Tangcul, City of Ilagan • Timestamp: <?= h($currentDateTimeFormatted) ?>
       </div>
 
       <script>
@@ -301,7 +307,7 @@ require __DIR__ . '/../partials/header.php';
     <div>
       <div class="text-sm text-slate-500">Module</div>
       <div class="text-2xl font-semibold">Patient Records</div>
-      <p class="text-sm text-slate-500 mt-1">Maintain core demographics, status, and barangay coverage.</p>
+      <p class="text-sm text-slate-500 mt-1">Maintain core demographics, status, and purok coverage for Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">Patient Intake</span>
@@ -316,8 +322,14 @@ require __DIR__ . '/../partials/header.php';
   </div>
 </div>
 
-<form method="get" class="mt-6 bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-  <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2 md:col-span-2" placeholder="Search name, barangay, or contact" />
+<form method="get" class="mt-6 bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+  <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2 md:col-span-2" placeholder="Search name, purok, or contact" />
+  <select name="purok" class="w-full border rounded px-3 py-2">
+    <option value="">All Puroks (Brgy. Tangcul)</option>
+    <?php for ($i = 1; $i <= 7; $i++): $pVal = "Purok $i"; ?>
+      <option value="<?= $pVal ?>" <?= $purokFilter === $pVal ? 'selected' : '' ?>><?= $pVal ?></option>
+    <?php endfor; ?>
+  </select>
   <select name="status" class="w-full border rounded px-3 py-2">
     <option value="">All statuses</option>
     <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Active</option>
@@ -329,8 +341,8 @@ require __DIR__ . '/../partials/header.php';
     <option value="male" <?= $sexFilter === 'male' ? 'selected' : '' ?>>Male</option>
     <option value="female" <?= $sexFilter === 'female' ? 'selected' : '' ?>>Female</option>
   </select>
-  <div class="md:col-span-4 flex gap-2">
-    <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Apply</button>
+  <div class="md:col-span-5 flex gap-2">
+    <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Apply Filter</button>
     <a class="px-4 py-2 rounded border border-slate-300 text-slate-700" href="/HealthLogs/public/patients/index.php">Clear</a>
   </div>
 </form>
@@ -368,7 +380,12 @@ require __DIR__ . '/../partials/header.php';
           <th class="text-left px-4 py-3">Sex</th>
           <th class="text-left px-4 py-3">Birth Date</th>
           <th class="text-left px-4 py-3">Age</th>
-          <th class="text-left px-4 py-3">Barangay</th>
+          <th class="text-left px-4 py-3">Purok</th>
+          <th class="text-left px-4 py-3">Contact</th>
+          <th class="text-left px-4 py-3">Status</th>
+          <th class="text-left px-4 py-3">Actions</th>
+        </tr>
+      </thead>
           <th class="text-left px-4 py-3">Contact</th>
           <th class="text-left px-4 py-3">Status</th>
           <th class="text-left px-4 py-3">Actions</th>

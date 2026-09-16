@@ -39,8 +39,19 @@
     </div>
 
     <div>
-      <label class="block text-sm text-slate-600">Barangay</label>
-      <input name="barangay" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('barangay', $patient['barangay'] ?? '')) ?>" />
+      <label class="block text-sm text-slate-600">Purok <span class="text-xs text-teal-700 font-medium">(Brgy. Tangcul)</span></label>
+      <?php 
+        $currentPurok = old('barangay', $patient['barangay'] ?? 'Purok 1'); 
+        $stdPuroks = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
+      ?>
+      <select name="barangay" required class="mt-1 w-full border rounded px-3 py-2 bg-white">
+        <?php foreach ($stdPuroks as $prk): ?>
+          <option value="<?= $prk ?>" <?= $currentPurok === $prk ? 'selected' : '' ?>><?= $prk ?></option>
+        <?php endforeach; ?>
+        <?php if ($currentPurok !== '' && !in_array($currentPurok, $stdPuroks, true)): ?>
+          <option value="<?= h($currentPurok) ?>" selected><?= h($currentPurok) ?></option>
+        <?php endif; ?>
+      </select>
     </div>
     <div>
       <label class="block text-sm text-slate-600">Contact No <span class="text-xs text-slate-400 font-normal">(Optional)</span></label>

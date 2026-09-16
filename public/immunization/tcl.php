@@ -11,11 +11,8 @@ $barangayFilter = trim($_GET['barangay'] ?? '');
 $yearFilter = trim($_GET['year'] ?? date('Y'));
 $statusFilter = trim($_GET['status'] ?? 'all'); // all, fic, cic, pending
 
-// Fetch barangays for filter dropdown
-$barangays = [];
-try {
-    $barangays = $pdo->query("SELECT DISTINCT barangay FROM patients WHERE barangay IS NOT NULL AND barangay != '' ORDER BY barangay ASC")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Throwable $e) {}
+// Standard Puroks for Barangay Tangcul
+$puroks = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 // Query eligible children (e.g. aged 0 to 5, prioritized for 0-23 months)
 $whereClauses = ["p.status = 'active'"];
@@ -298,12 +295,16 @@ foreach ($children as $c) {
 // Handle CSV Export
 if ($export) {
     header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="Target_Client_List_Child_Immunization_TCL2_' . date('Ymd_His') . '.csv"');
+    header('Content-Disposition: attachment; filename="TCL2_Child_Immunization_Tangcul_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w');
     
+    fputcsv($out, ['PHILIPPINE DEPARTMENT OF HEALTH - TARGET CLIENT LIST FOR CHILD IMMUNIZATION (TCL-2)']);
+    fputcsv($out, ['Barangay Tangcul, City of Ilagan, Isabela', 'Purok: ' . ($barangayFilter ?: 'All Puroks'), 'Birth Year: ' . $yearFilter, 'Generated: ' . date('Y-m-d H:i:s')]);
+    fputcsv($out, []);
+
     // Header Row 1
     fputcsv($out, [
-        'No.', 'Child Full Name', 'Date of Birth (mm/dd/yyyy)', 'Sex', 'Barangay / Address',
+        'No.', 'Child Full Name', 'Date of Birth (mm/dd/yyyy)', 'Sex', 'Purok',
         'BCG (0-28 days)', 'BCG (29d - 1yr)',
         'Hepa B (within 24h)', 'Hepa B (>24h - 14d)',
         'DPT-HiB-HepB 1 (1.5m)', 'DPT-HiB-HepB 2 (2.5m)', 'DPT-HiB-HepB 3 (3.5m)',
@@ -319,13 +320,13 @@ if ($export) {
         $c = $row['child'];
         $d = $row['doses'];
         $fullName = trim($c['last_name'] . ', ' . $c['first_name'] . ' ' . ($c['middle_name'] ? substr($c['middle_name'], 0, 1) . '.' : '') . ' ' . ($c['suffix'] ?? ''));
-        
+
         fputcsv($out, [
             $i++,
             $fullName,
             $c['birth_date'],
-            strtoupper(substr($c['sex'] ?? 'M', 0, 1)),
-            $c['barangay'] . ($c['address_line'] ? ' - ' . $c['address_line'] : ''),
+            strtoupper($c['sex'] ?? 'M'),
+            $c['barangay'] ?: 'Barangay Tangcul',
             $d['bcg_0_28'] ?? '',
             $d['bcg_29_1yr'] ?? '',
             $d['hepab_24h'] ?? '',
@@ -348,6 +349,7 @@ if ($export) {
             $d['remarks'] ?? '',
         ]);
     }
+
     fclose($out);
     exit;
 }
@@ -364,7 +366,7 @@ require __DIR__ . '/../partials/header.php';
     body {
       background: #fff !important;
       color: #000 !important;
-      font-size: 9px !important;
+      font-size: 8.5px !important;
     }
     .print\:hidden, #appSidebar, .app-topbar, header, nav {
       display: none !important;
@@ -447,7 +449,7 @@ require __DIR__ . '/../partials/header.php';
         <i class="fas fa-syringe"></i> DOH EPI Standard Register
       </div>
       <h2 class="text-2xl font-bold text-slate-900 mt-2">Target Client List for Child Immunization - 2</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Official Department of Health (DOH) standard master register tracking child immunization doses from birth to 23 months.</p>
+      <p class="text-xs text-slate-500 mt-0.5">Official Department of Health (DOH) standard master register tracking child immunization doses from birth to 23 months for Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <a href="/HealthLogs/public/immunization.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs">
@@ -498,11 +500,11 @@ require __DIR__ . '/../partials/header.php';
   </div>
 
   <div class="w-full md:w-48">
-    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Barangay</label>
+    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Purok (Brgy. Tangcul)</label>
     <select name="barangay" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
-      <option value="">All Barangays</option>
-      <?php foreach ($barangays as $b): ?>
-        <option value="<?= h($b) ?>" <?= $barangayFilter === $b ? 'selected' : '' ?>><?= h($b) ?></option>
+      <option value="">All Puroks</option>
+      <?php foreach ($puroks as $p): ?>
+        <option value="<?= h($p) ?>" <?= $barangayFilter === $p ? 'selected' : '' ?>><?= h($p) ?></option>
       <?php endforeach; ?>
     </select>
   </div>
@@ -539,13 +541,15 @@ require __DIR__ . '/../partials/header.php';
     <div class="flex items-center justify-center gap-3 mb-2">
       <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-12 h-12 rounded-full object-cover border border-slate-300 shadow-2xs">
       <div class="text-left">
-        <div class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Republic of the Philippines &bull; Department of Health</div>
-        <div class="text-xs font-bold text-slate-800">Barangay Health Center & Care Hub &bull; HealthLogs</div>
+        <div class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Republic of the Philippines &bull; Province of Isabela &bull; City of Ilagan</div>
+        <div class="text-xs font-bold text-slate-800">Barangay Tangcul Health Station & Care Hub &bull; HealthLogs</div>
       </div>
     </div>
     <h1 class="text-lg sm:text-xl font-extrabold uppercase text-slate-900 tracking-wider mt-0.5">TARGET CLIENT LIST FOR CHILD IMMUNIZATION - 2</h1>
     <div class="text-xs text-slate-600 mt-1 flex items-center justify-center gap-4 flex-wrap">
-      <span>Barangay: <strong><?= $barangayFilter ?: 'All Barangays' ?></strong></span>
+      <span>Barangay: <strong>Barangay Tangcul, City of Ilagan</strong></span>
+      <span>&bull;</span>
+      <span>Purok: <strong><?= $barangayFilter ?: 'All Puroks' ?></strong></span>
       <span>&bull;</span>
       <span>Birth Year: <strong><?= $yearFilter === 'all' ? 'All Records' : $yearFilter ?></strong></span>
       <span>&bull;</span>
@@ -563,7 +567,7 @@ require __DIR__ . '/../partials/header.php';
           <th rowspan="3" class="min-w-[160px]">Child Full Name</th>
           <th rowspan="3" class="min-w-[75px]">Date of Birth<br><span class="text-[9px] font-normal text-slate-500">(mm/dd/yy)</span></th>
           <th rowspan="3" class="w-8">Sex</th>
-          <th rowspan="3" class="min-w-[120px]">Address / Barangay</th>
+          <th rowspan="3" class="min-w-[120px]">Purok</th>
           
           <th colspan="17" class="bg-slate-100 text-slate-800 font-extrabold uppercase tracking-wide py-1.5">
             Immunization <span class="text-[10px] font-normal lowercase">(mm/dd/yy)</span>

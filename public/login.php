@@ -215,7 +215,7 @@ $recaptchaSiteKey = Recaptcha::siteKey();
             <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-full h-full object-cover">
           </div>
           <div class="brand text-2xl sm:text-3xl font-semibold text-slate-900">HealthLogs</div>
-          <p class="text-xs sm:text-sm text-slate-600 mt-2">Secure access for Barangay Health Units.</p>
+          <p class="text-xs sm:text-sm text-slate-600 mt-2">Barangay Tangcul Health Station &bull; City of Ilagan</p>
 
           <?php if ($error): ?>
             <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center gap-2">
@@ -277,12 +277,12 @@ $recaptchaSiteKey = Recaptcha::siteKey();
               <div>
                 <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-600/15 border border-teal-600/25 text-teal-900 text-[11px] uppercase tracking-widest font-semibold">
                   <i class="fas fa-heartbeat text-teal-700"></i>
-                  Health Insights
+                  Health Station
                 </div>
-                <div class="text-xs text-slate-600 font-medium">Digital Primary Care & Telemetry</div>
+                <div class="text-xs text-slate-600 font-medium">City of Ilagan, Isabela</div>
               </div>
             </div>
-            <div class="text-2xl font-bold text-slate-900 mt-2">Barangay Health Care Hub</div>
+            <div class="text-2xl font-bold text-slate-900 mt-2">Barangay Tangcul Care Hub</div>
             <p class="text-sm text-slate-700 mt-2 leading-relaxed">
               Track immunization, maternal health, consultations, and medicine inventory in one centralized platform.
             </p>

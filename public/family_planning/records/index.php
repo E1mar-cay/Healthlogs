@@ -8,10 +8,7 @@ $methodFilter = trim($_GET['method'] ?? '');
 $statusFilter = trim($_GET['status'] ?? 'all');
 $barangayFilter = trim($_GET['barangay'] ?? '');
 
-$barangays = [];
-try {
-    $barangays = $pdo->query("SELECT DISTINCT barangay FROM patients WHERE barangay IS NOT NULL AND barangay != '' ORDER BY barangay ASC")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Throwable $e) {}
+$puroks = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 $query = "
     SELECT r.*, p.first_name, p.last_name, p.middle_name, p.contact_no, p.barangay, p.birth_date, p.sex,
@@ -81,7 +78,7 @@ function fp_format_method(?string $m): string {
         <a href="/HealthLogs/public/family_planning.php" class="text-slate-500 hover:text-slate-800 hover:underline">&larr; Back to FP Dashboard</a>
       </div>
       <div class="text-2xl font-bold text-slate-900 mt-1">Family Planning Client Registry</div>
-      <p class="text-sm text-slate-500 mt-1">Directory of all registered family planning clients, current methods, and service histories.</p>
+      <p class="text-sm text-slate-500 mt-1">Directory of all registered family planning clients, current methods, and service histories in Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <a href="/HealthLogs/public/family_planning/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
@@ -98,10 +95,20 @@ function fp_format_method(?string $m): string {
 
 <div class="bg-white rounded-xl shadow p-4 sm:p-6">
   <!-- Search and Filter Bar -->
-  <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+  <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
     <div class="lg:col-span-2">
       <label class="block text-xs font-semibold text-slate-600 mb-1">Search</label>
       <input type="text" name="search" value="<?= h($search) ?>" placeholder="Search client code, patient, partner..." class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" />
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Purok (Brgy. Tangcul)</label>
+      <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+        <option value="">All Puroks</option>
+        <?php foreach ($puroks as $p): ?>
+          <option value="<?= h($p) ?>" <?= $barangayFilter === $p ? 'selected' : '' ?>><?= h($p) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
 
     <div>
@@ -158,7 +165,7 @@ function fp_format_method(?string $m): string {
           <tr class="border-b bg-slate-50 text-slate-500 uppercase text-xs">
             <th class="py-3 px-3">Client Code</th>
             <th class="py-3 px-3">Patient Name</th>
-            <th class="py-3 px-3">Barangay</th>
+            <th class="py-3 px-3">Purok</th>
             <th class="py-3 px-3">Client Type</th>
             <th class="py-3 px-3">Method Accepted</th>
             <th class="py-3 px-3">Total Visits</th>

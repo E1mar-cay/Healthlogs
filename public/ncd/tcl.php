@@ -10,11 +10,8 @@ $riskFilter = trim($_GET['risk'] ?? '');
 $statusFilter = trim($_GET['status'] ?? 'all');
 $yearFilter = trim($_GET['year'] ?? date('Y'));
 
-// Fetch barangays for filter dropdown
-$barangays = [];
-try {
-    $barangays = $pdo->query("SELECT DISTINCT barangay FROM patients WHERE barangay IS NOT NULL AND barangay != '' ORDER BY barangay ASC")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Throwable $e) {}
+// Standard Puroks for Barangay Tangcul
+$puroks = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 // Query NCD Records
 $whereClauses = ["1=1"];
@@ -149,7 +146,7 @@ function tcl_ncd_diag_label(?string $d): string {
 
 // Handle CSV Export
 if ($export) {
-    $filename = 'TCL_NCD_' . ($barangayFilter ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $barangayFilter) . '_' : '') . date('Ymd_His') . '.csv';
+    $filename = 'TCL_NCD_Tangcul_' . ($barangayFilter ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $barangayFilter) . '_' : '') . date('Ymd_His') . '.csv';
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Pragma: no-cache');
@@ -158,7 +155,7 @@ if ($export) {
     $out = fopen('php://output', 'w');
 
     fputcsv($out, ['PHILIPPINE DEPARTMENT OF HEALTH - TARGET CLIENT LIST FOR NON-COMMUNICABLE DISEASES (TCL-NCD)']);
-    fputcsv($out, ['Generated: ' . date('Y-m-d H:i:s'), 'Barangay: ' . ($barangayFilter ?: 'All Barangays'), 'Year: ' . $yearFilter]);
+    fputcsv($out, ['Barangay Tangcul, City of Ilagan, Isabela', 'Purok: ' . ($barangayFilter ?: 'All Puroks'), 'Year: ' . $yearFilter, 'Generated: ' . date('Y-m-d H:i:s')]);
     fputcsv($out, []);
 
     fputcsv($out, [
@@ -171,7 +168,7 @@ if ($export) {
         'Sex',
         'Age',
         'Date of Birth',
-        'Barangay',
+        'Purok',
         'Contact No',
         'Primary Diagnosis',
         'Date Diagnosed',
@@ -381,11 +378,11 @@ require __DIR__ . '/../partials/header.php';
   </div>
 
   <div class="w-full md:w-44">
-    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Barangay</label>
+    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Purok (Brgy. Tangcul)</label>
     <select name="barangay" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
-      <option value="">All Barangays</option>
-      <?php foreach ($barangays as $b): ?>
-        <option value="<?= h($b) ?>" <?= $barangayFilter === $b ? 'selected' : '' ?>><?= h($b) ?></option>
+      <option value="">All Puroks</option>
+      <?php foreach ($puroks as $p): ?>
+        <option value="<?= h($p) ?>" <?= $barangayFilter === $p ? 'selected' : '' ?>><?= h($p) ?></option>
       <?php endforeach; ?>
     </select>
   </div>
@@ -436,13 +433,15 @@ require __DIR__ . '/../partials/header.php';
     <div class="flex items-center justify-center gap-3 mb-2">
       <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-12 h-12 rounded-full object-cover border border-slate-300 shadow-2xs">
       <div class="text-left">
-        <div class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Republic of the Philippines &bull; Department of Health</div>
-        <div class="text-xs font-bold text-slate-800">Barangay Health Center & Care Hub &bull; HealthLogs</div>
+        <div class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Republic of the Philippines &bull; Province of Isabela &bull; City of Ilagan</div>
+        <div class="text-xs font-bold text-slate-800">Barangay Tangcul Health Station & Care Hub &bull; HealthLogs</div>
       </div>
     </div>
     <h1 class="text-lg sm:text-xl font-extrabold uppercase text-slate-900 tracking-wider mt-0.5">TARGET CLIENT LIST FOR NON-COMMUNICABLE DISEASES (TCL-NCD)</h1>
     <div class="text-xs text-slate-600 mt-1 flex items-center justify-center gap-4 flex-wrap">
-      <span>Barangay: <strong><?= $barangayFilter ?: 'All Barangays' ?></strong></span>
+      <span>Barangay: <strong>Barangay Tangcul, City of Ilagan</strong></span>
+      <span>&bull;</span>
+      <span>Purok: <strong><?= $barangayFilter ?: 'All Puroks' ?></strong></span>
       <span>&bull;</span>
       <span>Calendar Year: <strong><?= $yearFilter === 'all' ? 'All Records' : $yearFilter ?></strong></span>
       <span>&bull;</span>
@@ -487,7 +486,7 @@ require __DIR__ . '/../partials/header.php';
           <th class="min-w-[150px] text-left px-2">Full Name</th>
           <th class="w-12">Age</th>
           <th class="w-10">Sex</th>
-          <th class="min-w-[120px]">Barangay / Contact</th>
+          <th class="min-w-[120px]">Purok / Contact</th>
 
           <!-- PhilPEN Assessment -->
           <th class="min-w-[130px]">Primary Diagnosis</th>
@@ -553,9 +552,9 @@ require __DIR__ . '/../partials/header.php';
               <!-- Sex -->
               <td class="text-center font-bold text-slate-700"><?= strtoupper(substr($r['sex'], 0, 1)) ?></td>
 
-              <!-- Barangay & Contact -->
+              <!-- Purok & Contact -->
               <td class="text-center text-[10px] text-slate-600 whitespace-nowrap">
-                <div class="font-medium">Brgy. <?= h($r['barangay']) ?></div>
+                <div class="font-medium text-slate-800"><?= h($r['barangay'] ?: 'Tangcul') ?></div>
                 <div class="text-slate-400 font-mono"><?= h($r['contact_no'] ?: '—') ?></div>
               </td>
 
@@ -686,7 +685,7 @@ require __DIR__ . '/../partials/header.php';
           <th>Date Registered</th>
           <th>Client Name</th>
           <th>Age / Sex</th>
-          <th>Barangay</th>
+          <th>Purok</th>
           <th>Diagnosis</th>
           <th>Risk Level</th>
           <th>Latest BP</th>

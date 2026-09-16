@@ -2,6 +2,7 @@
 $pageTitle = 'Target Client List for Family Planning (TCL-FP)';
 require __DIR__ . '/../partials/bootstrap.php';
 
+// Filters
 $export = ($_GET['export'] ?? '') === 'csv';
 $q = trim($_GET['q'] ?? '');
 $barangayFilter = trim($_GET['barangay'] ?? '');
@@ -9,11 +10,8 @@ $methodFilter = trim($_GET['method'] ?? '');
 $statusFilter = trim($_GET['status'] ?? 'all');
 $yearFilter = trim($_GET['year'] ?? date('Y'));
 
-// Fetch barangays for filter dropdown
-$barangays = [];
-try {
-    $barangays = $pdo->query("SELECT DISTINCT barangay FROM patients WHERE barangay IS NOT NULL AND barangay != '' ORDER BY barangay ASC")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Throwable $e) {}
+// Standard Puroks for Barangay Tangcul
+$puroks = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 // Query FP Records joined with patient and their visits
 $whereClauses = ["1=1"];
@@ -100,15 +98,19 @@ function tcl_method_name(?string $m): string {
 // Handle CSV Export
 if ($export) {
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename=TCL_Family_Planning_' . date('Ymd_His') . '.csv');
+    header('Content-Disposition: attachment; filename=TCL_Family_Planning_Tangcul_' . date('Ymd_His') . '.csv');
     $output = fopen('php://output', 'w');
+
+    fputcsv($output, ['PHILIPPINE DEPARTMENT OF HEALTH - TARGET CLIENT LIST FOR FAMILY PLANNING (TCL-FP)']);
+    fputcsv($output, ['Barangay Tangcul, City of Ilagan, Isabela', 'Purok: ' . ($barangayFilter ?: 'All Puroks'), 'Year: ' . $yearFilter, 'Generated: ' . date('Y-m-d H:i:s')]);
+    fputcsv($output, []);
 
     fputcsv($output, [
         'Client Code',
         'Registration Date',
         'Client Name',
         'Age',
-        'Barangay',
+        'Purok',
         'Client Type',
         'Method Accepted',
         'Previous Method',
@@ -133,7 +135,7 @@ if ($export) {
             $r['registration_date'],
             $r['last_name'] . ', ' . $r['first_name'] . ($r['middle_name'] ? ' ' . $r['middle_name'] : ''),
             $r['age'],
-            $r['barangay'],
+            $r['barangay'] ?: 'Barangay Tangcul',
             strtoupper(str_replace('_', ' ', $r['client_type'])),
             tcl_method_name($r['method_accepted']),
             $r['previous_method'] ?: 'None',
@@ -232,7 +234,7 @@ require __DIR__ . '/../partials/header.php';
         <a href="/HealthLogs/public/family_planning.php" class="text-slate-500 hover:text-slate-800 hover:underline">&larr; Back to FP Dashboard</a>
       </div>
       <div class="text-2xl font-bold text-slate-900 mt-1">Target Client List for Family Planning (TCL-FP)</div>
-      <p class="text-sm text-slate-500 mt-1">DOH Official Clinical Form 1 &bull; Monitoring of Acceptors, Contraceptive Services, and Drop-outs.</p>
+      <p class="text-sm text-slate-500 mt-1">DOH Official Clinical Form 1 &bull; Monitoring of Acceptors, Contraceptive Services, and Drop-outs for Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <!-- Export CSV link -->
@@ -264,11 +266,11 @@ require __DIR__ . '/../partials/header.php';
     </div>
 
     <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">Barangay</label>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Purok (Brgy. Tangcul)</label>
       <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-        <option value="">All Barangays</option>
-        <?php foreach ($barangays as $b): ?>
-          <option value="<?= h($b) ?>" <?= $barangayFilter === $b ? 'selected' : '' ?>><?= h($b) ?></option>
+        <option value="">All Puroks</option>
+        <?php foreach ($puroks as $p): ?>
+          <option value="<?= h($p) ?>" <?= $barangayFilter === $p ? 'selected' : '' ?>><?= h($p) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -316,13 +318,15 @@ require __DIR__ . '/../partials/header.php';
     <div class="flex items-center justify-center gap-3 mb-2">
       <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-12 h-12 rounded-full object-cover border border-slate-300 shadow-2xs">
       <div class="text-left">
-        <div class="text-[11px] uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines &bull; Department of Health</div>
-        <div class="text-xs font-bold text-slate-800">Barangay Health Center & Care Hub &bull; HealthLogs</div>
+        <div class="text-[11px] uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines &bull; Province of Isabela &bull; City of Ilagan</div>
+        <div class="text-xs font-bold text-slate-800">Barangay Tangcul Health Station & Care Hub &bull; HealthLogs</div>
       </div>
     </div>
     <h1 class="text-lg font-extrabold uppercase text-slate-900 tracking-wider mt-1">TARGET CLIENT LIST FOR FAMILY PLANNING (TCL-FP)</h1>
     <div class="text-xs text-slate-600 mt-1">
-      Barangay: <strong><?= h($barangayFilter ?: 'All Barangays') ?></strong>
+      Barangay: <strong>Barangay Tangcul, City of Ilagan</strong>
+      <span class="mx-2">&bull;</span>
+      Purok: <strong><?= h($barangayFilter ?: 'All Puroks') ?></strong>
       <span class="mx-2">&bull;</span>
       Year Enrolled: <strong><?= h($yearFilter === 'all' ? 'All Records' : $yearFilter) ?></strong>
       <span class="mx-2">&bull;</span>
@@ -350,7 +354,7 @@ require __DIR__ . '/../partials/header.php';
             <th class="py-3 px-3 font-semibold border-r border-slate-200">Date Reg</th>
             <th class="py-3 px-3 font-semibold border-r border-slate-200">Client Code</th>
             <th class="py-3 px-3 font-semibold border-r border-slate-200 min-w-[180px]">Client Name &amp; Age</th>
-            <th class="py-3 px-3 font-semibold border-r border-slate-200">Barangay</th>
+            <th class="py-3 px-3 font-semibold border-r border-slate-200">Purok</th>
             <th class="py-3 px-3 font-semibold border-r border-slate-200">Type</th>
             <th class="py-3 px-3 font-semibold border-r border-slate-200">Method Accepted</th>
             <th class="py-3 px-3 font-semibold border-r border-slate-200">Partner Info</th>
@@ -390,7 +394,7 @@ require __DIR__ . '/../partials/header.php';
                 </div>
               </td>
 
-              <!-- Barangay -->
+              <!-- Purok -->
               <td class="py-2.5 px-3 whitespace-nowrap border-r border-slate-200 text-slate-600">
                 <?= h($r['barangay'] ?: '—') ?>
               </td>
@@ -492,7 +496,7 @@ require __DIR__ . '/../partials/header.php';
             <th>Date Registered</th>
             <th>Client Name</th>
             <th>Age</th>
-            <th>Barangay</th>
+            <th>Purok</th>
             <th>Method Accepted</th>
             <th>Next Service Due</th>
             <th>Status</th>

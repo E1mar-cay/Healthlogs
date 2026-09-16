@@ -47,14 +47,7 @@ $ageGenderRows = [];
 $ageGroupLabels = [];
 $maleCounts = [];
 $femaleCounts = [];
-$barangayOptions = [];
-
-try {
-    $barangayOptions = $pdo->query("SELECT DISTINCT barangay FROM patients WHERE barangay IS NOT NULL AND barangay <> '' ORDER BY barangay ASC")
-        ->fetchAll(PDO::FETCH_COLUMN);
-} catch (Throwable $e) {
-    $barangayOptions = [];
-}
+$barangayOptions = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 // 1. Weekly Visits & Forecasting (Dynamic with Filters)
 try {
@@ -429,31 +422,31 @@ if ($exportType !== '') {
                 $row['last_name'] . ', ' . $row['first_name'],
                 $row['sex'],
                 $row['birth_date'],
-                $row['barangay'],
+                $row['barangay'] ?: 'Barangay Tangcul',
                 $row['status'],
                 $row['conditions_count'],
                 $row['allergies_count'],
                 $row['latest_diagnosis_date'] ?: '',
             ];
         }, $medicalRecordsRows);
-        $csvOutput('patient_medical_records.csv', ['ID', 'Patient', 'Sex', 'Birth Date', 'Barangay', 'Status', 'Conditions', 'Allergies', 'Latest Diagnosis'], $rows);
+        $csvOutput('patient_medical_records_tangcul.csv', ['ID', 'Patient', 'Sex', 'Birth Date', 'Purok', 'Status', 'Conditions', 'Allergies', 'Latest Diagnosis'], $rows);
     } elseif ($exportType === 'consultation') {
         $rows = array_map(function (array $row): array {
             return [
                 $row['consult_date'],
                 $row['last_name'] . ', ' . $row['first_name'],
-                $row['barangay'],
+                $row['barangay'] ?: 'Barangay Tangcul',
                 $row['reason'] ?: '',
                 $row['notes'] ?: '',
             ];
         }, $consultationRows);
-        $csvOutput('patient_consultation.csv', ['Date', 'Patient', 'Barangay', 'Reason', 'Notes'], $rows);
+        $csvOutput('patient_consultation_tangcul.csv', ['Date', 'Patient', 'Purok', 'Reason', 'Notes'], $rows);
     } elseif ($exportType === 'population') {
         $rows = [];
         foreach ($ageGroupLabels as $idx => $label) {
             $rows[] = [$label, $maleCounts[$idx] ?? 0, $femaleCounts[$idx] ?? 0];
         }
-        $csvOutput('population_by_age_gender.csv', ['Age Group', 'Male', 'Female'], $rows);
+        $csvOutput('population_by_age_gender_tangcul.csv', ['Age Group', 'Male', 'Female'], $rows);
     }
 }
 
@@ -463,7 +456,7 @@ if ($fromDate !== '' || $toDate !== '') {
     $filterSummaryParts[] = 'Period: ' . ($fromDate ?: 'Start') . ' to ' . ($toDate ?: 'Present');
 }
 if ($barangayFilter !== '') {
-    $filterSummaryParts[] = 'Barangay: ' . $barangayFilter;
+    $filterSummaryParts[] = 'Purok: ' . $barangayFilter;
 }
 if ($sexFilter !== '') {
     $filterSummaryParts[] = 'Gender: ' . ucfirst($sexFilter);
@@ -471,7 +464,7 @@ if ($sexFilter !== '') {
 if ($ageGroupFilter !== '') {
     $filterSummaryParts[] = 'Age Group: ' . $ageGroupFilter;
 }
-$filterSummaryText = !empty($filterSummaryParts) ? implode(' | ', $filterSummaryParts) : 'All Records (No Filters Applied)';
+$filterSummaryText = !empty($filterSummaryParts) ? implode(' | ', $filterSummaryParts) : 'All Records (Barangay Tangcul)';
 
 $currentUserFullName = $_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Health Center Staff';
 $currentUserRole = ($_SESSION['role'] ?? '') === 'admin' ? 'System Administrator / Admin' : 'Barangay Health Worker (BHW)';
@@ -487,9 +480,9 @@ require __DIR__ . '/partials/header.php';
       <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-16 h-16 rounded-xl object-cover border border-slate-300 shadow-xs">
     </div>
     <div class="text-center flex-1">
-      <div class="text-xs uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines</div>
-      <div class="text-xs uppercase tracking-wider text-slate-700 font-medium">Department of Health • Primary Care Services</div>
-      <div class="text-base font-bold text-slate-900 tracking-wide uppercase mt-0.5">Barangay Health Center & Care Hub</div>
+      <div class="text-xs uppercase tracking-widest text-slate-600 font-semibold">Republic of the Philippines • Province of Isabela • City of Ilagan</div>
+      <div class="text-xs uppercase tracking-wider text-slate-700 font-medium">Barangay Tangcul Primary Care & Health Services</div>
+      <div class="text-base font-bold text-slate-900 tracking-wide uppercase mt-0.5">Barangay Tangcul Health Station & Care Hub</div>
       <div class="text-xs font-semibold text-teal-800">HealthLogs Information Management System</div>
     </div>
     <div class="shrink-0 text-right text-xs text-slate-500">
@@ -507,7 +500,7 @@ require __DIR__ . '/partials/header.php';
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <div class="text-sm text-slate-500 font-medium">Health Analytics & Reporting</div>
-      <div class="text-2xl font-semibold text-slate-900">Reports</div>
+      <div class="text-2xl font-semibold text-slate-900">Reports (Barangay Tangcul)</div>
       <p class="text-sm text-slate-500 mt-1">Dynamic reporting synchronized across patient medical records, consultations, demographics, and disease trends.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -540,9 +533,9 @@ require __DIR__ . '/partials/header.php';
       <input type="date" name="to" value="<?= h($toDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
     </div>
     <div>
-      <label class="block text-xs font-medium text-slate-600 mb-1">Barangay</label>
+      <label class="block text-xs font-medium text-slate-600 mb-1">Purok (Brgy. Tangcul)</label>
       <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-        <option value="">All barangays</option>
+        <option value="">All Puroks</option>
         <?php foreach ($barangayOptions as $opt): ?>
           <option value="<?= h($opt) ?>" <?= $barangayFilter === $opt ? 'selected' : '' ?>><?= h($opt) ?></option>
         <?php endforeach; ?>
@@ -607,7 +600,7 @@ require __DIR__ . '/partials/header.php';
 
   <div id="section-medical-records">
     <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-      <input id="medicalSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, barangay, status..." />
+      <input id="medicalSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, purok, status..." />
       <div class="text-xs text-slate-500">10 rows per page (all <?= count($medicalRecordsRows) ?> shown on print)</div>
     </div>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
@@ -617,7 +610,7 @@ require __DIR__ . '/partials/header.php';
           <th class="text-left px-3 py-2.5">Patient</th>
           <th class="text-left px-3 py-2.5">Sex</th>
           <th class="text-left px-3 py-2.5">Birth Date</th>
-          <th class="text-left px-3 py-2.5">Barangay</th>
+          <th class="text-left px-3 py-2.5">Purok</th>
           <th class="text-left px-3 py-2.5">Conditions</th>
           <th class="text-left px-3 py-2.5">Allergies</th>
           <th class="text-left px-3 py-2.5">Latest Diagnosis</th>
@@ -632,7 +625,7 @@ require __DIR__ . '/partials/header.php';
               <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
               <td class="px-3 py-2 whitespace-nowrap capitalize"><?= h((string)$row['sex']) ?></td>
               <td class="px-3 py-2 whitespace-nowrap"><?= h($row['birth_date']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay'] ?: 'Barangay Tangcul') ?></td>
               <td class="px-3 py-2 whitespace-nowrap text-center"><?= h((string)$row['conditions_count']) ?></td>
               <td class="px-3 py-2 whitespace-nowrap text-center"><?= h((string)$row['allergies_count']) ?></td>
               <td class="px-3 py-2 whitespace-nowrap"><?= h($row['latest_diagnosis_date'] ?: '—') ?></td>
@@ -671,7 +664,7 @@ require __DIR__ . '/partials/header.php';
 
   <div id="section-consultation">
     <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-      <input id="consultationSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, barangay, reason, notes..." />
+      <input id="consultationSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, purok, reason, notes..." />
       <div class="text-xs text-slate-500">10 rows per page (all <?= count($consultationRows) ?> shown on print)</div>
     </div>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
@@ -680,7 +673,7 @@ require __DIR__ . '/partials/header.php';
         <tr class="border-b text-slate-500 uppercase text-xs bg-slate-50/75">
           <th class="text-left px-3 py-2.5">Date</th>
           <th class="text-left px-3 py-2.5">Patient</th>
-          <th class="text-left px-3 py-2.5">Barangay</th>
+          <th class="text-left px-3 py-2.5">Purok</th>
           <th class="text-left px-3 py-2.5">Reason</th>
           <th class="text-left px-3 py-2.5">Notes</th>
         </tr>
@@ -693,7 +686,7 @@ require __DIR__ . '/partials/header.php';
             <tr class="border-t border-slate-100 hover:bg-slate-50/50">
               <td class="px-3 py-2 whitespace-nowrap font-medium text-slate-800"><?= h($row['consult_date']) ?></td>
               <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay']) ?></td>
+              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay'] ?: 'Barangay Tangcul') ?></td>
               <td class="px-3 py-2"><?= h($row['reason'] ?: '—') ?></td>
               <td class="px-3 py-2"><?= h($row['notes'] ?: '—') ?></td>
             </tr>
@@ -702,6 +695,15 @@ require __DIR__ . '/partials/header.php';
       </tbody>
     </table>
     </div>
+    <div class="mt-3 flex items-center justify-between text-sm print:hidden">
+      <div id="consultationPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
+      <div class="flex gap-2">
+        <button id="consultationPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Prev</button>
+        <button id="consultationNext" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
     <div class="mt-3 flex items-center justify-between text-sm print:hidden">
       <div id="consultationPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
       <div class="flex gap-2">
@@ -1145,9 +1147,9 @@ require __DIR__ . '/partials/header.php';
             <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" style="width: 58px; height: 58px; object-fit: cover; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
           </div>
           <div class="header-center">
-            <div class="rep-title">Republic of the Philippines</div>
-            <div class="agency-title">Department of Health • Primary Care Services</div>
-            <div class="hub-title">Barangay Health Center & Care Hub</div>
+            <div class="rep-title">Republic of the Philippines • Province of Isabela • City of Ilagan</div>
+            <div class="agency-title">Barangay Tangcul Primary Care & Health Services</div>
+            <div class="hub-title">Barangay Tangcul Health Station & Care Hub</div>
             <div class="sys-title">HealthLogs Information Management System</div>
           </div>
           <div style="text-align: right; font-size: 10px; color: #64748b;">
@@ -1187,13 +1189,13 @@ require __DIR__ . '/partials/header.php';
           <div class="sig-box">
             <div class="sig-label">Approved by:</div>
             <div class="sig-name">___________________________</div>
-            <div class="sig-role">Municipal Health Officer / Physician</div>
+            <div class="sig-role">Municipal / City Health Officer</div>
             <div class="sig-date">Date: ____________________</div>
           </div>
         </div>
 
         <div class="watermark-footer">
-          Official HealthLogs System Generated Document • Certified Medical & Program Records • Timestamp: ${printDate}
+          Official HealthLogs System Generated Document • Certified Medical & Program Records • Barangay Tangcul, City of Ilagan • Timestamp: ${printDate}
         </div>
       </body>
       </html>

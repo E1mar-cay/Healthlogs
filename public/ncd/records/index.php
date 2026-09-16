@@ -9,10 +9,7 @@ $riskFilter = trim($_GET['risk'] ?? '');
 $statusFilter = trim($_GET['status'] ?? 'all');
 $barangayFilter = trim($_GET['barangay'] ?? '');
 
-$barangays = [];
-try {
-    $barangays = $pdo->query("SELECT DISTINCT barangay FROM patients WHERE barangay IS NOT NULL AND barangay != '' ORDER BY barangay ASC")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Throwable $e) {}
+$puroks = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
 $countQuery = "
     SELECT COUNT(*)
@@ -113,7 +110,7 @@ function ncd_risk_badge(?string $r): string {
         <a href="/HealthLogs/public/ncd.php" class="text-slate-500 hover:text-slate-800 hover:underline">&larr; Back to NCD Dashboard</a>
       </div>
       <div class="text-2xl font-bold text-slate-900 mt-1">NCD Patient Registry</div>
-      <p class="text-sm text-slate-500 mt-1">Directory of all registered hypertensive, diabetic, and chronic lifestyle disease patients.</p>
+      <p class="text-sm text-slate-500 mt-1">Directory of all registered hypertensive, diabetic, and chronic lifestyle disease patients in Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <a href="/HealthLogs/public/ncd/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
@@ -164,11 +161,11 @@ function ncd_risk_badge(?string $r): string {
     </div>
 
     <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">Barangay</label>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Purok (Brgy. Tangcul)</label>
       <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-        <option value="">All Barangays</option>
-        <?php foreach ($barangays as $b): ?>
-          <option value="<?= h($b) ?>" <?= $barangayFilter === $b ? 'selected' : '' ?>><?= h($b) ?></option>
+        <option value="">All Puroks</option>
+        <?php foreach ($puroks as $p): ?>
+          <option value="<?= h($p) ?>" <?= $barangayFilter === $p ? 'selected' : '' ?>><?= h($p) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -227,7 +224,7 @@ function ncd_risk_badge(?string $r): string {
                   <?= h($row['last_name'] . ', ' . $row['first_name'] . ($row['middle_name'] ? ' ' . substr($row['middle_name'], 0, 1) . '.' : '')) ?>
                 </div>
                 <div class="text-xs text-slate-500">
-                  <?= $row['age'] ?> yo &bull; <?= ucfirst($row['sex']) ?> &bull; Brgy. <?= h($row['barangay']) ?>
+                  <?= $row['age'] ?> yo &bull; <?= ucfirst($row['sex']) ?> &bull; <?= h($row['barangay'] ?: 'Brgy. Tangcul') ?>
                 </div>
               </td>
 
