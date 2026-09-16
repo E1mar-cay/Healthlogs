@@ -82,27 +82,10 @@
     </div>
 
     <div class="md:col-span-2 mt-2 border-t border-slate-200 pt-4">
-      <div class="text-sm font-medium text-slate-700">Initial Disease/Condition (Optional)</div>
-      <p class="text-xs text-slate-500 mt-1">Add one diagnosis entry to support disease reports.</p>
+      <div class="text-sm font-medium text-slate-700">Initial Condition (Optional)</div>
+      <p class="text-xs text-slate-500 mt-1">Specify any initial medical condition, diagnosis, or health observation.</p>
     </div>
-    <div>
-      <label class="block text-sm text-slate-600">Condition Name</label>
-      <input name="condition_name" class="mt-1 w-full border rounded px-3 py-2" placeholder="e.g. Hypertension" value="<?= h(old('condition_name', '')) ?>" />
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">Diagnosed On</label>
-      <input type="date" name="diagnosed_on" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('diagnosed_on', '')) ?>" />
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">Condition Status</label>
-      <select name="condition_status" class="mt-1 w-full border rounded px-3 py-2">
-        <?php $conditionStatus = old('condition_status', 'active'); ?>
-        <option value="active" <?= $conditionStatus === 'active' ? 'selected' : '' ?>>Active</option>
-        <option value="resolved" <?= $conditionStatus === 'resolved' ? 'selected' : '' ?>>Resolved</option>
-        <option value="chronic" <?= $conditionStatus === 'chronic' ? 'selected' : '' ?>>Chronic</option>
-      </select>
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">Condition Notes</label>
-      <input name="condition_notes" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('condition_notes', '')) ?>" />
+    <div class="md:col-span-2">
+      <label class="block text-sm text-slate-600">Initial Condition</label>
+      <input name="condition_name" class="mt-1 w-full border rounded px-3 py-2" placeholder="e.g. Hypertension, Diabetes, Asthma, Allergy, etc. (Optional)" value="<?= h(old('condition_name', '')) ?>" />
     </div>

@@ -209,7 +209,7 @@ try {
             $patientId,
             $conditionName,
             in_array($conditionStatus, ['active', 'resolved', 'chronic'], true) ? $conditionStatus : 'active',
-            ($diagnosedOn !== null && $diagnosedOn !== '') ? $diagnosedOn : null,
+            ($diagnosedOn !== null && $diagnosedOn !== '') ? $diagnosedOn : date('Y-m-d'),
             $conditionNotes,
         ]);
     }
