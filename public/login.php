@@ -293,7 +293,7 @@ $recaptchaSiteKey = Recaptcha::siteKey();
               </div>
               <div class="flex items-start gap-3 bg-white/50 p-3 rounded-xl border border-white/70 shadow-sm backdrop-blur-xs">
                 <i class="fas fa-chart-line text-teal-600 mt-0.5 flex-shrink-0 text-sm"></i>
-                <span class="text-sm text-slate-800 font-medium">ARIMA predictive disease forecasting</span>
+                <span class="text-sm text-slate-800 font-medium">ARIMA forecasting</span>
               </div>
               <div class="flex items-start gap-3 bg-white/50 p-3 rounded-xl border border-white/70 shadow-sm backdrop-blur-xs">
                 <i class="fas fa-bell text-teal-600 mt-0.5 flex-shrink-0 text-sm"></i>
