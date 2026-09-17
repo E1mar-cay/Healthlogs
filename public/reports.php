@@ -496,24 +496,24 @@ require __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow print:hidden">
+<div class="bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:hidden">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <div class="text-sm text-slate-500 font-medium">Health Analytics & Reporting</div>
-      <div class="text-2xl font-semibold text-slate-900">Reports (Barangay Tangcul)</div>
+      <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold mb-1">Health Analytics & Reporting</div>
+      <div class="text-2xl font-bold text-slate-900 tracking-tight">Reports (Barangay Tangcul)</div>
       <p class="text-sm text-slate-500 mt-1">Dynamic reporting synchronized across patient medical records, consultations, demographics, and disease trends.</p>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3 py-2 rounded-lg text-xs font-semibold shadow transition">
-        <i class="fas fa-syringe"></i>
+    <div class="flex flex-wrap items-center gap-2.5">
+      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition">
+        <i class="fas fa-syringe text-xs"></i>
         <span>Child TCL-2</span>
       </a>
-      <a href="/HealthLogs/public/maternal/tcl.php" class="inline-flex items-center gap-1.5 bg-rose-700 hover:bg-rose-800 text-white px-3 py-2 rounded-lg text-xs font-semibold shadow transition">
-        <i class="fas fa-person-pregnant"></i>
+      <a href="/HealthLogs/public/maternal/tcl.php" class="inline-flex items-center gap-1.5 bg-rose-700 hover:bg-rose-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition">
+        <i class="fas fa-person-pregnant text-xs"></i>
         <span>Maternal 8-ANC TCL</span>
       </a>
-      <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow hover:bg-slate-800 transition">
-        <i class="fas fa-print"></i>
+      <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs hover:bg-slate-800 transition">
+        <i class="fas fa-print text-xs"></i>
         <span>Print Full Report</span>
       </button>
     </div>
@@ -521,20 +521,20 @@ require __DIR__ . '/partials/header.php';
 </div>
 
 <!-- Dynamic Filter Bar -->
-<form method="get" class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow print:hidden">
-  <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3">Filter Options (Dynamic Filtering)</div>
+<form method="get" class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-100 print:hidden">
+  <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">Filter Options (Dynamic Filtering)</div>
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
     <div>
       <label class="block text-xs font-medium text-slate-600 mb-1">From Date</label>
-      <input type="date" name="from" value="<?= h($fromDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
+      <input type="date" name="from" value="<?= h($fromDate) ?>" class="w-full border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-lg px-3 py-2 text-sm bg-slate-50/50" />
     </div>
     <div>
       <label class="block text-xs font-medium text-slate-600 mb-1">To Date</label>
-      <input type="date" name="to" value="<?= h($toDate) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" />
+      <input type="date" name="to" value="<?= h($toDate) ?>" class="w-full border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-lg px-3 py-2 text-sm bg-slate-50/50" />
     </div>
     <div>
       <label class="block text-xs font-medium text-slate-600 mb-1">Purok (Brgy. Tangcul)</label>
-      <select name="barangay" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+      <select name="barangay" class="w-full border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-lg px-3 py-2 text-sm bg-white">
         <option value="">All Puroks</option>
         <?php foreach ($barangayOptions as $opt): ?>
           <option value="<?= h($opt) ?>" <?= $barangayFilter === $opt ? 'selected' : '' ?>><?= h($opt) ?></option>
@@ -543,7 +543,7 @@ require __DIR__ . '/partials/header.php';
     </div>
     <div>
       <label class="block text-xs font-medium text-slate-600 mb-1">Gender / Sex</label>
-      <select name="sex" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+      <select name="sex" class="w-full border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-lg px-3 py-2 text-sm bg-white">
         <option value="">All genders</option>
         <option value="male" <?= $sexFilter === 'male' ? 'selected' : '' ?>>Male</option>
         <option value="female" <?= $sexFilter === 'female' ? 'selected' : '' ?>>Female</option>
@@ -551,7 +551,7 @@ require __DIR__ . '/partials/header.php';
     </div>
     <div>
       <label class="block text-xs font-medium text-slate-600 mb-1">Age Group</label>
-      <select name="age_group" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+      <select name="age_group" class="w-full border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-lg px-3 py-2 text-sm bg-white">
         <option value="">All age groups</option>
         <?php foreach ($validAgeGroups as $grp): ?>
           <option value="<?= h($grp) ?>" <?= $ageGroupFilter === $grp ? 'selected' : '' ?>><?= h($grp) ?></option>
@@ -559,16 +559,16 @@ require __DIR__ . '/partials/header.php';
       </select>
     </div>
     <div class="flex items-end gap-2">
-      <button type="submit" class="flex-1 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-800 transition shadow">
+      <button type="submit" class="flex-1 bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-800 transition shadow-xs">
         <i class="fas fa-filter mr-1 text-xs"></i> Apply
       </button>
-      <a href="/HealthLogs/public/reports.php" class="flex-1 text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition">
+      <a href="/HealthLogs/public/reports.php" class="flex-1 text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition">
         Reset
       </a>
     </div>
   </div>
 
-  <?php if ($filterSummaryText !== 'All Records (No Filters Applied)'): ?>
+  <?php if ($filterSummaryText !== 'All Records (Barangay Tangcul)'): ?>
     <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
       <div class="flex items-center gap-1.5 flex-wrap">
         <span class="font-semibold text-slate-700">Active Filter:</span>
@@ -576,23 +576,23 @@ require __DIR__ . '/partials/header.php';
           <?= h($filterSummaryText) ?>
         </span>
       </div>
-      <span class="text-slate-500"><?= count($medicalRecordsRows) ?> patients found</span>
+      <span class="text-slate-500 font-medium"><?= count($medicalRecordsRows) ?> patients found</span>
     </div>
   <?php endif; ?>
 </form>
 
 <!-- Section: Patient Medical Records -->
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300 print:mb-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
     <div>
       <div class="text-lg font-semibold text-slate-900">Patient Medical Records</div>
       <p class="text-sm text-slate-500 mt-0.5">Complete list of registered patients with condition and allergy summaries (<?= count($medicalRecordsRows) ?> records total).</p>
     </div>
     <div class="flex items-center gap-3 self-end sm:self-auto print:hidden">
-      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-sm" onclick="printReportSection('section-medical-records', 'Official Report: Patient Medical Records')">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-xs" onclick="printReportSection('section-medical-records', 'Official Report: Patient Medical Records')">
         <i class="fas fa-print mr-1.5 text-xs text-teal-700"></i>Print with Header & Signatory
       </button>
-      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-sm" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'medical_records']))) ?>">
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-xs" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'medical_records']))) ?>">
         <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
       </a>
     </div>
@@ -600,35 +600,43 @@ require __DIR__ . '/partials/header.php';
 
   <div id="section-medical-records">
     <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-      <input id="medicalSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, purok, status..." />
-      <div class="text-xs text-slate-500">10 rows per page (all <?= count($medicalRecordsRows) ?> shown on print)</div>
+      <input id="medicalSearch" class="w-full sm:w-80 border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-lg px-3 py-2 text-sm bg-slate-50/50" placeholder="Search patient, purok, status..." />
+      <div class="text-xs text-slate-500 font-medium">10 rows per page (all <?= count($medicalRecordsRows) ?> shown on print)</div>
     </div>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
       <table class="min-w-full text-sm min-w-[650px]" id="medicalTable">
       <thead>
-        <tr class="border-b text-slate-500 uppercase text-xs bg-slate-50/75">
-          <th class="text-left px-3 py-2.5">Patient</th>
-          <th class="text-left px-3 py-2.5">Sex</th>
-          <th class="text-left px-3 py-2.5">Birth Date</th>
-          <th class="text-left px-3 py-2.5">Purok</th>
-          <th class="text-left px-3 py-2.5">Conditions</th>
-          <th class="text-left px-3 py-2.5">Allergies</th>
-          <th class="text-left px-3 py-2.5">Latest Diagnosis</th>
+        <tr class="border-b border-slate-200 text-slate-500 uppercase text-xs bg-slate-50/75">
+          <th class="text-left px-3 py-2.5 font-semibold">Patient</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Sex</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Birth Date</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Purok</th>
+          <th class="text-center px-3 py-2.5 font-semibold">Conditions</th>
+          <th class="text-center px-3 py-2.5 font-semibold">Allergies</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Latest Diagnosis</th>
         </tr>
       </thead>
       <tbody id="medicalTableBody">
         <?php if (empty($medicalRecordsRows)): ?>
-          <tr><td class="px-3 py-4 text-slate-500 text-center" colspan="7">No patient medical records found matching current filters.</td></tr>
+          <tr><td class="px-3 py-6 text-slate-500 text-center" colspan="7">No patient medical records found matching current filters.</td></tr>
         <?php else: ?>
           <?php foreach ($medicalRecordsRows as $row): ?>
-            <tr class="border-t border-slate-100 hover:bg-slate-50/50">
-              <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap capitalize"><?= h((string)$row['sex']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['birth_date']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay'] ?: 'Barangay Tangcul') ?></td>
-              <td class="px-3 py-2 whitespace-nowrap text-center"><?= h((string)$row['conditions_count']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap text-center"><?= h((string)$row['allergies_count']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['latest_diagnosis_date'] ?: '—') ?></td>
+            <tr class="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+              <td class="px-3 py-2.5 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
+              <td class="px-3 py-2.5 whitespace-nowrap capitalize"><?= h((string)$row['sex']) ?></td>
+              <td class="px-3 py-2.5 whitespace-nowrap text-slate-600"><?= h($row['birth_date']) ?></td>
+              <td class="px-3 py-2.5 whitespace-nowrap text-slate-700"><?= h($row['barangay'] ?: 'Barangay Tangcul') ?></td>
+              <td class="px-3 py-2.5 whitespace-nowrap text-center">
+                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
+                  <?= h((string)$row['conditions_count']) ?>
+                </span>
+              </td>
+              <td class="px-3 py-2.5 whitespace-nowrap text-center">
+                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                  <?= h((string)$row['allergies_count']) ?>
+                </span>
+              </td>
+              <td class="px-3 py-2.5 whitespace-nowrap text-slate-600"><?= h($row['latest_diagnosis_date'] ?: '—') ?></td>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
@@ -636,27 +644,27 @@ require __DIR__ . '/partials/header.php';
     </table>
     </div>
     <div class="mt-3 flex items-center justify-between text-sm print:hidden">
-      <div id="medicalPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
+      <div id="medicalPageInfo" class="text-slate-500 text-xs sm:text-sm font-medium"></div>
       <div class="flex gap-2">
-        <button id="medicalPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Prev</button>
-        <button id="medicalNext" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Next</button>
+        <button id="medicalPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 transition">Prev</button>
+        <button id="medicalNext" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 transition">Next</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Section: Patient Consultation -->
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300 print:mb-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
     <div>
       <div class="text-lg font-semibold text-slate-900">Patient Consultation</div>
       <p class="text-sm text-slate-500 mt-0.5">Recorded general consultations matching active filters (<?= count($consultationRows) ?> records total).</p>
     </div>
     <div class="flex items-center gap-3 self-end sm:self-auto print:hidden">
-      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-sm" onclick="printReportSection('section-consultation', 'Official Report: Patient Consultations')">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-xs" onclick="printReportSection('section-consultation', 'Official Report: Patient Consultations')">
         <i class="fas fa-print mr-1.5 text-xs text-teal-700"></i>Print with Header & Signatory
       </button>
-      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-sm" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'consultation']))) ?>">
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-xs" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'consultation']))) ?>">
         <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
       </a>
     </div>
@@ -664,46 +672,37 @@ require __DIR__ . '/partials/header.php';
 
   <div id="section-consultation">
     <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-      <input id="consultationSearch" class="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm" placeholder="Search patient, purok, reason, notes..." />
-      <div class="text-xs text-slate-500">10 rows per page (all <?= count($consultationRows) ?> shown on print)</div>
+      <input id="consultationSearch" class="w-full sm:w-80 border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-lg px-3 py-2 text-sm bg-slate-50/50" placeholder="Search patient, purok, reason, notes..." />
+      <div class="text-xs text-slate-500 font-medium">10 rows per page (all <?= count($consultationRows) ?> shown on print)</div>
     </div>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
       <table class="min-w-full text-sm min-w-[600px]" id="consultationTable">
       <thead>
-        <tr class="border-b text-slate-500 uppercase text-xs bg-slate-50/75">
-          <th class="text-left px-3 py-2.5">Date</th>
-          <th class="text-left px-3 py-2.5">Patient</th>
-          <th class="text-left px-3 py-2.5">Purok</th>
-          <th class="text-left px-3 py-2.5">Reason</th>
-          <th class="text-left px-3 py-2.5">Notes</th>
+        <tr class="border-b border-slate-200 text-slate-500 uppercase text-xs bg-slate-50/75">
+          <th class="text-left px-3 py-2.5 font-semibold">Date</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Patient</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Purok</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Reason</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Notes</th>
         </tr>
       </thead>
       <tbody id="consultationTableBody">
         <?php if (empty($consultationRows)): ?>
-          <tr><td class="px-3 py-4 text-slate-500 text-center" colspan="5">No consultation records found matching current filters.</td></tr>
+          <tr><td class="px-3 py-6 text-slate-500 text-center" colspan="5">No consultation records found matching current filters.</td></tr>
         <?php else: ?>
           <?php foreach ($consultationRows as $row): ?>
-            <tr class="border-t border-slate-100 hover:bg-slate-50/50">
-              <td class="px-3 py-2 whitespace-nowrap font-medium text-slate-800"><?= h($row['consult_date']) ?></td>
-              <td class="px-3 py-2 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
-              <td class="px-3 py-2 whitespace-nowrap"><?= h($row['barangay'] ?: 'Barangay Tangcul') ?></td>
-              <td class="px-3 py-2"><?= h($row['reason'] ?: '—') ?></td>
-              <td class="px-3 py-2"><?= h($row['notes'] ?: '—') ?></td>
+            <tr class="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+              <td class="px-3 py-2.5 whitespace-nowrap font-medium text-slate-800"><?= h($row['consult_date']) ?></td>
+              <td class="px-3 py-2.5 font-medium text-slate-900 whitespace-nowrap"><?= h($row['last_name'] . ', ' . $row['first_name']) ?></td>
+              <td class="px-3 py-2.5 whitespace-nowrap text-slate-700"><?= h($row['barangay'] ?: 'Barangay Tangcul') ?></td>
+              <td class="px-3 py-2.5 text-slate-700"><?= h($row['reason'] ?: '—') ?></td>
+              <td class="px-3 py-2.5 text-slate-600"><?= h($row['notes'] ?: '—') ?></td>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
       </tbody>
     </table>
     </div>
-    <div class="mt-3 flex items-center justify-between text-sm print:hidden">
-      <div id="consultationPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
-      <div class="flex gap-2">
-        <button id="consultationPrev" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Prev</button>
-        <button id="consultationNext" type="button" class="px-3 py-1.5 border border-slate-300 rounded-lg text-slate-700 text-xs sm:text-sm hover:bg-slate-50 transition">Next</button>
-      </div>
-    </div>
-  </div>
-</div>
     <div class="mt-3 flex items-center justify-between text-sm print:hidden">
       <div id="consultationPageInfo" class="text-slate-500 text-xs sm:text-sm"></div>
       <div class="flex gap-2">
@@ -715,30 +714,30 @@ require __DIR__ . '/partials/header.php';
 </div>
 
 <!-- Section: Population Report by Age Group and Gender -->
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300 print:mb-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
     <div>
       <div class="text-lg font-semibold text-slate-900">Population Report by Age Group and Gender</div>
       <p class="text-sm text-slate-500 mt-0.5">Demographic distribution for non-deceased community members.</p>
     </div>
     <div class="flex items-center gap-3 self-end sm:self-auto print:hidden">
-      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-sm" onclick="printReportSection('section-population', 'Official Demographic Report: Age & Gender Distribution')">
+      <button type="button" class="inline-flex items-center text-sm font-medium text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-xs" onclick="printReportSection('section-population', 'Official Demographic Report: Age & Gender Distribution')">
         <i class="fas fa-print mr-1.5 text-xs text-teal-700"></i>Print Chart
       </button>
-      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-sm" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'population']))) ?>">
+      <a class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition shadow-xs" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'age_group' => $ageGroupFilter, 'export' => 'population']))) ?>">
         <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
       </a>
     </div>
   </div>
   <div id="section-population">
-    <div class="mt-4 relative min-h-[220px]">
-      <canvas id="populationAgeGenderChart" height="120"></canvas>
+    <div class="mt-4 relative h-64 sm:h-72 w-full">
+      <canvas id="populationAgeGenderChart"></canvas>
     </div>
   </div>
 </div>
 
 <!-- Section: Forecasting -->
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300 print:mb-6">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300 print:mb-6">
   <div class="flex items-center justify-between">
     <div>
       <div class="text-lg font-semibold text-slate-900">Admission / Consultation Forecasting</div>
@@ -781,14 +780,14 @@ require __DIR__ . '/partials/header.php';
 
 <!-- Section: Seasonal Disease & Peak Months -->
 <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <div class="xl:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300">
+  <div class="xl:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300">
     <div class="text-lg font-semibold text-slate-900">Seasonal Disease Cases</div>
     <p class="text-sm text-slate-500 mt-0.5">Diagnosed disease distribution per calendar month.</p>
-    <div class="mt-4 relative min-h-[200px]" id="section-seasonal">
-      <canvas id="seasonalDiseaseChart" height="120"></canvas>
+    <div class="mt-4 relative h-64 sm:h-72 w-full" id="section-seasonal">
+      <canvas id="seasonalDiseaseChart"></canvas>
     </div>
   </div>
-  <div class="bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300">
+  <div class="bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300">
     <div class="text-lg font-semibold text-slate-900">Peak Infection Months</div>
     <p class="text-sm text-slate-500 mt-0.5">Highest recorded monthly incidence.</p>
     <ul class="mt-4 space-y-3 text-sm text-slate-700">
@@ -796,7 +795,7 @@ require __DIR__ . '/partials/header.php';
         <?php foreach ($seasonalTopMonths as $row): ?>
           <li class="flex items-center justify-between border-b border-slate-100 pb-2.5 last:border-b-0 last:pb-0">
             <span class="font-medium text-slate-800"><?= h($row['month_label']) ?></span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
               <?= h((string)$row['total_cases']) ?> cases
             </span>
           </li>
@@ -809,11 +808,11 @@ require __DIR__ . '/partials/header.php';
 </div>
 
 <!-- Section: Disease Case Trends -->
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow print:shadow-none print:border print:border-slate-300">
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300">
   <div class="text-lg font-semibold text-slate-900">Disease Case Trends (Top 5 Diseases)</div>
   <p class="text-sm text-slate-500 mt-0.5">Monthly trajectory for top diagnosed conditions.</p>
-  <div class="mt-4 relative min-h-[200px]" id="section-trends">
-    <canvas id="diseaseTrendChart" height="120"></canvas>
+  <div class="mt-4 relative h-64 sm:h-72 w-full" id="section-trends">
+    <canvas id="diseaseTrendChart"></canvas>
   </div>
 </div>
 
@@ -857,7 +856,10 @@ require __DIR__ . '/partials/header.php';
   let diseaseTrendChartInstance = null;
   let populationChartInstance = null;
 
-  if (seasonalDiseaseRows.length) {
+  Chart.defaults.font.family = "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif";
+  Chart.defaults.color = '#64748b';
+
+  if (seasonalDiseaseRows.length && document.getElementById('seasonalDiseaseChart')) {
     seasonalChartInstance = new Chart(document.getElementById('seasonalDiseaseChart'), {
       type: 'bar',
       data: {
@@ -865,30 +867,50 @@ require __DIR__ . '/partials/header.php';
         datasets: [{
           label: 'Cases',
           data: seasonalDiseaseRows.map((row) => Number(row.total_cases)),
-          backgroundColor: 'rgba(14,165,164,0.65)',
+          backgroundColor: 'rgba(14, 165, 164, 0.75)',
           borderColor: '#0ea5a4',
-          borderWidth: 1
+          borderRadius: 6,
+          borderWidth: 1.5,
+          maxBarThickness: 44
         }]
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 },
+            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+          }
+        }
       }
     });
   }
 
   const trendDiseaseNames = Object.keys(diseaseTrendSeries || {});
-  if (diseaseTrendMonths.length && trendDiseaseNames.length) {
+  if (diseaseTrendMonths.length && trendDiseaseNames.length && document.getElementById('diseaseTrendChart')) {
     const palette = ['#0ea5a4', '#2563eb', '#9333ea', '#f97316', '#16a34a'];
     const datasets = trendDiseaseNames.map((name, idx) => ({
       label: name,
       data: diseaseTrendSeries[name],
       borderColor: palette[idx % palette.length],
       backgroundColor: palette[idx % palette.length],
-      tension: 0.25,
-      pointRadius: 3,
-      borderWidth: 2
+      tension: 0.3,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      borderWidth: 2.5
     }));
 
     diseaseTrendChartInstance = new Chart(document.getElementById('diseaseTrendChart'), {
@@ -896,13 +918,34 @@ require __DIR__ . '/partials/header.php';
       data: { labels: diseaseTrendMonths, datasets },
       options: {
         responsive: true,
-        plugins: { legend: { position: 'bottom' } },
-        scales: { y: { beginAtZero: true } }
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, usePointStyle: true, padding: 16 }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(226, 232, 240, 0.4)' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 },
+            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+          }
+        }
       }
     });
   }
 
-  if (ageGroupLabels.length) {
+  if (ageGroupLabels.length && document.getElementById('populationAgeGenderChart')) {
     populationChartInstance = new Chart(document.getElementById('populationAgeGenderChart'), {
       type: 'bar',
       data: {
@@ -911,25 +954,46 @@ require __DIR__ . '/partials/header.php';
           {
             label: 'Male',
             data: maleCounts,
-            backgroundColor: 'rgba(37,99,235,0.7)',
+            backgroundColor: 'rgba(37, 99, 235, 0.8)',
             borderColor: '#2563eb',
-            borderWidth: 1
+            borderRadius: 6,
+            borderWidth: 1,
+            maxBarThickness: 32
           },
           {
             label: 'Female',
             data: femaleCounts,
-            backgroundColor: 'rgba(236,72,153,0.65)',
+            backgroundColor: 'rgba(236, 72, 153, 0.8)',
             borderColor: '#ec4899',
-            borderWidth: 1
+            borderRadius: 6,
+            borderWidth: 1,
+            maxBarThickness: 32
           }
         ]
       },
       options: {
         responsive: true,
-        plugins: { legend: { position: 'bottom' } },
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, usePointStyle: true, padding: 16 }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 8
+          }
+        },
         scales: {
-          x: { stacked: false },
-          y: { beginAtZero: true }
+          x: {
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 },
+            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+          }
         }
       }
     });
