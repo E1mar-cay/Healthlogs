@@ -297,8 +297,8 @@ try {
             p.birth_date,
             p.barangay,
             p.status,
-            COUNT(DISTINCT pc.id) AS conditions_count,
-            COUNT(DISTINCT pa.id) AS allergies_count,
+            GROUP_CONCAT(DISTINCT pc.condition_name ORDER BY pc.condition_name SEPARATOR ', ') AS conditions_list,
+            GROUP_CONCAT(DISTINCT pa.allergen ORDER BY pa.allergen SEPARATOR ', ') AS allergies_list,
             MAX(pc.diagnosed_on) AS latest_diagnosis_date
         FROM patients p
         LEFT JOIN patient_conditions pc ON pc.patient_id = p.id
@@ -420,13 +420,13 @@ if ($exportType !== '') {
             return [
                 $row['id'],
                 $row['last_name'] . ', ' . $row['first_name'],
-                $row['sex'],
+                ucfirst((string)$row['sex']),
                 $row['birth_date'],
                 $row['barangay'] ?: 'Barangay Tangcul',
-                $row['status'],
-                $row['conditions_count'],
-                $row['allergies_count'],
-                $row['latest_diagnosis_date'] ?: '',
+                ucfirst((string)$row['status']),
+                $row['conditions_list'] ?: 'None',
+                $row['allergies_list'] ?: 'None',
+                $row['latest_diagnosis_date'] ? date('M d, Y', strtotime($row['latest_diagnosis_date'])) : 'None',
             ];
         }, $medicalRecordsRows);
         $csvOutput('patient_medical_records_tangcul.csv', ['ID', 'Patient', 'Sex', 'Birth Date', 'Purok', 'Status', 'Conditions', 'Allergies', 'Latest Diagnosis'], $rows);
@@ -604,21 +604,22 @@ require __DIR__ . '/partials/header.php';
       <div class="text-xs text-slate-500 font-medium">10 rows per page (all <?= count($medicalRecordsRows) ?> shown on print)</div>
     </div>
     <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table class="min-w-full text-sm min-w-[650px]" id="medicalTable">
+      <table class="min-w-full text-sm min-w-[750px]" id="medicalTable">
       <thead>
         <tr class="border-b border-slate-200 text-slate-500 uppercase text-xs bg-slate-50/75">
           <th class="text-left px-3 py-2.5 font-semibold">Patient</th>
           <th class="text-left px-3 py-2.5 font-semibold">Sex</th>
           <th class="text-left px-3 py-2.5 font-semibold">Birth Date</th>
           <th class="text-left px-3 py-2.5 font-semibold">Purok</th>
-          <th class="text-center px-3 py-2.5 font-semibold">Conditions</th>
-          <th class="text-center px-3 py-2.5 font-semibold">Allergies</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Status</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Conditions</th>
+          <th class="text-left px-3 py-2.5 font-semibold">Allergies</th>
           <th class="text-left px-3 py-2.5 font-semibold">Latest Diagnosis</th>
         </tr>
       </thead>
       <tbody id="medicalTableBody">
         <?php if (empty($medicalRecordsRows)): ?>
-          <tr><td class="px-3 py-6 text-slate-500 text-center" colspan="7">No patient medical records found matching current filters.</td></tr>
+          <tr><td class="px-3 py-6 text-slate-500 text-center" colspan="8">No patient medical records found matching current filters.</td></tr>
         <?php else: ?>
           <?php foreach ($medicalRecordsRows as $row): ?>
             <tr class="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
@@ -626,17 +627,51 @@ require __DIR__ . '/partials/header.php';
               <td class="px-3 py-2.5 whitespace-nowrap capitalize"><?= h((string)$row['sex']) ?></td>
               <td class="px-3 py-2.5 whitespace-nowrap text-slate-600"><?= h($row['birth_date']) ?></td>
               <td class="px-3 py-2.5 whitespace-nowrap text-slate-700"><?= h($row['barangay'] ?: 'Barangay Tangcul') ?></td>
-              <td class="px-3 py-2.5 whitespace-nowrap text-center">
-                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
-                  <?= h((string)$row['conditions_count']) ?>
-                </span>
+              <td class="px-3 py-2.5 whitespace-nowrap">
+                <?php
+                  $status = strtolower((string)$row['status']);
+                  if ($status === 'active') {
+                      echo '<span class="pill-badge pill-emerald inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Active</span>';
+                  } elseif ($status === 'deceased') {
+                      echo '<span class="pill-badge pill-rose inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">Deceased</span>';
+                  } else {
+                      echo '<span class="pill-badge pill-slate inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">Inactive</span>';
+                  }
+                ?>
               </td>
-              <td class="px-3 py-2.5 whitespace-nowrap text-center">
-                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                  <?= h((string)$row['allergies_count']) ?>
-                </span>
+              <td class="px-3 py-2.5">
+                <?php if (!empty($row['conditions_list'])): ?>
+                  <div class="flex flex-wrap gap-1">
+                    <?php foreach (array_map('trim', explode(',', $row['conditions_list'])) as $cond): ?>
+                      <?php if ($cond !== ''): ?>
+                        <span class="pill-badge pill-teal inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200">
+                          <?= h($cond) ?>
+                        </span>
+                      <?php endif; ?>
+                    <?php endforeach; ?>
+                  </div>
+                <?php else: ?>
+                  <span class="text-xs text-slate-400 italic">None</span>
+                <?php endif; ?>
               </td>
-              <td class="px-3 py-2.5 whitespace-nowrap text-slate-600"><?= h($row['latest_diagnosis_date'] ?: '—') ?></td>
+              <td class="px-3 py-2.5">
+                <?php if (!empty($row['allergies_list'])): ?>
+                  <div class="flex flex-wrap gap-1">
+                    <?php foreach (array_map('trim', explode(',', $row['allergies_list'])) as $allergy): ?>
+                      <?php if ($allergy !== ''): ?>
+                        <span class="pill-badge pill-amber inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                          <?= h($allergy) ?>
+                        </span>
+                      <?php endif; ?>
+                    <?php endforeach; ?>
+                  </div>
+                <?php else: ?>
+                  <span class="text-xs text-slate-400 italic">None</span>
+                <?php endif; ?>
+              </td>
+              <td class="px-3 py-2.5 whitespace-nowrap text-slate-600 text-xs">
+                <?= !empty($row['latest_diagnosis_date']) ? h(date('M d, Y', strtotime($row['latest_diagnosis_date']))) : '<span class="text-slate-400 italic">None</span>' ?>
+              </td>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
@@ -1156,9 +1191,44 @@ require __DIR__ . '/partials/header.php';
             border: 1px solid #e2e8f0;
             padding: 6px 8px;
             color: #1e293b;
+            vertical-align: middle;
           }
           tr:nth-child(even) td {
             background-color: #f8fafc;
+          }
+          .pill-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9.5px;
+            font-weight: 600;
+            margin: 1px 2px;
+            line-height: 1.2;
+          }
+          .pill-teal {
+            background-color: #f0fdfa;
+            color: #0f766e;
+            border: 1px solid #99f6e4;
+          }
+          .pill-amber {
+            background-color: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+          }
+          .pill-emerald {
+            background-color: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+          }
+          .pill-slate {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+          }
+          .pill-rose {
+            background-color: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
           }
           .signatory-grid {
             margin-top: 36px;
