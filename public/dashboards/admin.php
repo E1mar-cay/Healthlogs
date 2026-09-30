@@ -18,10 +18,14 @@ try {
     )->fetchColumn();
 
     $adminStats['monthly_visits'] = (int)$pdo->query(
-        "SELECT COUNT(*)
-         FROM visits
-         WHERE MONTH(visit_datetime) = MONTH(CURDATE())
-           AND YEAR(visit_datetime) = YEAR(CURDATE())"
+        "SELECT (
+            (SELECT COUNT(*) FROM visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM prenatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM postnatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM fp_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM ncd_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM immunization_records WHERE MONTH(administered_on) = MONTH(CURDATE()) AND YEAR(administered_on) = YEAR(CURDATE()))
+        )"
     )->fetchColumn();
 
     $adminStats['low_stock_items'] = (int)$pdo->query(

@@ -64,9 +64,15 @@ if (!empty($rows)) {
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">Active Queue</span>
-      <button type="button" id="reminderModalOpenNew" data-embed-url="/HealthLogs/public/reminders/form_embed.php" class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow text-sm font-medium hover:bg-slate-800 transition">
-        <i class="fas fa-plus mr-1.5 text-xs"></i>New Reminder
-      </button>
+      <?php if (can_manage_clinical_records()): ?>
+        <button type="button" id="reminderModalOpenNew" data-embed-url="/HealthLogs/public/reminders/form_embed.php" class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow text-sm font-medium hover:bg-slate-800 transition">
+          <i class="fas fa-plus mr-1.5 text-xs"></i>New Reminder
+        </button>
+      <?php else: ?>
+        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          <i class="fas fa-eye mr-1.5 text-slate-400"></i> Monitoring Mode
+        </span>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -98,15 +104,17 @@ if (!empty($rows)) {
     </div>
   </div>
 
-  <form id="bulkReminderDeleteForm" method="post" action="/HealthLogs/public/reminders/delete.php" class="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100" data-confirm="Delete the selected reminders? This cannot be undone." data-confirm-title="Delete selected reminders" data-confirm-cta="Yes, delete">
-    <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
-      <input type="checkbox" id="selectAllReminders" class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500">
-      Select all visible
-    </label>
-    <button type="submit" id="bulkDeleteReminders" disabled class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed">
-      <i class="fas fa-trash"></i> Delete selected
-    </button>
-  </form>
+  <?php if (can_manage_clinical_records()): ?>
+    <form id="bulkReminderDeleteForm" method="post" action="/HealthLogs/public/reminders/delete.php" class="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100" data-confirm="Delete the selected reminders? This cannot be undone." data-confirm-title="Delete selected reminders" data-confirm-cta="Yes, delete">
+      <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+        <input type="checkbox" id="selectAllReminders" class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500">
+        Select all visible
+      </label>
+      <button type="submit" id="bulkDeleteReminders" disabled class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed">
+        <i class="fas fa-trash"></i> Delete selected
+      </button>
+    </form>
+  <?php endif; ?>
 
   <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
     <table id="remindersTable" class="min-w-full text-sm min-w-[650px]">
@@ -142,7 +150,11 @@ if (!empty($rows)) {
             data-search="<?= h(strtolower($r['last_name'] . ' ' . $r['first_name'] . ' ' . ($r['contact_no'] ?? '') . ' ' . str_replace('_', ' ', $r['reminder_type']) . ' ' . $r['reminder_type'] . ' ' . $r['due_date'] . ' ' . $r['status'])) ?>"
           >
             <td class="px-3 py-3 text-center">
-              <input type="checkbox" name="ids[]" value="<?= (int)$r['id'] ?>" form="bulkReminderDeleteForm" class="reminder-checkbox h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500">
+              <?php if (can_manage_clinical_records()): ?>
+                <input type="checkbox" name="ids[]" value="<?= (int)$r['id'] ?>" form="bulkReminderDeleteForm" class="reminder-checkbox h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500">
+              <?php else: ?>
+                <span class="text-slate-300 text-xs">•</span>
+              <?php endif; ?>
             </td>
             <td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></td>
             <td class="px-4 py-3 text-slate-600 font-mono text-xs whitespace-nowrap"><?= h($r['contact_no'] ?: '—') ?></td>
@@ -164,24 +176,26 @@ if (!empty($rows)) {
                       Send SMS
                     </button>
                   </form>
-                  <?php if ($status === 'sent'): ?>
+                  <?php if ($status === 'sent' && can_manage_clinical_records()): ?>
                     <form method="post" action="/HealthLogs/public/reminders/reset_status.php" class="inline">
                       <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
                       <button type="submit" class="text-amber-600 hover:text-amber-800 hover:underline font-medium text-xs px-2 py-1" title="Change status back to pending so the scheduler will send it">Re-queue</button>
                     </form>
                   <?php endif; ?>
-                  <button type="button" class="reminder-modal-edit text-blue-600 hover:underline font-medium text-xs px-2 py-1" data-embed-url="/HealthLogs/public/reminders/form_embed.php?id=<?= (int)$r['id'] ?>">Edit</button>
-                <form
-                  method="post"
-                  action="/HealthLogs/public/reminders/delete.php"
-                  class="inline"
-                  data-confirm="Delete this reminder? This cannot be undone."
-                  data-confirm-title="Delete reminder"
-                  data-confirm-cta="Yes, delete"
-                >
-                  <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                  <button class="text-red-600 hover:underline font-medium text-xs px-2 py-1">Delete</button>
-                </form>
+                  <?php if (can_manage_clinical_records()): ?>
+                    <button type="button" class="reminder-modal-edit text-blue-600 hover:underline font-medium text-xs px-2 py-1" data-embed-url="/HealthLogs/public/reminders/form_embed.php?id=<?= (int)$r['id'] ?>">Edit</button>
+                    <form
+                      method="post"
+                      action="/HealthLogs/public/reminders/delete.php"
+                      class="inline"
+                      data-confirm="Delete this reminder? This cannot be undone."
+                      data-confirm-title="Delete reminder"
+                      data-confirm-cta="Yes, delete"
+                    >
+                      <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+                      <button class="text-red-600 hover:underline font-medium text-xs px-2 py-1">Delete</button>
+                    </form>
+                  <?php endif; ?>
               </div>
             </td>
           </tr>

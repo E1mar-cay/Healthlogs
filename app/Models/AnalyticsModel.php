@@ -40,7 +40,14 @@ class AnalyticsModel
         $stats['total_patients'] = $stmt->fetch()['total'];
         
         // Total visits this month
-        $stmt = $this->db->query("SELECT COUNT(*) as total FROM visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE())");
+        $stmt = $this->db->query("SELECT (
+            (SELECT COUNT(*) FROM visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM prenatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM postnatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM fp_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM ncd_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
+          + (SELECT COUNT(*) FROM immunization_records WHERE MONTH(administered_on) = MONTH(CURDATE()) AND YEAR(administered_on) = YEAR(CURDATE()))
+        ) as total");
         $stats['monthly_visits'] = $stmt->fetch()['total'];
         
         // Pending reminders

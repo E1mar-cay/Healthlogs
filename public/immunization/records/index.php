@@ -38,9 +38,11 @@ $rows = $stmt->fetchAll();
     <a href="/HealthLogs/public/immunization/tcl.php" class="bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition">
       <i class="fas fa-table-list mr-1"></i> Target Client List (TCL-2)
     </a>
-    <button type="button" id="recordModalOpenNew" data-embed-url="/HealthLogs/public/immunization/records/form_embed.php" class="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition">
-      + New Record
-    </button>
+    <?php if (can_manage_clinical_records()): ?>
+      <button type="button" id="recordModalOpenNew" data-embed-url="/HealthLogs/public/immunization/records/form_embed.php" class="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition">
+        + New Record
+      </button>
+    <?php endif; ?>
   </div>
 </div>
 <form method="get" class="mt-4 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">
@@ -67,7 +69,14 @@ $rows = $stmt->fetchAll();
             <td class="px-4 py-2"><?= h($r['vaccine_name']) ?></td>
             <td class="px-4 py-2"><?= h($r['dose_no']) ?></td>
             <td class="px-4 py-2"><?= h($r['administered_at']) ?></td>
-            <td class="px-4 py-2"><button type="button" class="record-modal-edit text-blue-600" data-embed-url="/HealthLogs/public/immunization/records/form_embed.php?id=<?= (int)$r['id'] ?>">Edit</button><form method="post" action="/HealthLogs/public/immunization/records/delete.php" class="inline" data-confirm="Delete this record?" data-confirm-title="Delete immunization record" data-confirm-cta="Yes, delete"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>" /><button class="text-red-600 ml-2">Delete</button></form></td>
+            <td class="px-4 py-2">
+              <?php if (can_manage_clinical_records()): ?>
+                <button type="button" class="record-modal-edit text-blue-600" data-embed-url="/HealthLogs/public/immunization/records/form_embed.php?id=<?= (int)$r['id'] ?>">Edit</button>
+                <form method="post" action="/HealthLogs/public/immunization/records/delete.php" class="inline" data-confirm="Delete this record?" data-confirm-title="Delete immunization record" data-confirm-cta="Yes, delete"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>" /><button class="text-red-600 ml-2">Delete</button></form>
+              <?php else: ?>
+                <span class="text-xs text-slate-400 font-medium"><i class="fas fa-eye mr-1"></i> Read-Only</span>
+              <?php endif; ?>
+            </td>
           </tr>
         <?php endforeach; ?>
       <?php endif; ?>

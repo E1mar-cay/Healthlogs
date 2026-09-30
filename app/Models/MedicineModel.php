@@ -46,11 +46,27 @@ class MedicineModel
             $data['reorder_level'] ?? 100,
         ]);
 
-        return (int)$this->db->lastInsertId();
+        $newId = (int)$this->db->lastInsertId();
+
+        if (class_exists('ActivityLogger')) {
+            ActivityLogger::logInventory('medicine_add', "Added new medicine: {$data['name']}", 'medicines', (string)$newId, [
+                'medicine_id' => $newId,
+                'name' => $data['name'],
+                'generic_name' => $data['generic_name'] ?? null,
+                'formulation' => $data['formulation'] ?? null,
+                'strength' => $data['strength'] ?? null,
+                'unit' => $data['unit'] ?? 'units',
+                'reorder_level' => $data['reorder_level'] ?? 100
+            ]);
+        }
+
+        return $newId;
     }
 
     public function updateMedicine(int $id, array $data): void
     {
+        $oldMed = class_exists('ActivityLogger') ? ActivityLogger::getMedicineInfo($id) : null;
+
         $sql = "UPDATE medicines SET
                 name = ?, generic_name = ?, formulation = ?,
                 strength = ?, unit = ?, reorder_level = ?
@@ -66,6 +82,14 @@ class MedicineModel
             $data['reorder_level'],
             $id,
         ]);
+
+        if (class_exists('ActivityLogger')) {
+            ActivityLogger::logInventory('medicine_update', "Updated medicine profile: {$data['name']}", 'medicines', (string)$id, [
+                'medicine_id' => $id,
+                'old' => $oldMed,
+                'new' => $data
+            ]);
+        }
     }
 
     public function getBatchesByMedicine(int $medicineId): array
@@ -119,6 +143,20 @@ class MedicineModel
             ]);
 
             $this->db->commit();
+
+            if (class_exists('ActivityLogger')) {
+                $medInfo = ActivityLogger::getMedicineInfo((int)$data['medicine_id']);
+                ActivityLogger::logInventory('stock_receive', "Received batch {$data['batch_no']} (+{$data['quantity_received']} {$medInfo['unit']}) for {$medInfo['name']}", 'medicine_batches', (string)$batchId, [
+                    'batch_id' => $batchId,
+                    'batch_no' => $data['batch_no'],
+                    'medicine_id' => $data['medicine_id'],
+                    'medicine_name' => $medInfo['name'] ?? null,
+                    'quantity' => $data['quantity_received'],
+                    'expiry_date' => $data['expiry_date'],
+                    'received_date' => $data['received_date']
+                ]);
+            }
+
             return $batchId;
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -144,7 +182,24 @@ class MedicineModel
             $data['recorded_by'],
         ]);
 
-        return (int)$this->db->lastInsertId();
+        $txId = (int)$this->db->lastInsertId();
+
+        if (class_exists('ActivityLogger')) {
+            $medInfo = ActivityLogger::getMedicineInfo((int)$data['medicine_id']);
+            $type = $data['transaction_type'] ?? 'received';
+            $action = $type === 'dispensed' ? 'issuance' : ($type === 'returned' ? 'return' : ($type === 'adjustment' ? 'adjustment' : 'stock_receive'));
+            ActivityLogger::logInventory($action, "Transaction #{$txId} logged: {$type} (" . ($data['quantity'] >= 0 ? "+{$data['quantity']}" : "{$data['quantity']}") . ") for {$medInfo['name']}", 'medicine_transactions', (string)$txId, [
+                'transaction_id' => $txId,
+                'medicine_id' => $data['medicine_id'],
+                'medicine_name' => $medInfo['name'] ?? null,
+                'quantity' => $data['quantity'],
+                'transaction_type' => $type,
+                'reference' => $data['reference'] ?? null,
+                'recorded_by' => $data['recorded_by'] ?? null
+            ]);
+        }
+
+        return $txId;
     }
 
     public function getLowStockMedicines(): array

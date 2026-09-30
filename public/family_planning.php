@@ -108,9 +108,11 @@ function fp_format_method_label(?string $m): string {
     <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">Responsible Parenthood</span>
       <span class="app-chip">DOH Form 1</span>
-      <button type="button" onclick="openEnrollModal()" class="inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2 rounded shadow text-xs font-semibold hover:bg-slate-800 transition ml-1">
-        <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll New Client
-      </button>
+      <?php if (can_manage_clinical_records()): ?>
+        <button type="button" onclick="openEnrollModal()" class="inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2 rounded shadow text-xs font-semibold hover:bg-slate-800 transition ml-1">
+          <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll New Client
+        </button>
+      <?php endif; ?>
     </div>
   </div>
 </div>

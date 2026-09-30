@@ -113,6 +113,16 @@ try {
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
+
+        ActivityLogger::logUser('update', "Updated user account: {$data['username']} ({$data['full_name']})", $userId, [
+            'user_id' => $userId,
+            'username' => $data['username'],
+            'full_name' => $data['full_name'],
+            'email' => $data['email'],
+            'role_id' => $data['role_id'],
+            'status' => $data['status'],
+            'password_changed' => !empty($_POST['password'])
+        ]);
         
         $_SESSION['success_message'] = 'User updated successfully';
         
@@ -132,6 +142,16 @@ try {
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
+        $newUserId = (int)$pdo->lastInsertId();
+
+        ActivityLogger::logUser('create', "Created new user account: {$data['username']} ({$data['full_name']})", $newUserId, [
+            'user_id' => $newUserId,
+            'username' => $data['username'],
+            'full_name' => $data['full_name'],
+            'email' => $data['email'],
+            'role_id' => $data['role_id'],
+            'status' => $data['status']
+        ]);
         
         $_SESSION['success_message'] = 'User created successfully';
     }

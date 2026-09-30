@@ -8,6 +8,12 @@ $errorMsg = '';
 
 // Handle Logging New Visit
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_visit') {
+    if (!can_manage_clinical_records()) {
+        http_response_code(403);
+        flash('error', 'Administrator accounts cannot log consultations or dispense contraceptives. Only Barangay Health Workers have clinical write permissions.');
+        header('Location: /HealthLogs/public/family_planning/visits/index.php' . ($recordId > 0 ? '?record_id=' . $recordId : ''));
+        exit;
+    }
     $fp_record_id = (int)($_POST['fp_record_id'] ?? 0);
     $visit_date = trim($_POST['visit_date'] ?? date('Y-m-d'));
     $method_prescribed = trim($_POST['method_prescribed'] ?? '');
@@ -193,6 +199,7 @@ require __DIR__ . '/../../partials/header.php';
   </div>
 <?php endif; ?>
 
+<?php if (can_manage_clinical_records()): ?>
 <!-- Log Visit / Dispensing Form -->
 <div class="bg-white rounded-xl shadow p-5 sm:p-6 mb-6 border border-slate-100">
   <div class="flex items-center justify-between border-b pb-3 mb-4">
@@ -292,6 +299,20 @@ require __DIR__ . '/../../partials/header.php';
     </div>
   </form>
 </div>
+<?php else: ?>
+  <div class="bg-white rounded-xl shadow-sm p-4 mb-6 border border-slate-200 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
+        <i class="fas fa-eye text-sm"></i>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-slate-800">Read-Only Monitoring Mode</div>
+        <div class="text-xs text-slate-500">Consultation logs and contraceptive dispensing must be recorded directly by Barangay Health Workers (BHW).</div>
+      </div>
+    </div>
+    <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">Admin Oversight</span>
+  </div>
+<?php endif; ?>
 
 <!-- Visits History Table -->
 <div class="bg-white rounded-xl shadow p-5 sm:p-6">

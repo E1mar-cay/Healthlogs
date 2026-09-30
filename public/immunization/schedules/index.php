@@ -31,7 +31,9 @@ $stats = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'schedule
 <div class="bg-white p-6 rounded shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div><div class="text-sm text-slate-500">Immunization Module</div><div class="text-2xl font-semibold">Immunization Schedules</div><p class="text-sm text-slate-500 mt-1">Track and manage vaccination schedules for all patients.</p></div>
-    <button type="button" id="scheduleModalOpenNew" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Schedule</button>
+    <?php if (can_manage_clinical_records()): ?>
+      <button type="button" id="scheduleModalOpenNew" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow">New Schedule</button>
+    <?php endif; ?>
   </div>
 </div>
 <form method="get" class="mt-6 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">
@@ -65,7 +67,14 @@ $stats = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'schedule
             <td class="px-4 py-3">Dose <?= h($s['dose_no']) ?></td>
             <td class="px-4 py-3"><?= h($s['scheduled_date']) ?></td>
             <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?= $statusColor ?>"><?= h(ucfirst($s['status'])) ?></span></td>
-            <td class="px-4 py-3"><button type="button" class="schedule-modal-edit text-blue-600 hover:text-blue-800 font-medium" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php?id=<?= (int)$s['id'] ?>">Edit</button><form method="post" action="/HealthLogs/public/immunization/schedules/delete.php" class="inline" data-confirm="Delete this schedule?" data-confirm-title="Delete schedule" data-confirm-cta="Yes, delete"><input type="hidden" name="id" value="<?= (int)$s['id'] ?>" /><button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button></form></td>
+            <td class="px-4 py-3">
+              <?php if (can_manage_clinical_records()): ?>
+                <button type="button" class="schedule-modal-edit text-blue-600 hover:text-blue-800 font-medium" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php?id=<?= (int)$s['id'] ?>">Edit</button>
+                <form method="post" action="/HealthLogs/public/immunization/schedules/delete.php" class="inline" data-confirm="Delete this schedule?" data-confirm-title="Delete schedule" data-confirm-cta="Yes, delete"><input type="hidden" name="id" value="<?= (int)$s['id'] ?>" /><button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button></form>
+              <?php else: ?>
+                <span class="text-xs text-slate-400 font-medium"><i class="fas fa-eye mr-1"></i> Read-Only</span>
+              <?php endif; ?>
+            </td>
           </tr>
         <?php endforeach; ?>
       <?php endif; ?>

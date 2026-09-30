@@ -116,12 +116,18 @@ function ncd_risk_badge(?string $r): string {
       <a href="/HealthLogs/public/ncd/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
         <i class="fas fa-table-list mr-1.5 text-xs"></i> View TCL-NCD
       </a>
-      <a href="/HealthLogs/public/ncd/records/create.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
-        <i class="fas fa-file-medical mr-1.5 text-xs"></i> Full Enrollment Form
-      </a>
-      <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow transition">
-        <i class="fas fa-user-plus mr-1.5 text-xs"></i> Quick Enroll
-      </button>
+      <?php if (can_manage_clinical_records()): ?>
+        <a href="/HealthLogs/public/ncd/records/create.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
+          <i class="fas fa-file-medical mr-1.5 text-xs"></i> Full Enrollment Form
+        </a>
+        <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow transition">
+          <i class="fas fa-user-plus mr-1.5 text-xs"></i> Quick Enroll
+        </button>
+      <?php else: ?>
+        <span class="inline-flex items-center px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          <i class="fas fa-eye mr-1.5 text-slate-400"></i> Monitoring Mode
+        </span>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -276,12 +282,14 @@ function ncd_risk_badge(?string $r): string {
 
               <td class="px-4 py-3.5 text-right whitespace-nowrap">
                 <div class="inline-flex items-center gap-1.5">
-                  <a href="/HealthLogs/public/ncd/visits/index.php?record_id=<?= (int)$row['id'] ?>" class="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 text-xs font-semibold transition" title="Log Vitals &amp; Checkup">
-                    <i class="fas fa-heart-pulse mr-1"></i> Log Checkup
+                  <a href="/HealthLogs/public/ncd/visits/index.php?record_id=<?= (int)$row['id'] ?>" class="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 text-xs font-semibold transition" title="<?= can_manage_clinical_records() ? 'Log Vitals & Checkup' : 'View Checkup History' ?>">
+                    <i class="fas fa-heart-pulse mr-1"></i> <?= can_manage_clinical_records() ? 'Log Checkup' : 'Visits' ?>
                   </a>
-                  <a href="/HealthLogs/public/ncd/records/edit.php?id=<?= (int)$row['id'] ?>" class="inline-flex items-center p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition" title="Edit Profile">
-                    <i class="fas fa-pen-to-square"></i>
-                  </a>
+                  <?php if (can_manage_clinical_records()): ?>
+                    <a href="/HealthLogs/public/ncd/records/edit.php?id=<?= (int)$row['id'] ?>" class="inline-flex items-center p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition" title="Edit Profile">
+                      <i class="fas fa-pen-to-square"></i>
+                    </a>
+                  <?php endif; ?>
                 </div>
               </td>
             </tr>

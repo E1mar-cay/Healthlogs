@@ -5,10 +5,10 @@ require __DIR__ . '/../partials/bootstrap.php';
 // Handle CSV Export
 $export = ($_GET['export'] ?? '') === 'csv';
 
-// Filters
+// Filters (Default to 'all' years so newly added records and children are never hidden)
 $q = trim($_GET['q'] ?? '');
 $barangayFilter = trim($_GET['barangay'] ?? '');
-$yearFilter = trim($_GET['year'] ?? date('Y'));
+$yearFilter = trim($_GET['year'] ?? 'all');
 $statusFilter = trim($_GET['status'] ?? 'all'); // all, fic, cic, pending
 
 // Standard Puroks for Barangay Tangcul
@@ -74,10 +74,12 @@ if (!empty($childIds)) {
     $inPlaceholders = implode(',', array_fill(0, count($childIds), '?'));
     $recSql = "
         SELECT 
+            r.id,
             r.patient_id,
             r.dose_no,
             r.administered_on,
             r.administered_at,
+            r.lot_no,
             r.notes,
             v.name AS vaccine_name,
             v.code AS vaccine_code
@@ -127,6 +129,8 @@ function mapChildTclDoses(array $child, array $records): array
     $hasBcg = false;
     $pentaCount = 0;
     $opvCount = 0;
+    $ipvCount = 0;
+    $pcvCount = 0;
     $mmrCount = 0;
     $notes = [];
 
@@ -140,7 +144,7 @@ function mapChildTclDoses(array $child, array $records): array
         $adminDate = new DateTime($adminDateStr);
         $formattedDate = $adminDate->format('m-d-y');
 
-        $ageDaysAtAdmin = $birthDate ? $birthDate->diff($adminDate)->days : 0;
+        $ageDaysAtAdmin = $birthDate ? (int)$birthDate->diff($adminDate)->format('%r%a') : 0;
         $ageMonthsAtAdmin = $birthDate ? ($birthDate->diff($adminDate)->y * 12 + $birthDate->diff($adminDate)->m) : 0;
 
         // BCG
@@ -153,7 +157,7 @@ function mapChildTclDoses(array $child, array $records): array
             }
             $latestDateForFic = max($latestDateForFic ?? $adminDateStr, $adminDateStr);
         }
-        // Hepa B
+        // Hepa B (Birth dose)
         elseif (str_contains($vCode, 'HEPB') || str_contains($vName, 'HEPATITIS B') || str_contains($vName, 'HEPA B')) {
             if ($ageDaysAtAdmin <= 1) { // within 24h
                 $doses['hepab_24h'] = $formattedDate;
@@ -175,7 +179,7 @@ function mapChildTclDoses(array $child, array $records): array
             }
             $latestDateForFic = max($latestDateForFic ?? $adminDateStr, $adminDateStr);
         }
-        // OPV
+        // OPV (Oral Polio)
         elseif (str_contains($vCode, 'OPV') || str_contains($vName, 'ORAL POLIO')) {
             if ($doseNo === 1 && !$doses['opv_1']) {
                 $doses['opv_1'] = $formattedDate;
@@ -189,25 +193,31 @@ function mapChildTclDoses(array $child, array $records): array
             }
             $latestDateForFic = max($latestDateForFic ?? $adminDateStr, $adminDateStr);
         }
-        // IPV
+        // IPV (Inactivated Polio)
         elseif (str_contains($vCode, 'IPV') || str_contains($vName, 'INACTIVATED POLIO')) {
             if ($doseNo === 1 && !$doses['ipv_1']) {
                 $doses['ipv_1'] = $formattedDate;
+                $ipvCount++;
             } elseif ($doseNo >= 2 && !$doses['ipv_2']) {
                 $doses['ipv_2'] = $formattedDate;
+                $ipvCount++;
             }
+            $latestDateForFic = max($latestDateForFic ?? $adminDateStr, $adminDateStr);
         }
-        // PCV
+        // PCV (Pneumococcal Conjugate)
         elseif (str_contains($vCode, 'PCV') || str_contains($vName, 'PNEUMOCOCCAL')) {
             if ($doseNo === 1 && !$doses['pcv_1']) {
                 $doses['pcv_1'] = $formattedDate;
+                $pcvCount++;
             } elseif ($doseNo === 2 && !$doses['pcv_2']) {
                 $doses['pcv_2'] = $formattedDate;
+                $pcvCount++;
             } elseif ($doseNo >= 3 && !$doses['pcv_3']) {
                 $doses['pcv_3'] = $formattedDate;
+                $pcvCount++;
             }
         }
-        // MMR / MR
+        // MMR / MR (Measles, Mumps, Rubella)
         elseif (str_contains($vCode, 'MMR') || str_contains($vName, 'MEASLES') || str_contains($vCode, 'MR')) {
             if ($doseNo === 1 && !$doses['mmr_1']) {
                 $doses['mmr_1'] = $formattedDate;
@@ -239,13 +249,15 @@ function mapChildTclDoses(array $child, array $records): array
         }
     }
 
-    // Build Remarks
+    // Build Remarks / Next Action Guidance
     if ($doses['fic_date']) {
         $doses['remarks'] = 'FIC Completed (' . $doses['fic_date'] . ')';
     } elseif ($doses['cic_date']) {
         $doses['remarks'] = 'CIC Completed (' . $doses['cic_date'] . ')';
     } elseif (!$hasBcg) {
         $doses['remarks'] = 'Due for BCG';
+    } elseif (!$doses['hepab_24h'] && !$doses['hepab_more_24h']) {
+        $doses['remarks'] = 'Due for Hepa B';
     } elseif ($pentaCount < 3) {
         $doses['remarks'] = 'Due for Penta ' . ($pentaCount + 1);
     } elseif ($opvCount < 3) {
@@ -255,7 +267,7 @@ function mapChildTclDoses(array $child, array $records): array
     } elseif ($mmrCount < 2) {
         $doses['remarks'] = 'Due for MMR 2 (12 mos)';
     } else {
-        $doses['remarks'] = !empty($notes) ? implode('; ', array_slice($notes, 0, 2)) : 'On Schedule';
+        $doses['remarks'] = !empty($notes) ? implode('; ', array_slice($notes, 0, 2)) : 'Up to Date';
     }
 
     return $doses;
@@ -299,7 +311,7 @@ if ($export) {
     $out = fopen('php://output', 'w');
     
     fputcsv($out, ['PHILIPPINE DEPARTMENT OF HEALTH - TARGET CLIENT LIST FOR CHILD IMMUNIZATION (TCL-2)']);
-    fputcsv($out, ['Barangay Tangcul, City of Ilagan, Isabela', 'Purok: ' . ($barangayFilter ?: 'All Puroks'), 'Birth Year: ' . $yearFilter, 'Generated: ' . date('Y-m-d H:i:s')]);
+    fputcsv($out, ['Barangay Tangcul, City of Ilagan, Isabela', 'Purok: ' . ($barangayFilter ?: 'All Puroks'), 'Birth Year: ' . ($yearFilter === 'all' ? 'All Years' : $yearFilter), 'Generated: ' . date('Y-m-d H:i:s')]);
     fputcsv($out, []);
 
     // Header Row 1
@@ -368,7 +380,7 @@ require __DIR__ . '/../partials/header.php';
       color: #000 !important;
       font-size: 8.5px !important;
     }
-    .print\:hidden, #appSidebar, .app-topbar, header, nav {
+    .print\:hidden, #appSidebar, .app-topbar, header, nav, .action-column {
       display: none !important;
     }
     .app-main {
@@ -436,7 +448,7 @@ require __DIR__ . '/../partials/header.php';
   .tcl-date-val {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-weight: 700;
-    color: #1e293b;
+    color: #0f766e;
     font-size: 11px;
   }
 </style>
@@ -445,21 +457,23 @@ require __DIR__ . '/../partials/header.php';
 <div class="bg-white p-5 sm:p-6 rounded-xl shadow border border-slate-100 print:hidden">
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
-      <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
-        <i class="fas fa-syringe"></i> DOH EPI Standard Register
+      <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200">
+        <i class="fas fa-syringe"></i> DOH EPI Standard Register (TCL-2)
       </div>
       <h2 class="text-2xl font-bold text-slate-900 mt-2">Target Client List for Child Immunization - 2</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Official Department of Health (DOH) standard master register tracking child immunization doses from birth to 23 months for Barangay Tangcul.</p>
+      <p class="text-xs text-slate-500 mt-0.5">Official Department of Health master register tracking infant immunization doses from birth to 23 months for Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/immunization.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs">
-        <i class="fas fa-arrow-left"></i> Module Hub
-      </a>
+      <?php if (can_manage_clinical_records()): ?>
+        <button type="button" class="open-dose-modal inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold shadow transition" data-url="/HealthLogs/public/immunization/records/form_embed.php?return_to=tcl">
+          <i class="fas fa-plus-circle"></i> + Log Vaccine Dose
+        </button>
+      <?php endif; ?>
       <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
         <i class="fas fa-file-csv"></i> Export CSV
       </a>
       <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow transition">
-        <i class="fas fa-print"></i> Print TCL-2 Register (Landscape)
+        <i class="fas fa-print"></i> Print Register
       </button>
     </div>
   </div>
@@ -469,22 +483,22 @@ require __DIR__ . '/../partials/header.php';
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
       <div class="text-[11px] uppercase font-bold text-slate-500">Registered Cohort</div>
       <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['total_children']) ?></div>
-      <div class="text-[10px] text-slate-400">Total children in registry</div>
+      <div class="text-[10px] text-slate-400">Total children (0-5 yrs)</div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-      <div class="text-[11px] uppercase font-bold text-slate-500">Fully Immunized (FIC)</div>
-      <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['fic_count']) ?></div>
-      <div class="text-[10px] text-slate-500">Completed ≤ 12 months</div>
+    <div class="rounded-xl border border-slate-200 bg-emerald-50/60 p-3.5 border-emerald-200">
+      <div class="text-[11px] uppercase font-bold text-emerald-800">Fully Immunized (FIC)</div>
+      <div class="text-2xl font-extrabold text-emerald-700 mt-1"><?= number_format($stats['fic_count']) ?></div>
+      <div class="text-[10px] text-emerald-600 font-medium">Completed ≤ 12 months</div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-      <div class="text-[11px] uppercase font-bold text-slate-500">Completely Immunized (CIC)</div>
-      <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['cic_count']) ?></div>
-      <div class="text-[10px] text-slate-500">Completed 13-23 months</div>
+    <div class="rounded-xl border border-slate-200 bg-blue-50/60 p-3.5 border-blue-200">
+      <div class="text-[11px] uppercase font-bold text-blue-800">Completely Immunized (CIC)</div>
+      <div class="text-2xl font-extrabold text-blue-700 mt-1"><?= number_format($stats['cic_count']) ?></div>
+      <div class="text-[10px] text-blue-600 font-medium">Completed 13-23 months</div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-      <div class="text-[11px] uppercase font-bold text-slate-500">In Progress / Due</div>
-      <div class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format($stats['pending_count']) ?></div>
-      <div class="text-[10px] text-slate-500">Pending upcoming doses</div>
+    <div class="rounded-xl border border-slate-200 bg-amber-50/60 p-3.5 border-amber-200">
+      <div class="text-[11px] uppercase font-bold text-amber-800">In Progress / Due</div>
+      <div class="text-2xl font-extrabold text-amber-700 mt-1"><?= number_format($stats['pending_count']) ?></div>
+      <div class="text-[10px] text-amber-600 font-medium">Pending upcoming doses</div>
     </div>
   </div>
 </div>
@@ -492,16 +506,16 @@ require __DIR__ . '/../partials/header.php';
 <!-- Search & Filter Controls -->
 <form method="get" class="mt-4 bg-white p-4 rounded-xl shadow border border-slate-100 flex flex-col md:flex-row gap-3 print:hidden">
   <div class="flex-1">
-    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Search Child / Mother / Address</label>
+    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Search Child Name or Address</label>
     <div class="relative">
-      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search name or address..." class="w-full border rounded-lg pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-slate-400" />
+      <input type="text" name="q" value="<?= h($q) ?>" placeholder="Search child name..." class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-slate-400" />
       <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
     </div>
   </div>
 
   <div class="w-full md:w-48">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Purok (Brgy. Tangcul)</label>
-    <select name="barangay" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
+    <select name="barangay" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
       <option value="">All Puroks</option>
       <?php foreach ($puroks as $p): ?>
         <option value="<?= h($p) ?>" <?= $barangayFilter === $p ? 'selected' : '' ?>><?= h($p) ?></option>
@@ -511,21 +525,21 @@ require __DIR__ . '/../partials/header.php';
 
   <div class="w-full md:w-36">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Birth Year</label>
-    <select name="year" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
-      <option value="all" <?= $yearFilter === 'all' ? 'selected' : '' ?>>All Years</option>
+    <select name="year" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
+      <option value="all" <?= $yearFilter === 'all' ? 'selected' : '' ?>>All Cohorts (0-5y)</option>
       <?php for ($y = (int)date('Y'); $y >= (int)date('Y') - 5; $y--): ?>
         <option value="<?= $y ?>" <?= (string)$yearFilter === (string)$y ? 'selected' : '' ?>><?= $y ?></option>
       <?php endfor; ?>
     </select>
   </div>
 
-  <div class="w-full md:w-40">
+  <div class="w-full md:w-44">
     <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Immunization Status</label>
-    <select name="status" class="w-full border rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
-      <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>All Children</option>
-      <option value="fic" <?= $statusFilter === 'fic' ? 'selected' : '' ?>>FIC (Fully Immunized)</option>
-      <option value="cic" <?= $statusFilter === 'cic' ? 'selected' : '' ?>>CIC (Completely Immunized)</option>
-      <option value="pending" <?= $statusFilter === 'pending' ? 'selected' : '' ?>>Incomplete / Due</option>
+    <select name="status" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-slate-400 bg-white">
+      <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>All Statuses</option>
+      <option value="fic" <?= $statusFilter === 'fic' ? 'selected' : '' ?>>FIC (Fully Immunized ≤12m)</option>
+      <option value="cic" <?= $statusFilter === 'cic' ? 'selected' : '' ?>>CIC (Completely Immunized 13-23m)</option>
+      <option value="pending" <?= $statusFilter === 'pending' ? 'selected' : '' ?>>Pending / Due for Doses</option>
     </select>
   </div>
 
@@ -551,7 +565,7 @@ require __DIR__ . '/../partials/header.php';
       <span>&bull;</span>
       <span>Purok: <strong><?= $barangayFilter ?: 'All Puroks' ?></strong></span>
       <span>&bull;</span>
-      <span>Birth Year: <strong><?= $yearFilter === 'all' ? 'All Records' : $yearFilter ?></strong></span>
+      <span>Cohort: <strong><?= $yearFilter === 'all' ? 'All Active Children (0-5y)' : 'Born in ' . $yearFilter ?></strong></span>
       <span>&bull;</span>
       <span>Date Generated: <strong><?= date('F d, Y') ?></strong></span>
     </div>
@@ -559,7 +573,7 @@ require __DIR__ . '/../partials/header.php';
 
   <!-- Official DOH TCL-2 Format Table -->
   <div class="overflow-x-auto -mx-4 sm:mx-0">
-    <table class="w-full tcl-table min-w-[1280px]">
+    <table class="w-full tcl-table min-w-[1360px]">
       <thead>
         <!-- Master Header Row 1 -->
         <tr>
@@ -567,10 +581,10 @@ require __DIR__ . '/../partials/header.php';
           <th rowspan="3" class="min-w-[160px]">Child Full Name</th>
           <th rowspan="3" class="min-w-[75px]">Date of Birth<br><span class="text-[9px] font-normal text-slate-500">(mm/dd/yy)</span></th>
           <th rowspan="3" class="w-8">Sex</th>
-          <th rowspan="3" class="min-w-[120px]">Purok</th>
+          <th rowspan="3" class="min-w-[100px]">Purok</th>
           
-          <th colspan="17" class="bg-slate-100 text-slate-800 font-extrabold uppercase tracking-wide py-1.5">
-            Immunization <span class="text-[10px] font-normal lowercase">(mm/dd/yy)</span>
+          <th colspan="17" class="bg-teal-50 text-teal-900 font-extrabold uppercase tracking-wide py-1.5 border-teal-200">
+            Immunization Doses Administered <span class="text-[10px] font-normal lowercase">(mm-dd-yy)</span>
           </th>
           
           <th rowspan="3" class="w-16 bg-slate-100 text-slate-800">
@@ -579,7 +593,10 @@ require __DIR__ . '/../partials/header.php';
           <th rowspan="3" class="w-16 bg-slate-100 text-slate-800">
             CIC<br><span class="text-[9px] font-medium text-slate-500">(13-23 mos)</span>
           </th>
-          <th rowspan="3" class="min-w-[140px]">Remarks / Action Taken</th>
+          <th rowspan="3" class="min-w-[130px]">Status / Action</th>
+          <?php if (can_manage_clinical_records()): ?>
+            <th rowspan="3" class="w-20 print:hidden action-column">Quick Action</th>
+          <?php endif; ?>
         </tr>
 
         <!-- Master Header Row 2: Vaccine Categories -->
@@ -610,8 +627,8 @@ require __DIR__ . '/../partials/header.php';
           <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
           <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">3<sup>rd</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
           <!-- IPV -->
-          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
-          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">3 &frac12; mos</span></th>
+          <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">9 mos</span></th>
           <!-- PCV -->
           <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">1<sup>st</sup> dose<br><span class="text-[8px] font-normal">1 &frac12; mos</span></th>
           <th class="text-[9px] font-semibold py-1 px-1 bg-slate-50 text-slate-700 min-w-[50px]">2<sup>nd</sup> dose<br><span class="text-[8px] font-normal">2 &frac12; mos</span></th>
@@ -625,7 +642,7 @@ require __DIR__ . '/../partials/header.php';
       <tbody>
         <?php if (empty($tclRows)): ?>
           <tr>
-            <td colspan="25" class="py-8 text-center text-slate-400">No child immunization records matching the selected filters.</td>
+            <td colspan="<?= can_manage_clinical_records() ? '26' : '25' ?>" class="py-8 text-center text-slate-400">No child immunization records matching the selected filters.</td>
           </tr>
         <?php else: ?>
           <?php $idx = 1; foreach ($tclRows as $row): ?>
@@ -639,14 +656,14 @@ require __DIR__ . '/../partials/header.php';
             <tr>
               <td class="font-mono text-slate-500 font-semibold"><?= $idx++ ?></td>
               <td class="text-left font-bold text-slate-900 whitespace-nowrap">
-                <a href="/HealthLogs/public/patients/view.php?id=<?= $c['id'] ?>" class="hover:text-slate-700 hover:underline">
+                <a href="/HealthLogs/public/patients/form.php?id=<?= $c['id'] ?>" class="hover:text-teal-700 hover:underline">
                   <?= h($fullName) ?>
                 </a>
               </td>
               <td class="font-mono text-slate-700 whitespace-nowrap"><?= h($bDateFormatted) ?></td>
               <td class="font-semibold text-slate-600"><?= h($sexInitial) ?></td>
               <td class="text-left text-[10px] text-slate-600 whitespace-nowrap">
-                <?= h($c['barangay']) ?>
+                <?= h($c['barangay'] ?: 'Brgy. Tangcul') ?>
               </td>
 
               <!-- BCG -->
@@ -681,17 +698,40 @@ require __DIR__ . '/../partials/header.php';
               <td class="tcl-date-val"><?= $d['mmr_2'] ? h($d['mmr_2']) : '' ?></td>
 
               <!-- FIC / CIC -->
-              <td class="font-semibold text-slate-800 bg-slate-50/50">
+              <td class="font-bold text-emerald-800 bg-emerald-50/50">
                 <?= $d['fic_date'] ? h($d['fic_date']) : '' ?>
               </td>
-              <td class="font-semibold text-slate-800 bg-slate-50/50">
+              <td class="font-bold text-blue-800 bg-blue-50/50">
                 <?= $d['cic_date'] ? h($d['cic_date']) : '' ?>
               </td>
 
               <!-- Remarks -->
               <td class="text-left text-[10px] text-slate-700 whitespace-nowrap">
-                <?= h($d['remarks']) ?>
+                <?php if (str_starts_with($d['remarks'], 'FIC Completed')): ?>
+                  <span class="inline-flex items-center gap-1 font-bold text-emerald-700">
+                    <i class="fas fa-check-circle"></i> <?= h($d['remarks']) ?>
+                  </span>
+                <?php elseif (str_starts_with($d['remarks'], 'CIC Completed')): ?>
+                  <span class="inline-flex items-center gap-1 font-bold text-blue-700">
+                    <i class="fas fa-check-double"></i> <?= h($d['remarks']) ?>
+                  </span>
+                <?php elseif (str_starts_with($d['remarks'], 'Due for')): ?>
+                  <span class="inline-flex items-center gap-1 font-semibold text-amber-700">
+                    <i class="fas fa-clock"></i> <?= h($d['remarks']) ?>
+                  </span>
+                <?php else: ?>
+                  <span class="text-slate-600"><?= h($d['remarks']) ?></span>
+                <?php endif; ?>
               </td>
+
+              <!-- Action Column -->
+              <?php if (can_manage_clinical_records()): ?>
+                <td class="print:hidden action-column">
+                  <button type="button" class="open-dose-modal inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-[10px] border border-teal-200 shadow-2xs transition" data-url="/HealthLogs/public/immunization/records/form_embed.php?patient_id=<?= (int)$c['id'] ?>&return_to=tcl" title="Record dose for <?= h($fullName) ?>">
+                    <i class="fas fa-plus"></i> Dose
+                  </button>
+                </td>
+              <?php endif; ?>
             </tr>
           <?php endforeach; ?>
         <?php endif; ?>
@@ -699,5 +739,59 @@ require __DIR__ . '/../partials/header.php';
     </table>
   </div>
 </div>
+
+<!-- Modal Container for Logging Dose -->
+<div id="doseFormModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
+  <button type="button" class="absolute inset-0 w-full h-full bg-slate-900/50 backdrop-blur-xs border-0 cursor-default" aria-label="Close modal" id="doseFormModalBackdrop"></button>
+  <div class="relative z-10 mx-auto mt-6 sm:mt-10 max-w-4xl px-4">
+    <div class="rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-4rem)]">
+      <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100 bg-slate-50">
+        <div class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <i class="fas fa-syringe text-teal-600"></i> Record Child Immunization Dose
+        </div>
+        <button type="button" id="doseFormModalClose" class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+          ✕ Close
+        </button>
+      </div>
+      <iframe id="doseFormModalFrame" class="w-full min-h-[75vh] border-0 flex-1" title="Record Immunization Dose"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const modal = document.getElementById('doseFormModal');
+  const frame = document.getElementById('doseFormModalFrame');
+  const backdrop = document.getElementById('doseFormModalBackdrop');
+  const closeBtn = document.getElementById('doseFormModalClose');
+
+  function openModal(url) {
+    if (!modal || !frame || !url) return;
+    frame.src = url;
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeModal() {
+    if (!modal || !frame) return;
+    frame.src = 'about:blank';
+    modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  document.querySelectorAll('.open-dose-modal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openModal(btn.getAttribute('data-url') || '');
+    });
+  });
+
+  if (backdrop) backdrop.addEventListener('click', closeModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+})();
+</script>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>

@@ -43,6 +43,13 @@ try {
     // Update user status
     $updateStmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
     $updateStmt->execute([$newStatus, $userId]);
+
+    ActivityLogger::logUser('status_change', "Changed status of user '{$user['username']}' to {$newStatus}", $userId, [
+        'user_id' => $userId,
+        'username' => $user['username'],
+        'old_status' => $user['status'],
+        'new_status' => $newStatus
+    ]);
     
     if ($newStatus === 'active') {
         $_SESSION['success_message'] = "User '{$user['username']}' has been enabled successfully.";

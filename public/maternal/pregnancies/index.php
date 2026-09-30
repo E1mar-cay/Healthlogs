@@ -73,9 +73,15 @@ $sensitiveCount = (int)$pdo->query("
           <span><?= $sensitiveCount ?> Sensitive (6–7 Mos)</span>
         </a>
       <?php endif; ?>
-      <button type="button" id="pregnancyModalOpenNew" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
-        <i class="fas fa-plus mr-1 text-xs"></i> New Pregnancy
-      </button>
+      <?php if (can_manage_clinical_records()): ?>
+        <button type="button" id="pregnancyModalOpenNew" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
+          <i class="fas fa-plus mr-1 text-xs"></i> New Pregnancy
+        </button>
+      <?php else: ?>
+        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          <i class="fas fa-eye mr-1.5 text-slate-400"></i> Monitoring Mode
+        </span>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -174,20 +180,24 @@ $sensitiveCount = (int)$pdo->query("
                 <?php endif; ?>
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-right text-xs">
-                <div class="inline-flex items-center gap-2">
-                  <a href="/HealthLogs/public/maternal/prenatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="text-teal-700 hover:text-teal-900 font-semibold px-2 py-1 border border-teal-200 rounded hover:bg-teal-50" title="Record prenatal checkup">
-                    <i class="fas fa-stethoscope mr-1"></i>Visit
-                  </a>
-                  <button type="button" class="pregnancy-modal-edit text-blue-600 hover:text-blue-900 font-medium px-2 py-1 border border-blue-200 rounded hover:bg-blue-50" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php?id=<?= (int)$r['id'] ?>">
-                    Edit
-                  </button>
-                  <form method="post" action="/HealthLogs/public/maternal/pregnancies/delete.php" class="inline" data-confirm="Delete this record?" data-confirm-title="Delete pregnancy" data-confirm-cta="Yes, delete">
-                    <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                    <button class="text-red-600 hover:text-red-800 font-medium px-2 py-1 border border-red-200 rounded hover:bg-red-50">
-                      Delete
+                <?php if (can_manage_clinical_records()): ?>
+                  <div class="inline-flex items-center gap-2">
+                    <a href="/HealthLogs/public/maternal/prenatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="text-teal-700 hover:text-teal-900 font-semibold px-2 py-1 border border-teal-200 rounded hover:bg-teal-50" title="Record prenatal checkup">
+                      <i class="fas fa-stethoscope mr-1"></i>Visit
+                    </a>
+                    <button type="button" class="pregnancy-modal-edit text-blue-600 hover:text-blue-900 font-medium px-2 py-1 border border-blue-200 rounded hover:bg-blue-50" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php?id=<?= (int)$r['id'] ?>">
+                      Edit
                     </button>
-                  </form>
-                </div>
+                    <form method="post" action="/HealthLogs/public/maternal/pregnancies/delete.php" class="inline" data-confirm="Delete this record?" data-confirm-title="Delete pregnancy" data-confirm-cta="Yes, delete">
+                      <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
+                      <button class="text-red-600 hover:text-red-800 font-medium px-2 py-1 border border-red-200 rounded hover:bg-red-50">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                <?php else: ?>
+                  <span class="text-slate-400 font-normal">Read-Only</span>
+                <?php endif; ?>
               </td>
             </tr>
           <?php endforeach; ?>

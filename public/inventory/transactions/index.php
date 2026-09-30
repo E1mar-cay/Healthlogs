@@ -23,7 +23,13 @@ $stock = $pdo->query("SELECT m.id, m.name, COALESCE(SUM(t.quantity), 0) AS on_ha
 <?php display_flash_messages(); ?>
 <div class="flex items-center justify-between">
   <div class="text-lg font-semibold">Transactions</div>
-  <button type="button" id="transactionModalOpenNew" data-embed-url="/HealthLogs/public/inventory/transactions/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded">New Transaction</button>
+  <?php if (can_manage_clinical_records()): ?>
+    <button type="button" id="transactionModalOpenNew" data-embed-url="/HealthLogs/public/inventory/transactions/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded">New Transaction</button>
+  <?php else: ?>
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+      <i class="fas fa-eye mr-1.5 text-slate-400"></i> Monitoring Mode
+    </span>
+  <?php endif; ?>
 </div>
 <form method="get" class="mt-4 bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3">
   <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2" placeholder="Search medicine, type, or reference" />
@@ -49,7 +55,14 @@ $stock = $pdo->query("SELECT m.id, m.name, COALESCE(SUM(t.quantity), 0) AS on_ha
             <td class="px-4 py-2"><?= h($t['transaction_type']) ?></td>
             <td class="px-4 py-2 <?= $isOutgoing ? 'text-red-600' : 'text-emerald-700' ?>"><?= h($qtyLabel) ?></td>
             <td class="px-4 py-2"><?= h($t['transaction_datetime']) ?></td>
-            <td class="px-4 py-2"><button type="button" class="transaction-modal-edit text-blue-600" data-embed-url="/HealthLogs/public/inventory/transactions/form_embed.php?id=<?= (int)$t['id'] ?>">Edit</button><form method="post" action="/HealthLogs/public/inventory/transactions/delete.php" class="inline" data-confirm="Delete this transaction?" data-confirm-title="Delete transaction" data-confirm-cta="Yes, delete"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>" /><button class="text-red-600 ml-2">Delete</button></form></td>
+            <td class="px-4 py-2">
+              <?php if (can_manage_clinical_records()): ?>
+                <button type="button" class="transaction-modal-edit text-blue-600" data-embed-url="/HealthLogs/public/inventory/transactions/form_embed.php?id=<?= (int)$t['id'] ?>">Edit</button>
+                <form method="post" action="/HealthLogs/public/inventory/transactions/delete.php" class="inline" data-confirm="Delete this transaction?" data-confirm-title="Delete transaction" data-confirm-cta="Yes, delete"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>" /><button class="text-red-600 ml-2">Delete</button></form>
+              <?php else: ?>
+                <span class="text-xs text-slate-400">Read-Only</span>
+              <?php endif; ?>
+            </td>
           </tr>
         <?php endforeach; ?>
       <?php endif; ?>

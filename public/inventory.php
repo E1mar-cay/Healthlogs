@@ -81,13 +81,17 @@ try {
       <p class="text-sm text-slate-500 mt-1">Monitor medicines, batches, and stock movement in one place.</p>
     </div>
     <div class="flex items-center gap-2">
+      <a href="/HealthLogs/public/inventory/audit_trail.php" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-600 text-white hover:bg-teal-700 text-xs font-semibold shadow-xs transition">
+        <i class="fas fa-clipboard-check"></i>
+        <span>Audit Trail</span>
+      </a>
       <span class="app-chip">Stock Health</span>
       <span class="app-chip">Batch Tracking</span>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
   <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/inventory/medicines/index.php">
     <div class="flex items-center gap-3">
       <span class="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
@@ -135,6 +139,18 @@ try {
       </div>
     </div>
     <p class="text-sm text-slate-500 mt-4">Log incoming/outgoing movements and balances.</p>
+  </a>
+  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/inventory/audit_trail.php">
+    <div class="flex items-center gap-3">
+      <span class="h-12 w-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center">
+        <i class="fas fa-clipboard-check text-xl"></i>
+      </span>
+      <div>
+        <div class="text-sm text-slate-500">Audit Trail</div>
+        <div class="text-lg font-semibold">Inventory Ledger</div>
+      </div>
+    </div>
+    <p class="text-sm text-slate-500 mt-4">Track additions, issuances, returns & adjustments.</p>
   </a>
 </div>
 

@@ -406,6 +406,10 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
             <span class="nav-icon">FC</span>
             <span class="nav-text font-medium">Forecasting</span>
           </a>
+          <a class="nav-link <?= $isActive('/HealthLogs/public/activity_logs') ? 'active' : '' ?>" href="/HealthLogs/public/activity_logs.php" title="Activity Logs">
+            <span class="nav-icon">AL</span>
+            <span class="nav-text font-medium">Activity Logs</span>
+          </a>
         <?php endif; ?>
       </nav>
       <div class="px-3 pb-5 mt-auto pt-2 border-t border-slate-800/80">

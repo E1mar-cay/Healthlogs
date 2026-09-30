@@ -386,11 +386,6 @@ require __DIR__ . '/../partials/header.php';
           <th class="text-left px-4 py-3">Actions</th>
         </tr>
       </thead>
-          <th class="text-left px-4 py-3">Contact</th>
-          <th class="text-left px-4 py-3">Status</th>
-          <th class="text-left px-4 py-3">Actions</th>
-        </tr>
-      </thead>
       <tbody>
         <?php if (empty($patients)): ?>
           <tr><td class="px-4 py-4 text-center text-slate-500" colspan="9">No patients found.</td></tr>
@@ -437,12 +432,16 @@ require __DIR__ . '/../partials/header.php';
                 </span>
               </td>
               <td class="px-4 py-3">
-                <button type="button" class="patient-modal-edit text-blue-600 hover:text-blue-800 font-medium mr-3" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$p['id'] ?>">Quick edit</button>
-                <a class="text-slate-500 hover:text-slate-800 text-xs" href="/HealthLogs/public/patients/form.php?id=<?= (int)$p['id'] ?>" title="Open full-page editor">Full form</a>
-                <form method="post" action="/HealthLogs/public/patients/delete.php" class="inline ml-2" data-confirm="Delete this patient and all related records?" data-confirm-title="Delete patient">
-                  <input type="hidden" name="id" value="<?= (int)$p['id'] ?>" />
-                  <button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button>
-                </form>
+                <?php if (can_manage_clinical_records()): ?>
+                  <button type="button" class="patient-modal-edit text-blue-600 hover:text-blue-800 font-medium mr-3" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$p['id'] ?>">Quick edit</button>
+                  <a class="text-slate-500 hover:text-slate-800 text-xs" href="/HealthLogs/public/patients/form.php?id=<?= (int)$p['id'] ?>" title="Open full-page editor">Full form</a>
+                  <form method="post" action="/HealthLogs/public/patients/delete.php" class="inline ml-2" data-confirm="Delete this patient and all related records?" data-confirm-title="Delete patient">
+                    <input type="hidden" name="id" value="<?= (int)$p['id'] ?>" />
+                    <button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button>
+                  </form>
+                <?php else: ?>
+                  <span class="text-slate-400 text-xs font-medium"><i class="fas fa-eye mr-1"></i> Read-Only</span>
+                <?php endif; ?>
               </td>
             </tr>
           <?php endforeach; ?>

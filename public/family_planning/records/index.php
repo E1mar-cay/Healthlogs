@@ -84,9 +84,15 @@ function fp_format_method(?string $m): string {
       <a href="/HealthLogs/public/family_planning/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
         <i class="fas fa-table-list mr-1.5 text-xs"></i> View TCL
       </a>
-      <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow transition">
-        <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll Client
-      </button>
+      <?php if (can_manage_clinical_records()): ?>
+        <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow transition">
+          <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll Client
+        </button>
+      <?php else: ?>
+        <span class="inline-flex items-center px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          <i class="fas fa-eye mr-1.5 text-slate-400"></i> Monitoring Mode
+        </span>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -156,7 +162,9 @@ function fp_format_method(?string $m): string {
       <i class="fas fa-folder-open text-3xl text-slate-400 mb-2"></i>
       <p class="text-sm font-semibold text-slate-700">No Family Planning client records found.</p>
       <p class="text-xs text-slate-500 mt-1">Enroll your first client to begin tracking contraceptive services.</p>
-      <button type="button" onclick="openEnrollModal()" class="inline-block mt-3 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition">Enroll New Client</button>
+      <?php if (can_manage_clinical_records()): ?>
+        <button type="button" onclick="openEnrollModal()" class="inline-block mt-3 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition">Enroll New Client</button>
+      <?php endif; ?>
     </div>
   <?php else: ?>
     <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
@@ -207,15 +215,17 @@ function fp_format_method(?string $m): string {
                   <a href="/HealthLogs/public/family_planning/visits/index.php?record_id=<?= $c['id'] ?>" class="text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg font-semibold transition" title="Log visit / view visits">
                     <i class="fas fa-history mr-1"></i> Visits
                   </a>
-                  <a href="/HealthLogs/public/family_planning/records/edit.php?id=<?= $c['id'] ?>" class="text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg font-semibold transition" title="Edit Profile">
-                    <i class="fas fa-edit"></i>
-                  </a>
-                  <form method="post" action="/HealthLogs/public/family_planning/records/delete.php" class="inline" data-confirm="Delete this Family Planning client and all recorded visits? This cannot be undone." data-confirm-title="Delete Family Planning client" data-confirm-cta="Yes, delete">
-                    <input type="hidden" name="id" value="<?= (int)$c['id'] ?>" />
-                    <button type="submit" class="text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg font-semibold transition" title="Delete Client">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </form>
+                  <?php if (can_manage_clinical_records()): ?>
+                    <a href="/HealthLogs/public/family_planning/records/edit.php?id=<?= $c['id'] ?>" class="text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg font-semibold transition" title="Edit Profile">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <form method="post" action="/HealthLogs/public/family_planning/records/delete.php" class="inline" data-confirm="Delete this Family Planning client and all recorded visits? This cannot be undone." data-confirm-title="Delete Family Planning client" data-confirm-cta="Yes, delete">
+                      <input type="hidden" name="id" value="<?= (int)$c['id'] ?>" />
+                      <button type="submit" class="text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg font-semibold transition" title="Delete Client">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  <?php endif; ?>
                 </div>
               </td>
             </tr>

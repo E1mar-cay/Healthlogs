@@ -39,6 +39,12 @@ try {
     $updateStmt->execute([$userId]);
     
     $pdo->commit();
+
+    ActivityLogger::logUser('delete', "Deactivated user account: {$user['username']}", $userId, [
+        'user_id' => $userId,
+        'username' => $user['username'],
+        'action_type' => 'deactivate'
+    ]);
     
     $_SESSION['success_message'] = "User '{$user['username']}' has been disabled successfully.";
     

@@ -213,6 +213,16 @@ try {
             $conditionNotes,
         ]);
     }
+
+    $fullName = trim($data['first_name'] . ' ' . $data['last_name']);
+    ActivityLogger::logClinical('patients', $id > 0 ? 'update' : 'create', ($id > 0 ? "Updated patient profile: {$fullName}" : "Registered new patient: {$fullName}"), $patientId, [
+        'patient_id' => $patientId,
+        'full_name' => $fullName,
+        'sex' => $data['sex'],
+        'birth_date' => $data['birth_date'],
+        'barangay' => $data['barangay'],
+        'status' => $data['status']
+    ]);
     
     $pdo->commit();
     $_SESSION['success_message'] = 'Patient saved successfully!';

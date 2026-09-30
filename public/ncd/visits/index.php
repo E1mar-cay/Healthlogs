@@ -8,6 +8,12 @@ $errorMsg = '';
 
 // Handle Logging New Consultation Visit
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_ncd_visit') {
+    if (!can_manage_clinical_records()) {
+        http_response_code(403);
+        flash('error', 'Administrator accounts cannot log NCD visits or dispense medications. Only Barangay Health Workers have clinical write permissions.');
+        header('Location: /HealthLogs/public/ncd/visits/index.php' . ($recordId > 0 ? '?record_id=' . $recordId : ''));
+        exit;
+    }
     $ncd_record_id = (int)($_POST['ncd_record_id'] ?? 0);
     $visit_date = trim($_POST['visit_date'] ?? date('Y-m-d'));
     $bp_systolic = !empty($_POST['bp_systolic']) ? (int)$_POST['bp_systolic'] : null;
@@ -252,6 +258,7 @@ require __DIR__ . '/../../partials/header.php';
   </div>
 <?php endif; ?>
 
+<?php if (can_manage_clinical_records()): ?>
 <!-- 1. FULL WIDTH FORM ON TOP: Log Checkup & Vitals -->
 <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5 sm:p-7 mb-8">
   <div class="flex items-center gap-3 pb-4 mb-6 border-b border-slate-200">
@@ -424,6 +431,20 @@ require __DIR__ . '/../../partials/header.php';
     </div>
   </form>
 </div>
+<?php else: ?>
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-8 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+        <i class="fas fa-eye text-base"></i>
+      </div>
+      <div>
+        <div class="text-sm font-bold text-slate-800">Read-Only Monitoring Mode</div>
+        <div class="text-xs text-slate-500">NCD clinical checkups, vitals recording, and medication dispensing are restricted to Barangay Health Workers (BHW).</div>
+      </div>
+    </div>
+    <span class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">Admin Oversight</span>
+  </div>
+<?php endif; ?>
 
 <!-- 2. FULL WIDTH HISTORY SECTION BELOW: Consultation History & All Recent Logs -->
 <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5 sm:p-7">
