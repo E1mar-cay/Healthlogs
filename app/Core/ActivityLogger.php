@@ -332,4 +332,124 @@ class ActivityLogger
 
         return $inserted;
     }
+
+    /**
+     * Classifies a batch expiration date as 'Valid', 'Near Expiry', or 'Expired'.
+     */
+    public static function classifyExpiry(string $expiryDate): array
+    {
+        $today = strtotime(date('Y-m-d'));
+        $expTime = strtotime($expiryDate);
+        $daysRemaining = (int)round(($expTime - $today) / 86400);
+
+        if ($daysRemaining < 0) {
+            return [
+                'status' => 'Expired',
+                'key' => 'expired',
+                'days_remaining' => $daysRemaining,
+                'badge_class' => 'bg-rose-100 text-rose-800 border-rose-300',
+                'is_expired' => true,
+                'is_near_expiry' => false,
+                'is_valid' => false,
+                'can_issue' => false
+            ];
+        } elseif ($daysRemaining <= 60) {
+            return [
+                'status' => 'Near Expiry',
+                'key' => 'near_expiry',
+                'days_remaining' => $daysRemaining,
+                'badge_class' => 'bg-amber-100 text-amber-800 border-amber-300',
+                'is_expired' => false,
+                'is_near_expiry' => true,
+                'is_valid' => false,
+                'can_issue' => true
+            ];
+        } else {
+            return [
+                'status' => 'Valid',
+                'key' => 'valid',
+                'days_remaining' => $daysRemaining,
+                'badge_class' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                'is_expired' => false,
+                'is_near_expiry' => false,
+                'is_valid' => true,
+                'can_issue' => true
+            ];
+        }
+    }
+
+    /**
+     * Compute available non-expired stock for a medicine (for issuance & forecasting).
+     * Excludes any batches where expiry_date < CURDATE().
+     */
+    public static function getAvailableNonExpiredStock(int $medicineId): int
+    {
+        $db = self::getDb();
+        if (!$db || $medicineId <= 0) {
+            return 0;
+        }
+
+        $sql = "SELECT COALESCE(SUM(mt.quantity), 0)
+                FROM medicine_batches mb
+                JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                WHERE mb.medicine_id = ?
+                  AND mb.expiry_date >= CURDATE()";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$medicineId]);
+        return max(0, (int)$stmt->fetchColumn());
+    }
+
+    /**
+     * Fetch active near-expiry medicine batches for proactive alerts.
+     */
+    public static function getNearExpiryAlerts(int $daysThreshold = 60): array
+    {
+        $db = self::getDb();
+        if (!$db) {
+            return [];
+        }
+
+        $sql = "SELECT mb.id, mb.medicine_id, mb.batch_no, mb.expiry_date,
+                       m.name AS medicine_name, m.unit,
+                       COALESCE(SUM(mt.quantity), 0) AS on_hand,
+                       DATEDIFF(mb.expiry_date, CURDATE()) AS days_remaining
+                FROM medicine_batches mb
+                JOIN medicines m ON m.id = mb.medicine_id
+                LEFT JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                WHERE mb.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+                GROUP BY mb.id
+                HAVING on_hand > 0
+                ORDER BY mb.expiry_date ASC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$daysThreshold]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Fetch expired batches that still have stock (to warn staff for write-off/adjustment).
+     */
+    public static function getExpiredStockAlerts(): array
+    {
+        $db = self::getDb();
+        if (!$db) {
+            return [];
+        }
+
+        $sql = "SELECT mb.id, mb.medicine_id, mb.batch_no, mb.expiry_date,
+                       m.name AS medicine_name, m.unit,
+                       COALESCE(SUM(mt.quantity), 0) AS on_hand,
+                       DATEDIFF(CURDATE(), mb.expiry_date) AS days_expired
+                FROM medicine_batches mb
+                JOIN medicines m ON m.id = mb.medicine_id
+                LEFT JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                WHERE mb.expiry_date < CURDATE()
+                GROUP BY mb.id
+                HAVING on_hand > 0
+                ORDER BY mb.expiry_date ASC";
+
+        $stmt = $db->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
+

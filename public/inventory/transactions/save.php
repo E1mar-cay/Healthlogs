@@ -35,6 +35,37 @@ $batchInfo = $batch_id ? ActivityLogger::getBatchInfo($batch_id) : null;
 $batchNo = $batchInfo['batch_no'] ?? null;
 $oldStock = ActivityLogger::getMedicineStock($medicine_id);
 
+// ENFORCE: Prevent expired medicines from being issued/dispensed
+if ($type === 'dispensed') {
+    if ($batch_id) {
+        $batchCheckStmt = $pdo->prepare("SELECT batch_no, expiry_date FROM medicine_batches WHERE id = ?");
+        $batchCheckStmt->execute([$batch_id]);
+        $batchRow = $batchCheckStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($batchRow && strtotime($batchRow['expiry_date']) < strtotime(date('Y-m-d'))) {
+            $_SESSION['error_message'] = "Issuance Blocked: Batch '{$batchRow['batch_no']}' has expired on {$batchRow['expiry_date']}. Expired medicines are barred from issuance.";
+            $_SESSION['old_input'] = $_POST;
+            $redirectUrl = $isEdit
+                ? ($isEmbed ? "/HealthLogs/public/inventory/transactions/form_embed.php?id=$id" : "/HealthLogs/public/inventory/transactions/form.php?id=$id")
+                : ($isEmbed ? "/HealthLogs/public/inventory/transactions/form_embed.php" : "/HealthLogs/public/inventory/transactions/form.php");
+            header("Location: $redirectUrl");
+            exit;
+        }
+    }
+
+    // Verify non-expired available stock
+    $availableNonExpired = ActivityLogger::getAvailableNonExpiredStock($medicine_id);
+    if ($rawQuantity > $availableNonExpired) {
+        $_SESSION['error_message'] = "Issuance Blocked: Requested quantity ({$rawQuantity}) exceeds available non-expired stock ({$availableNonExpired}). Expired batches are excluded from available inventory.";
+        $_SESSION['old_input'] = $_POST;
+        $redirectUrl = $isEdit
+            ? ($isEmbed ? "/HealthLogs/public/inventory/transactions/form_embed.php?id=$id" : "/HealthLogs/public/inventory/transactions/form.php?id=$id")
+            : ($isEmbed ? "/HealthLogs/public/inventory/transactions/form_embed.php" : "/HealthLogs/public/inventory/transactions/form.php");
+        header("Location: $redirectUrl");
+        exit;
+    }
+}
+
 try {
     if ($id) {
         // Fetch old transaction for delta tracking

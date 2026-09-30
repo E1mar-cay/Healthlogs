@@ -8,12 +8,47 @@ $where = '';
 $params = [];
 if ($q !== '') { $where = "WHERE m.name LIKE ? OR m.generic_name LIKE ? OR m.unit LIKE ?"; $like = '%' . $q . '%'; $params = [$like, $like, $like]; }
 $havingSql = '';
-if ($stockFilter === 'low') { $havingSql = ' HAVING on_hand <= COALESCE(reorder_level, 0)'; }
-elseif ($stockFilter === 'available') { $havingSql = ' HAVING on_hand > COALESCE(reorder_level, 0)'; }
-$countStmt = $pdo->prepare("SELECT COUNT(*) FROM (SELECT m.id, m.reorder_level, COALESCE(SUM(mt.quantity), 0) AS on_hand FROM medicines m LEFT JOIN medicine_transactions mt ON mt.medicine_id = m.id $where GROUP BY m.id$havingSql) filtered_medicines");
+if ($stockFilter === 'low') { $havingSql = ' HAVING valid_stock <= COALESCE(reorder_level, 0)'; }
+elseif ($stockFilter === 'available') { $havingSql = ' HAVING valid_stock > COALESCE(reorder_level, 0)'; }
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM (
+    SELECT m.id, m.reorder_level,
+           COALESCE(MAX(stk.valid_stock), 0) AS valid_stock
+    FROM medicines m
+    LEFT JOIN (
+        SELECT mb.medicine_id, SUM(t.quantity) AS valid_stock
+        FROM medicine_batches mb
+        JOIN medicine_transactions t ON t.batch_id = mb.id
+        WHERE mb.expiry_date >= CURDATE()
+        GROUP BY mb.medicine_id
+    ) stk ON stk.medicine_id = m.id
+    $where
+    GROUP BY m.id$havingSql
+) filtered_medicines");
 $countStmt->execute($params);
 $paginator = paginate((int)$countStmt->fetchColumn(), 15);
-$stmt = $pdo->prepare("SELECT m.*, COALESCE(SUM(mt.quantity), 0) AS on_hand FROM medicines m LEFT JOIN medicine_transactions mt ON mt.medicine_id = m.id $where GROUP BY m.id$havingSql ORDER BY m.id DESC " . $paginator->getLimitSql());
+$stmt = $pdo->prepare("SELECT m.*,
+                              COALESCE(SUM(mt.quantity), 0) AS total_on_hand,
+                              COALESCE(MAX(stk.valid_stock), 0) AS valid_stock,
+                              COALESCE(MAX(exp_stk.expired_stock), 0) AS expired_stock
+                       FROM medicines m
+                       LEFT JOIN medicine_transactions mt ON mt.medicine_id = m.id
+                       LEFT JOIN (
+                           SELECT mb.medicine_id, SUM(t.quantity) AS valid_stock
+                           FROM medicine_batches mb
+                           JOIN medicine_transactions t ON t.batch_id = mb.id
+                           WHERE mb.expiry_date >= CURDATE()
+                           GROUP BY mb.medicine_id
+                       ) stk ON stk.medicine_id = m.id
+                       LEFT JOIN (
+                           SELECT mb.medicine_id, SUM(t.quantity) AS expired_stock
+                           FROM medicine_batches mb
+                           JOIN medicine_transactions t ON t.batch_id = mb.id
+                           WHERE mb.expiry_date < CURDATE()
+                           GROUP BY mb.medicine_id
+                       ) exp_stk ON exp_stk.medicine_id = m.id
+                       $where
+                       GROUP BY m.id$havingSql
+                       ORDER BY m.id DESC " . $paginator->getLimitSql());
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 ?>
@@ -32,23 +67,30 @@ $rows = $stmt->fetchAll();
   <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2" placeholder="Search medicine name, generic name, or unit" />
   <select name="stock" class="w-full md:w-56 border rounded px-3 py-2">
     <option value="">All stock levels</option>
-    <option value="low" <?= $stockFilter === 'low' ? 'selected' : '' ?>>Low stock</option>
+    <option value="low" <?= $stockFilter === 'low' ? 'selected' : '' ?>>Low valid stock</option>
     <option value="available" <?= $stockFilter === 'available' ? 'selected' : '' ?>>Above reorder level</option>
   </select>
   <div class="flex gap-2"><button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Search</button><a class="px-4 py-2 rounded border border-slate-300 text-slate-700" href="/HealthLogs/public/inventory/medicines/index.php">Clear</a></div>
 </form>
 <div class="mt-4 bg-white rounded shadow overflow-x-auto">
   <table class="min-w-full text-sm">
-    <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left px-4 py-2">Name</th><th class="text-left px-4 py-2">Generic</th><th class="text-left px-4 py-2">Unit</th><th class="text-left px-4 py-2">On Hand</th><th class="text-left px-4 py-2">Reorder Level</th><th class="text-left px-4 py-2">Actions</th></tr></thead>
+    <thead class="bg-slate-50 text-slate-600"><tr><th class="text-left px-4 py-2">Name</th><th class="text-left px-4 py-2">Generic</th><th class="text-left px-4 py-2">Unit</th><th class="text-left px-4 py-2">Available Stock (Valid)</th><th class="text-left px-4 py-2">Reorder Level</th><th class="text-left px-4 py-2">Actions</th></tr></thead>
     <tbody>
       <?php if (empty($rows)): ?><tr><td class="px-4 py-4" colspan="6">No medicines found.</td></tr><?php else: ?>
         <?php foreach ($rows as $m): ?>
-          <?php $isLowStock = (float)$m['on_hand'] <= (float)($m['reorder_level'] ?? 0); ?>
+          <?php $isLowStock = (float)$m['valid_stock'] <= (float)($m['reorder_level'] ?? 0); ?>
           <tr class="border-t">
             <td class="px-4 py-2"><?= h($m['name']) ?></td>
             <td class="px-4 py-2"><?= h($m['generic_name']) ?></td>
             <td class="px-4 py-2"><?= h($m['unit']) ?></td>
-            <td class="px-4 py-2 <?= $isLowStock ? 'text-red-600 font-semibold' : '' ?>"><?= h($m['on_hand']) ?></td>
+            <td class="px-4 py-2 <?= $isLowStock ? 'text-red-600 font-semibold' : '' ?>">
+              <div><?= number_format($m['valid_stock']) ?></div>
+              <?php if (!empty($m['expired_stock']) && $m['expired_stock'] > 0): ?>
+                <div class="text-[10px] text-rose-600 font-medium" title="Expired stock excluded from available inventory">
+                  <i class="fas fa-ban text-[9px]"></i> <?= number_format($m['expired_stock']) ?> exp. excluded
+                </div>
+              <?php endif; ?>
+            </td>
             <td class="px-4 py-2"><?= h($m['reorder_level']) ?></td>
             <td class="px-4 py-2">
               <?php if (can_manage_clinical_records()): ?>

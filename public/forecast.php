@@ -109,21 +109,30 @@ try {
     $medSql = "
         SELECT m.id, m.name, m.generic_name, m.unit, m.reorder_level,
                COALESCE(stk.current_stock, 0) AS current_stock,
+               COALESCE(exp_stk.expired_stock, 0) AS expired_stock,
                COALESCE(m1.qty, 0) AS m1_dispensed,
                COALESCE(m2.qty, 0) AS m2_dispensed,
                COALESCE(m3.qty, 0) AS m3_dispensed,
                COALESCE(tot.qty, 0) AS total_past_dispensed
         FROM medicines m
         LEFT JOIN (
-            SELECT medicine_id, 
-                   SUM(CASE 
-                        WHEN transaction_type = 'received' THEN quantity
-                        WHEN transaction_type IN ('dispensed', 'expired', 'returned') THEN -ABS(quantity)
-                        ELSE quantity 
-                   END) AS current_stock
-            FROM medicine_transactions
-            GROUP BY medicine_id
+            -- Strictly exclude expired batches from available inventory computation
+            SELECT mb.medicine_id, 
+                   SUM(mt.quantity) AS current_stock
+            FROM medicine_batches mb
+            JOIN medicine_transactions mt ON mt.batch_id = mb.id
+            WHERE mb.expiry_date >= CURDATE()
+            GROUP BY mb.medicine_id
         ) stk ON stk.medicine_id = m.id
+        LEFT JOIN (
+            -- Track expired batches for notification and transparency
+            SELECT mb.medicine_id, 
+                   SUM(mt.quantity) AS expired_stock
+            FROM medicine_batches mb
+            JOIN medicine_transactions mt ON mt.batch_id = mb.id
+            WHERE mb.expiry_date < CURDATE()
+            GROUP BY mb.medicine_id
+        ) exp_stk ON exp_stk.medicine_id = m.id
         LEFT JOIN (
             SELECT medicine_id, SUM(ABS(quantity)) AS qty
             FROM medicine_transactions
@@ -225,6 +234,7 @@ try {
             'generic_name' => $r['generic_name'],
             'unit' => $r['unit'],
             'current_stock' => $currentStock,
+            'expired_stock' => (float)$r['expired_stock'],
             'forecast_m1' => $forecast_m1,
             'forecast_m2' => $forecast_m2,
             'forecast_m3' => $forecast_m3,
@@ -595,7 +605,12 @@ if ($summary) {
                   <div class="text-[11px] text-slate-400"><?= h($m['generic_name']) ?> &bull; <?= h($m['unit']) ?></div>
                 </td>
                 <td class="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 whitespace-nowrap">
-                  <?= number_format($m['current_stock']) ?> <?= h($m['unit']) ?>
+                  <div><?= number_format($m['current_stock']) ?> <?= h($m['unit']) ?></div>
+                  <?php if (!empty($m['expired_stock']) && $m['expired_stock'] > 0): ?>
+                    <div class="text-[10px] text-rose-600 font-semibold" title="Excluded from available inventory and forecasting computation due to expiration">
+                      <i class="fas fa-ban text-[9px] mr-0.5"></i> <?= number_format($m['expired_stock']) ?> exp. excluded
+                    </div>
+                  <?php endif; ?>
                 </td>
                 <td class="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
                   <?= number_format($m['forecast_m1']) ?>

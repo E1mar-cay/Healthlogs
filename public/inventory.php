@@ -20,9 +20,15 @@ try {
         SELECT COUNT(*) FROM (
             SELECT m.id
             FROM medicines m
-            LEFT JOIN medicine_transactions t ON t.medicine_id = m.id
+            LEFT JOIN (
+                SELECT mb.medicine_id, SUM(mt.quantity) AS valid_qty
+                FROM medicine_batches mb
+                JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                WHERE mb.expiry_date >= CURDATE()
+                GROUP BY mb.medicine_id
+            ) stk ON stk.medicine_id = m.id
             GROUP BY m.id, m.reorder_level
-            HAVING COALESCE(SUM(t.quantity), 0) <= COALESCE(m.reorder_level, 0)
+            HAVING COALESCE(MAX(stk.valid_qty), 0) <= COALESCE(m.reorder_level, 0)
         ) low_stock_medicines
     ")->fetchColumn();
 
@@ -37,33 +43,57 @@ try {
     $stockAlerts = $pdo->query("
         SELECT * FROM (
             SELECT
-                'low_stock' AS alert_type,
-                m.name AS title,
-                CONCAT('On hand: ', COALESCE(SUM(t.quantity), 0), ' | Reorder level: ', COALESCE(m.reorder_level, 0)) AS details,
-                NULL AS alert_date,
-                COALESCE(SUM(t.quantity), 0) AS sort_value
-            FROM medicines m
-            LEFT JOIN medicine_transactions t ON t.medicine_id = m.id
-            GROUP BY m.id, m.name, m.reorder_level
-            HAVING COALESCE(SUM(t.quantity), 0) <= COALESCE(m.reorder_level, 0)
-
-            UNION ALL
-
-            SELECT
-                'expiring' AS alert_type,
+                'expired' AS alert_type,
                 CONCAT(m.name, ' / Batch ', b.batch_no) AS title,
-                CONCAT('Expires soon | On hand: ', COALESCE(SUM(t.quantity), 0)) AS details,
+                CONCAT('EXPIRED • Barred from issuance | On hand: ', COALESCE(SUM(t.quantity), 0)) AS details,
                 b.expiry_date AS alert_date,
+                0 AS sort_priority,
                 COALESCE(SUM(t.quantity), 0) AS sort_value
             FROM medicine_batches b
             JOIN medicines m ON m.id = b.medicine_id
             LEFT JOIN medicine_transactions t ON t.batch_id = b.id
-            WHERE b.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+            WHERE b.expiry_date < CURDATE()
             GROUP BY b.id, m.name, b.batch_no, b.expiry_date
             HAVING COALESCE(SUM(t.quantity), 0) > 0
+
+            UNION ALL
+
+            SELECT
+                'near_expiry' AS alert_type,
+                CONCAT(m.name, ' / Batch ', b.batch_no) AS title,
+                CONCAT('Approaching expiry (', DATEDIFF(b.expiry_date, CURDATE()), 'd left) | On hand: ', COALESCE(SUM(t.quantity), 0)) AS details,
+                b.expiry_date AS alert_date,
+                1 AS sort_priority,
+                COALESCE(SUM(t.quantity), 0) AS sort_value
+            FROM medicine_batches b
+            JOIN medicines m ON m.id = b.medicine_id
+            LEFT JOIN medicine_transactions t ON t.batch_id = b.id
+            WHERE b.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 60 DAY)
+            GROUP BY b.id, m.name, b.batch_no, b.expiry_date
+            HAVING COALESCE(SUM(t.quantity), 0) > 0
+
+            UNION ALL
+
+            SELECT
+                'low_stock' AS alert_type,
+                m.name AS title,
+                CONCAT('Valid on hand: ', COALESCE(MAX(stk.valid_qty), 0), ' | Reorder level: ', COALESCE(m.reorder_level, 0)) AS details,
+                NULL AS alert_date,
+                2 AS sort_priority,
+                COALESCE(MAX(stk.valid_qty), 0) AS sort_value
+            FROM medicines m
+            LEFT JOIN (
+                SELECT mb.medicine_id, SUM(mt.quantity) AS valid_qty
+                FROM medicine_batches mb
+                JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                WHERE mb.expiry_date >= CURDATE()
+                GROUP BY mb.medicine_id
+            ) stk ON stk.medicine_id = m.id
+            GROUP BY m.id, m.name, m.reorder_level
+            HAVING COALESCE(MAX(stk.valid_qty), 0) <= COALESCE(m.reorder_level, 0)
         ) alerts
         ORDER BY
-            CASE WHEN alert_type = 'low_stock' THEN 0 ELSE 1 END,
+            sort_priority ASC,
             COALESCE(alert_date, '9999-12-31') ASC,
             sort_value ASC
         LIMIT 6
@@ -217,8 +247,19 @@ try {
                 <div class="font-medium text-slate-900"><?= h($alert['title']) ?></div>
                 <div class="text-sm text-slate-500 mt-1"><?= h($alert['details']) ?></div>
               </div>
-              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium <?= $alert['alert_type'] === 'low_stock' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700' ?>">
-                <?= h($alert['alert_type'] === 'low_stock' ? 'Low Stock' : 'Expiring') ?>
+              <?php
+                $badgeStyle = 'bg-amber-100 text-amber-700';
+                $badgeText = 'Low Stock';
+                if ($alert['alert_type'] === 'expired') {
+                    $badgeStyle = 'bg-rose-100 text-rose-700 border border-rose-200 font-bold';
+                    $badgeText = 'Expired (Barred)';
+                } elseif ($alert['alert_type'] === 'near_expiry') {
+                    $badgeStyle = 'bg-amber-100 text-amber-800 border border-amber-200 font-bold';
+                    $badgeText = 'Near Expiry';
+                }
+              ?>
+              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs <?= $badgeStyle ?>">
+                <?= h($badgeText) ?>
               </span>
             </div>
             <?php if (!empty($alert['alert_date'])): ?>
