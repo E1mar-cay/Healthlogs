@@ -11,6 +11,8 @@ $isPrintMode = (isset($_GET['print']) && $_GET['print'] === '1');
 $whereParts = [];
 $params = [];
 
+$classificationFilter = trim($_GET['classification'] ?? '');
+
 if ($q !== '') {
     $whereParts[] = "(first_name LIKE ? OR last_name LIKE ? OR middle_name LIKE ? OR barangay LIKE ? OR COALESCE(contact_no, '') LIKE ?)";
     $like = '%' . $q . '%';
@@ -27,6 +29,14 @@ if (in_array($statusFilter, ['active', 'inactive', 'deceased'], true)) {
 if (in_array($sexFilter, ['male', 'female'], true)) {
     $whereParts[] = "sex = ?";
     $params[] = $sexFilter;
+}
+if ($classificationFilter === 'pwd') {
+    $whereParts[] = "is_pwd = 1";
+} elseif ($classificationFilter === '4ps') {
+    $whereParts[] = "is_4ps = 1";
+} elseif ($classificationFilter !== '' && array_key_exists($classificationFilter, PatientClassifier::getClassifications())) {
+    $whereParts[] = "classification = ?";
+    $params[] = $classificationFilter;
 }
 
 $whereSql = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
@@ -287,13 +297,15 @@ $stmt = $pdo->prepare("SELECT * FROM patients $whereSql ORDER BY id DESC " . $pa
 $stmt->execute($params);
 $patients = $stmt->fetchAll();
 
-// Calculate statistics
+// Calculate statistics including priority classifications
 $stats = $pdo->query("
     SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
-        SUM(CASE WHEN status = 'deceased' THEN 1 ELSE 0 END) as deceased
+        SUM(CASE WHEN classification IN ('infant', 'under_five') THEN 1 ELSE 0 END) as pediatrics,
+        SUM(CASE WHEN classification = 'pregnant' THEN 1 ELSE 0 END) as pregnant,
+        SUM(CASE WHEN classification = 'senior' THEN 1 ELSE 0 END) as seniors,
+        SUM(CASE WHEN is_pwd = 1 OR is_4ps = 1 THEN 1 ELSE 0 END) as priority_groups
     FROM patients
 ")->fetch();
 
@@ -305,142 +317,161 @@ require __DIR__ . '/../partials/header.php';
 <div class="bg-white p-6 rounded shadow">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500">Module</div>
-      <div class="text-2xl font-semibold">Patient Records</div>
-      <p class="text-sm text-slate-500 mt-1">Maintain core demographics, status, and purok coverage for Barangay Tangcul.</p>
+      <div class="text-sm text-slate-500 font-medium">Barangay Rural Health Unit</div>
+      <div class="text-2xl font-bold text-slate-900">Patient Records & Master Health Registry</div>
+      <p class="text-sm text-slate-500 mt-1">Comprehensive patient records, classifications (babies, pregnant mothers, seniors, PWD), and health history for Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span class="app-chip">Patient Intake</span>
+      <a href="/HealthLogs/public/appointments/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition shadow-xs">
+        <i class="fas fa-calendar-check text-xs"></i> Appointments
+      </a>
       <a target="_blank" href="/HealthLogs/public/patients/index.php?<?= h(http_build_query(array_merge($_GET, ['print' => '1']))) ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-medium border border-slate-300 transition shadow-xs">
         <i class="fas fa-print text-xs text-teal-700"></i> Print All Records
       </a>
-      <?php if (($_SESSION['role'] ?? '') !== 'admin'): ?>
-        <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition">New Patient</button>
-        <a href="/HealthLogs/public/patients/form.php" class="text-sm text-slate-600 underline underline-offset-2">Open full-page form</a>
+      <?php if (can_manage_clinical_records()): ?>
+        <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition text-sm font-semibold">
+          <i class="fas fa-user-plus mr-1"></i> New Patient
+        </button>
       <?php endif; ?>
     </div>
   </div>
 </div>
 
-<form method="get" class="mt-6 bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
-  <input name="q" value="<?= h($q) ?>" class="w-full border rounded px-3 py-2 md:col-span-2" placeholder="Search name, purok, or contact" />
-  <select name="purok" class="w-full border rounded px-3 py-2">
-    <option value="">All Puroks (Brgy. Tangcul)</option>
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Registry</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($stats['total']) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5"><?= number_format($stats['active']) ?> currently active</div>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-pink-200 bg-pink-50/30 shadow-xs">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-pink-700">Babies & Under-5</div>
+    <div class="text-2xl font-bold text-pink-900 mt-1"><?= number_format($stats['pediatrics']) ?></div>
+    <div class="text-xs text-pink-700 mt-0.5">EPI & Nutrition priority</div>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-rose-200 bg-rose-50/30 shadow-xs">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Pregnant Mothers</div>
+    <div class="text-2xl font-bold text-rose-900 mt-1"><?= number_format($stats['pregnant']) ?></div>
+    <div class="text-xs text-rose-700 mt-0.5">Maternal care program</div>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-purple-200 bg-purple-50/30 shadow-xs">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-purple-700">Senior Citizens</div>
+    <div class="text-2xl font-bold text-purple-900 mt-1"><?= number_format($stats['seniors']) ?></div>
+    <div class="text-xs text-purple-700 mt-0.5">60+ years (RA 9994)</div>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 shadow-xs col-span-2 md:col-span-1">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">PWD & 4Ps Priority</div>
+    <div class="text-2xl font-bold text-emerald-900 mt-1"><?= number_format($stats['priority_groups']) ?></div>
+    <div class="text-xs text-emerald-700 mt-0.5">Assisted households</div>
+  </div>
+</div>
+
+<form method="get" class="mt-6 bg-white rounded-xl shadow-xs border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+  <input name="q" value="<?= h($q) ?>" class="w-full border rounded-lg px-3 py-2 text-sm md:col-span-2" placeholder="Search patient name, purok, contact..." />
+  
+  <select name="classification" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+    <option value="">All Classifications</option>
+    <option value="infant" <?= $classificationFilter === 'infant' ? 'selected' : '' ?>>Babies / Infants (0-11m)</option>
+    <option value="under_five" <?= $classificationFilter === 'under_five' ? 'selected' : '' ?>>Under-5 Children (1-4y)</option>
+    <option value="school_age" <?= $classificationFilter === 'school_age' ? 'selected' : '' ?>>School-Aged (5-9y)</option>
+    <option value="adolescent" <?= $classificationFilter === 'adolescent' ? 'selected' : '' ?>>Adolescents (10-19y)</option>
+    <option value="pregnant" <?= $classificationFilter === 'pregnant' ? 'selected' : '' ?>>Pregnant Mothers</option>
+    <option value="postpartum" <?= $classificationFilter === 'postpartum' ? 'selected' : '' ?>>Postpartum / Lactating</option>
+    <option value="adult" <?= $classificationFilter === 'adult' ? 'selected' : '' ?>>Adults (20-59y)</option>
+    <option value="senior" <?= $classificationFilter === 'senior' ? 'selected' : '' ?>>Senior Citizens (60+y)</option>
+    <option value="pwd" <?= $classificationFilter === 'pwd' ? 'selected' : '' ?>>Persons with Disability (PWD)</option>
+    <option value="4ps" <?= $classificationFilter === '4ps' ? 'selected' : '' ?>>4Ps / Indigent Priority</option>
+  </select>
+
+  <select name="purok" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+    <option value="">All Puroks</option>
     <?php for ($i = 1; $i <= 7; $i++): $pVal = "Purok $i"; ?>
       <option value="<?= $pVal ?>" <?= $purokFilter === $pVal ? 'selected' : '' ?>><?= $pVal ?></option>
     <?php endfor; ?>
   </select>
-  <select name="status" class="w-full border rounded px-3 py-2">
+
+  <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All statuses</option>
     <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Active</option>
     <option value="inactive" <?= $statusFilter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
     <option value="deceased" <?= $statusFilter === 'deceased' ? 'selected' : '' ?>>Deceased</option>
   </select>
-  <select name="sex" class="w-full border rounded px-3 py-2">
-    <option value="">All sexes</option>
-    <option value="male" <?= $sexFilter === 'male' ? 'selected' : '' ?>>Male</option>
-    <option value="female" <?= $sexFilter === 'female' ? 'selected' : '' ?>>Female</option>
-  </select>
-  <div class="md:col-span-5 flex gap-2">
-    <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Apply Filter</button>
-    <a class="px-4 py-2 rounded border border-slate-300 text-slate-700" href="/HealthLogs/public/patients/index.php">Clear</a>
+
+  <div class="flex gap-2">
+    <button class="w-full bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition" type="submit">Filter</button>
+    <a class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition" href="/HealthLogs/public/patients/index.php">Reset</a>
   </div>
 </form>
 
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-xs uppercase tracking-widest text-slate-500">Total</div>
-    <div class="text-2xl font-semibold mt-2"><?= h($stats['total']) ?></div>
-    <div class="text-sm text-slate-500 mt-1">Registered patients</div>
-  </div>
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-xs uppercase tracking-widest text-slate-500">Active</div>
-    <div class="text-2xl font-semibold mt-2"><?= h($stats['active']) ?></div>
-    <div class="text-sm text-slate-500 mt-1">Currently active</div>
-  </div>
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-xs uppercase tracking-widest text-slate-500">Inactive</div>
-    <div class="text-2xl font-semibold mt-2"><?= h($stats['inactive']) ?></div>
-    <div class="text-sm text-slate-500 mt-1">Dormant or archived</div>
-  </div>
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-xs uppercase tracking-widest text-slate-500">Deceased</div>
-    <div class="text-2xl font-semibold mt-2"><?= h($stats['deceased']) ?></div>
-    <div class="text-sm text-slate-500 mt-1">Deceased records</div>
-  </div>
-</div>
-
-<div class="mt-6 bg-white rounded shadow">
+<div class="mt-6 bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600">
+      <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase">
         <tr>
-          <th class="text-left px-4 py-3">ID</th>
-          <th class="text-left px-4 py-3">Name</th>
+          <th class="text-left px-4 py-3">Patient Name</th>
+          <th class="text-left px-4 py-3">Classification & Age</th>
           <th class="text-left px-4 py-3">Sex</th>
-          <th class="text-left px-4 py-3">Birth Date</th>
-          <th class="text-left px-4 py-3">Age</th>
           <th class="text-left px-4 py-3">Purok</th>
           <th class="text-left px-4 py-3">Contact</th>
           <th class="text-left px-4 py-3">Status</th>
-          <th class="text-left px-4 py-3">Actions</th>
+          <th class="text-right px-4 py-3">Clinical Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody class="divide-y divide-slate-100">
         <?php if (empty($patients)): ?>
-          <tr><td class="px-4 py-4 text-center text-slate-500" colspan="9">No patients found.</td></tr>
+          <tr><td class="px-4 py-8 text-center text-slate-500" colspan="7">No patient records found matching criteria.</td></tr>
         <?php else: ?>
           <?php foreach ($patients as $p): ?>
             <?php
-              $birthDate = new DateTime($p['birth_date']);
-              $today = new DateTime();
-              $age = $birthDate->diff($today)->y;
-              
+              $exactAge = PatientClassifier::formatAge($p['birth_date']);
               $statusColors = [
-                'active' => 'bg-green-100 text-green-800',
-                'inactive' => 'bg-yellow-100 text-yellow-800',
-                'deceased' => 'bg-gray-100 text-gray-800'
+                'active' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                'inactive' => 'bg-amber-100 text-amber-800 border-amber-200',
+                'deceased' => 'bg-slate-100 text-slate-700 border-slate-200'
               ];
-              $statusColor = $statusColors[$p['status']] ?? 'bg-gray-100 text-gray-800';
+              $statusColor = $statusColors[$p['status']] ?? 'bg-slate-100 text-slate-800';
             ?>
-            <tr class="border-t hover:bg-slate-50">
-              <td class="px-4 py-3 font-medium"><?= h($p['id']) ?></td>
+            <tr class="hover:bg-slate-50/80 transition">
               <td class="px-4 py-3">
-                <div class="font-medium"><?= h($p['last_name'] . ', ' . $p['first_name']) ?></div>
-                <?php if ($p['middle_name']): ?>
-                  <div class="text-xs text-slate-500"><?= h($p['middle_name']) ?></div>
-                <?php endif; ?>
+                <a href="/HealthLogs/public/patients/view.php?id=<?= (int)$p['id'] ?>" class="font-bold text-slate-900 hover:text-teal-700 transition">
+                  <?= h($p['last_name'] . ', ' . $p['first_name'] . ($p['middle_name'] ? ' ' . $p['middle_name'] : '')) ?>
+                </a>
+                <div class="text-[11px] text-slate-400 font-mono">ID: #<?= (int)$p['id'] ?><?= !empty($p['philhealth_no']) ? ' • PH: ' . h($p['philhealth_no']) : '' ?></div>
               </td>
-              <td class="px-4 py-3 capitalize"><?= h($p['sex']) ?></td>
-              <td class="px-4 py-3"><?= h($p['birth_date']) ?></td>
-              <td class="px-4 py-3"><?= h($age) ?> yrs</td>
-              <td class="px-4 py-3"><?= h($p['barangay']) ?></td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <?= PatientClassifier::renderBadge($p['classification'] ?? 'adult', $p['birth_date']) ?>
+                  <?php if (!empty($p['is_4ps'])): ?>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">4Ps</span>
+                  <?php endif; ?>
+                  <?php if (!empty($p['is_pwd'])): ?>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">PWD</span>
+                  <?php endif; ?>
+                </div>
+              </td>
+              <td class="px-4 py-3 capitalize text-slate-700 font-medium"><?= h($p['sex']) ?></td>
+              <td class="px-4 py-3 text-slate-700"><?= h($p['barangay']) ?></td>
               <td class="px-4 py-3">
                 <?php if ($p['contact_no']): ?>
-                  <div class="text-xs"><?= h($p['contact_no']) ?></div>
-                <?php endif; ?>
-                <?php if ($p['email']): ?>
-                  <div class="text-xs text-slate-500"><?= h($p['email']) ?></div>
-                <?php endif; ?>
-                <?php if (!$p['contact_no'] && !$p['email']): ?>
-                  <span class="text-xs text-slate-400">No contact</span>
+                  <div class="text-xs font-medium text-slate-800"><?= h($p['contact_no']) ?></div>
+                <?php else: ?>
+                  <span class="text-xs text-slate-400">—</span>
                 <?php endif; ?>
               </td>
               <td class="px-4 py-3">
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?= $statusColor ?>">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border <?= $statusColor ?>">
                   <?= h(ucfirst($p['status'])) ?>
                 </span>
               </td>
-              <td class="px-4 py-3">
+              <td class="px-4 py-3 text-right whitespace-nowrap">
+                <a href="/HealthLogs/public/patients/view.php?id=<?= (int)$p['id'] ?>" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 font-semibold text-xs border border-teal-200 mr-2 transition">
+                  <i class="fas fa-file-medical text-[11px]"></i> View Chart
+                </a>
                 <?php if (can_manage_clinical_records()): ?>
-                  <button type="button" class="patient-modal-edit text-blue-600 hover:text-blue-800 font-medium mr-3" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$p['id'] ?>">Quick edit</button>
-                  <a class="text-slate-500 hover:text-slate-800 text-xs" href="/HealthLogs/public/patients/form.php?id=<?= (int)$p['id'] ?>" title="Open full-page editor">Full form</a>
-                  <form method="post" action="/HealthLogs/public/patients/delete.php" class="inline ml-2" data-confirm="Delete this patient and all related records?" data-confirm-title="Delete patient">
+                  <button type="button" class="patient-modal-edit text-blue-600 hover:text-blue-800 font-medium text-xs mr-2" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$p['id'] ?>">Edit</button>
+                  <form method="post" action="/HealthLogs/public/patients/delete.php" class="inline" data-confirm="Delete this patient and all related records?" data-confirm-title="Delete patient">
                     <input type="hidden" name="id" value="<?= (int)$p['id'] ?>" />
-                    <button class="text-red-600 hover:text-red-800 ml-3 font-medium">Delete</button>
+                    <button class="text-rose-600 hover:text-rose-800 font-medium text-xs">Delete</button>
                   </form>
-                <?php else: ?>
-                  <span class="text-slate-400 text-xs font-medium"><i class="fas fa-eye mr-1"></i> Read-Only</span>
                 <?php endif; ?>
               </td>
             </tr>

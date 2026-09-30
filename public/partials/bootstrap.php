@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../app/Core/Validator.php';
 require_once __DIR__ . '/../../app/Core/FlashHelper.php';
 require_once __DIR__ . '/../../app/Core/Paginator.php';
 require_once __DIR__ . '/../../app/Core/ActivityLogger.php';
+require_once __DIR__ . '/../../app/Core/PatientClassifier.php';
 ActivityLogger::init($pdo);
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -143,6 +144,14 @@ if (!function_exists('rbac_enforce')) {
             '/HealthLogs/public/reminders/save.php' => ['health_worker'],
             '/HealthLogs/public/reminders/delete.php' => ['health_worker'],
             '/HealthLogs/public/reminders/run_cron.php' => ['admin', 'health_worker'],
+
+            '/HealthLogs/public/appointments/form.php' => ['health_worker'],
+            '/HealthLogs/public/appointments/form_embed.php' => ['health_worker'],
+            '/HealthLogs/public/appointments/save.php' => ['health_worker'],
+            '/HealthLogs/public/appointments/reschedule.php' => ['health_worker'],
+            '/HealthLogs/public/appointments/complete.php' => ['health_worker'],
+            '/HealthLogs/public/appointments/cancel.php' => ['health_worker'],
+            '/HealthLogs/public/appointments/delete.php' => ['health_worker'],
         ];
 
         foreach ($rules as $prefix => $allowed) {

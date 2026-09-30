@@ -124,6 +124,24 @@ if ($household_id !== null) {
     }
 }
 
+$classificationRaw = field('classification');
+$is_pwd = !empty($_POST['is_pwd']) ? 1 : 0;
+$is_4ps = !empty($_POST['is_4ps']) ? 1 : 0;
+$civil_status = field('civil_status', 'single');
+$philhealth_category = field('philhealth_category', 'non_member');
+$emergency_contact_name = sanitize_string(field('emergency_contact_name'));
+$emergency_contact_phone = sanitize_phone(field('emergency_contact_phone'));
+
+if (empty($classificationRaw) || !array_key_exists($classificationRaw, PatientClassifier::getClassifications())) {
+    $classificationRaw = PatientClassifier::detectClassification(
+        field('birth_date', '2000-01-01'),
+        field('sex', 'male'),
+        false,
+        (bool)$is_pwd,
+        (bool)$is_4ps
+    );
+}
+
 $data = [
     'household_id' => $household_id,
     'philhealth_no' => $philhealth_no,
@@ -140,6 +158,13 @@ $data = [
     'address_line' => $address_line,
     'barangay' => $barangay,
     'status' => field('status', 'active'),
+    'classification' => $classificationRaw,
+    'is_pwd' => $is_pwd,
+    'is_4ps' => $is_4ps,
+    'civil_status' => in_array($civil_status, ['single', 'married', 'widowed', 'separated', 'child']) ? $civil_status : 'single',
+    'philhealth_category' => in_array($philhealth_category, ['indigent_4ps', 'formal_economy', 'informal_economy', 'senior_citizen', 'lifetime_member', 'non_member']) ? $philhealth_category : 'non_member',
+    'emergency_contact_name' => $emergency_contact_name,
+    'emergency_contact_phone' => $emergency_contact_phone,
 ];
 
 try {
@@ -152,7 +177,9 @@ try {
                     household_id = ?, philhealth_no = ?, national_id = ?,
                     first_name = ?, middle_name = ?, last_name = ?, suffix = ?,
                     sex = ?, birth_date = ?, blood_type = ?,
-                    contact_no = ?, email = ?, address_line = ?, barangay = ?, status = ?
+                    contact_no = ?, email = ?, address_line = ?, barangay = ?, status = ?,
+                    classification = ?, is_pwd = ?, is_4ps = ?, civil_status = ?,
+                    philhealth_category = ?, emergency_contact_name = ?, emergency_contact_phone = ?
                 WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -171,6 +198,13 @@ try {
             $data['address_line'],
             $data['barangay'],
             $data['status'],
+            $data['classification'],
+            $data['is_pwd'],
+            $data['is_4ps'],
+            $data['civil_status'],
+            $data['philhealth_category'],
+            $data['emergency_contact_name'],
+            $data['emergency_contact_phone'],
             $id,
         ]);
     } else {
@@ -178,8 +212,10 @@ try {
                     household_id, philhealth_no, national_id,
                     first_name, middle_name, last_name, suffix,
                     sex, birth_date, blood_type,
-                    contact_no, email, address_line, barangay, status
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    contact_no, email, address_line, barangay, status,
+                    classification, is_pwd, is_4ps, civil_status,
+                    philhealth_category, emergency_contact_name, emergency_contact_phone
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             $data['household_id'],
@@ -197,6 +233,13 @@ try {
             $data['address_line'],
             $data['barangay'],
             $data['status'],
+            $data['classification'],
+            $data['is_pwd'],
+            $data['is_4ps'],
+            $data['civil_status'],
+            $data['philhealth_category'],
+            $data['emergency_contact_name'],
+            $data['emergency_contact_phone'],
         ]);
         $patientId = (int)$pdo->lastInsertId();
     }

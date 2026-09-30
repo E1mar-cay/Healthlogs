@@ -61,6 +61,13 @@ CREATE TABLE patients (
   city_municipality VARCHAR(120) NOT NULL,
   province VARCHAR(120) NOT NULL,
   status ENUM('active','inactive','deceased') NOT NULL DEFAULT 'active',
+  classification ENUM('infant','under_five','school_age','adolescent','pregnant','postpartum','adult','senior','pwd','indigent_4ps') NOT NULL DEFAULT 'adult',
+  is_pwd TINYINT(1) NOT NULL DEFAULT 0,
+  is_4ps TINYINT(1) NOT NULL DEFAULT 0,
+  civil_status ENUM('single', 'married', 'widowed', 'separated', 'child') NOT NULL DEFAULT 'single',
+  philhealth_category ENUM('indigent_4ps', 'formal_economy', 'informal_economy', 'senior_citizen', 'lifetime_member', 'non_member') NOT NULL DEFAULT 'non_member',
+  emergency_contact_name VARCHAR(120) NULL,
+  emergency_contact_phone VARCHAR(30) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_patients_household FOREIGN KEY (household_id) REFERENCES households(id)
@@ -250,6 +257,59 @@ CREATE TABLE reminders (
   CONSTRAINT fk_reminders_patient FOREIGN KEY (patient_id) REFERENCES patients(id),
   INDEX idx_reminders_due (due_date),
   INDEX idx_reminders_status (status)
+) ENGINE=InnoDB;
+
+-- Health Services Catalog (Barangay Rural Health Unit Services)
+CREATE TABLE health_services (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  service_code VARCHAR(50) NOT NULL UNIQUE,
+  service_name VARCHAR(120) NOT NULL,
+  category ENUM(
+    'immunization',
+    'maternal',
+    'family_planning',
+    'ncd',
+    'child_health',
+    'general_consultation',
+    'infectious_disease',
+    'wellness'
+  ) NOT NULL,
+  description TEXT NULL,
+  target_classification VARCHAR(120) NULL DEFAULT 'all',
+  estimated_duration_minutes INT UNSIGNED DEFAULT 15,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_hs_category (category),
+  INDEX idx_hs_active (is_active)
+) ENGINE=InnoDB;
+
+-- Patient Appointments
+CREATE TABLE patient_appointments (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  appointment_code VARCHAR(40) NOT NULL UNIQUE,
+  patient_id BIGINT UNSIGNED NOT NULL,
+  service_id INT UNSIGNED NOT NULL,
+  appointment_date DATE NOT NULL,
+  appointment_time TIME NOT NULL DEFAULT '08:30:00',
+  status ENUM('scheduled', 'rescheduled', 'completed', 'cancelled', 'missed') NOT NULL DEFAULT 'scheduled',
+  reason VARCHAR(255) NULL,
+  reschedule_reason VARCHAR(255) NULL,
+  previous_appointment_date DATE NULL,
+  cancellation_reason VARCHAR(255) NULL,
+  completed_at DATETIME NULL,
+  clinical_notes TEXT NULL,
+  assigned_personnel VARCHAR(120) NULL DEFAULT 'Barangay Health Worker',
+  created_by INT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_apt_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+  CONSTRAINT fk_apt_service FOREIGN KEY (service_id) REFERENCES health_services(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_apt_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_apt_date (appointment_date),
+  INDEX idx_apt_status (status),
+  INDEX idx_apt_patient (patient_id),
+  INDEX idx_apt_service (service_id),
+  INDEX idx_apt_date_status (appointment_date, status)
 ) ENGINE=InnoDB;
 
 -- Generic time-series aggregates (optional, for faster ARIMA)

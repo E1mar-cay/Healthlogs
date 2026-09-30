@@ -187,6 +187,18 @@ class ActivityLogger
     }
 
     /**
+     * Log patient appointment actions (schedule, reschedule, complete, cancel).
+     */
+    public static function logAppointment(string $action, string $description, ?string $appointmentId = null, array $details = []): ?int
+    {
+        return self::log('appointments', $action, $description, [
+            'entity_type' => 'patient_appointments',
+            'entity_id' => $appointmentId,
+            'details' => $details
+        ]);
+    }
+
+    /**
      * Helper to compute current stock on-hand for a given medicine.
      */
     public static function getMedicineStock(int $medicineId): int
