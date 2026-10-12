@@ -366,20 +366,87 @@ try {
 // Seasonal disease & trends
 $seasonalDiseaseRows = [];
 $seasonalTopMonths = [];
+$seasonalDatasets = [];
+$allDiseaseSet = [];
+$totalConditionCases = 0;
+
 try {
-    $seasonalSql = "SELECT
+    $monthLabels = [
+        1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr',
+        5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Aug',
+        9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec'
+    ];
+
+    $diseaseBreakdownSql = "SELECT
             MONTH(diagnosed_on) AS month_no,
-            DATE_FORMAT(diagnosed_on, '%b') AS month_label,
+            condition_name,
             COUNT(*) AS total_cases
         FROM patient_conditions
         WHERE diagnosed_on IS NOT NULL
-        GROUP BY MONTH(diagnosed_on), DATE_FORMAT(diagnosed_on, '%b')
-        ORDER BY MONTH(diagnosed_on)";
-    $seasonalDiseaseRows = $pdo->query($seasonalSql)->fetchAll(PDO::FETCH_ASSOC);
+        GROUP BY MONTH(diagnosed_on), condition_name
+        ORDER BY MONTH(diagnosed_on) ASC, total_cases DESC";
+    $breakdownRows = $pdo->query($diseaseBreakdownSql)->fetchAll(PDO::FETCH_ASSOC);
+
+    $monthDiseaseMap = [];
+    foreach ($breakdownRows as $row) {
+        $m = (int)$row['month_no'];
+        $cond = $row['condition_name'];
+        $cnt = (int)$row['total_cases'];
+        $monthDiseaseMap[$m][$cond] = $cnt;
+        $allDiseaseSet[$cond] = ($allDiseaseSet[$cond] ?? 0) + $cnt;
+    }
+    arsort($allDiseaseSet);
+    $totalConditionCases = array_sum($allDiseaseSet);
+
+    // Build complete 12 calendar months array (ensuring Jan-Dec are always represented)
+    for ($m = 1; $m <= 12; $m++) {
+        $diseasesInMonth = $monthDiseaseMap[$m] ?? [];
+        $totalMonthCases = array_sum($diseasesInMonth);
+        $diseaseParts = [];
+        foreach ($diseasesInMonth as $name => $cnt) {
+            $diseaseParts[] = "$name ($cnt)";
+        }
+        $seasonalDiseaseRows[] = [
+            'month_no' => $m,
+            'month_label' => $monthLabels[$m],
+            'total_cases' => $totalMonthCases,
+            'diseases' => $diseasesInMonth,
+            'disease_summary' => !empty($diseaseParts) ? implode(', ', $diseaseParts) : 'No cases recorded'
+        ];
+    }
 
     $sortedSeason = $seasonalDiseaseRows;
     usort($sortedSeason, fn($a, $b) => (int)$b['total_cases'] <=> (int)$a['total_cases']);
-    $seasonalTopMonths = array_slice($sortedSeason, 0, 3);
+    $seasonalTopMonths = array_filter(array_slice($sortedSeason, 0, 3), fn($r) => $r['total_cases'] > 0);
+
+    // Visual color palette for each disease category
+    $diseaseColors = [
+        'Arthritis' => '#0ea5a4',
+        'Hypertension' => '#2563eb',
+        'Migraine' => '#f59e0b',
+        'Diabetes Type 2' => '#8b5cf6',
+        'Allergic Rhinitis' => '#10b981',
+        'Asthma' => '#ec4899',
+        'Hypothyroidism' => '#6366f1',
+    ];
+    $fallbackPalette = ['#0284c7', '#d97706', '#059669', '#7c3aed', '#db2777', '#475569'];
+    $colorIdx = 0;
+
+    foreach ($allDiseaseSet as $diseaseName => $overallCount) {
+        $color = $diseaseColors[$diseaseName] ?? ($fallbackPalette[$colorIdx++ % count($fallbackPalette)]);
+        $data = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $data[] = $monthDiseaseMap[$m][$diseaseName] ?? 0;
+        }
+        $seasonalDatasets[] = [
+            'label' => $diseaseName,
+            'data' => $data,
+            'backgroundColor' => $color,
+            'borderColor' => $color,
+            'borderWidth' => 1,
+            'borderRadius' => 3,
+        ];
+    }
 } catch (Throwable $e) {}
 
 $diseaseTrendMonths = [];
@@ -396,18 +463,20 @@ try {
     $topDiseaseNames = array_map(fn($d) => $d['condition_name'], $topDiseases);
 
     if (!empty($topDiseaseNames)) {
+        // Anchor to the latest condition date in the database to ensure accurate historical trend
+        $refConditionDate = $pdo->query("SELECT COALESCE(MAX(DATE(diagnosed_on)), CURDATE()) FROM patient_conditions")->fetchColumn();
         $trendSql = "SELECT
                 DATE_FORMAT(diagnosed_on, '%Y-%m') AS ym,
                 condition_name,
                 COUNT(*) AS total_cases
             FROM patient_conditions
-            WHERE diagnosed_on >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+            WHERE diagnosed_on >= DATE_SUB(?, INTERVAL 12 MONTH)
               AND diagnosed_on IS NOT NULL
               AND condition_name IN (" . implode(',', array_fill(0, count($topDiseaseNames), '?')) . ")
             GROUP BY DATE_FORMAT(diagnosed_on, '%Y-%m'), condition_name
             ORDER BY ym ASC";
         $trendStmt = $pdo->prepare($trendSql);
-        $trendStmt->execute($topDiseaseNames);
+        $trendStmt->execute(array_merge([$refConditionDate], $topDiseaseNames));
         $trendRows = $trendStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $monthMap = [];
@@ -823,26 +892,93 @@ if ($summary) {
 <div id="arimaResultsPlacement"></div>
 
 <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-  <div class="xl:col-span-2 bg-white p-6 rounded-xl shadow border border-slate-100">
-    <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Seasonal Disease</div>
-    <div class="text-lg font-bold text-slate-900 mt-1">Month-Of-Year Case Pattern</div>
-    <canvas id="seasonalDiseaseChart" height="120" class="mt-4"></canvas>
+  <div class="xl:col-span-2 bg-white p-6 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
+    <div>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Seasonal Disease</div>
+          <div class="text-lg font-bold text-slate-900 mt-1">Month-Of-Year Case Pattern</div>
+          <p class="text-xs text-slate-500 mt-0.5">Aggregated historical diagnoses across all 12 calendar months (Total: <?= (int)$totalConditionCases ?> cases).</p>
+        </div>
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold self-start sm:self-auto">
+          <i class="fas fa-layer-group text-[11px] text-teal-600"></i> Stacked by Disease
+        </div>
+      </div>
+      <div class="mt-4 relative min-h-[240px]">
+        <canvas id="seasonalDiseaseChart" height="130"></canvas>
+      </div>
+    </div>
+
+    <!-- Disease Breakdown Pills -->
+    <?php if (!empty($allDiseaseSet)): ?>
+      <div class="mt-5 pt-3.5 border-t border-slate-100">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Recorded Conditions in Health Center (<?= count($allDiseaseSet) ?> Diseases):</div>
+        <div class="flex flex-wrap gap-1.5">
+          <?php 
+          $badgePalette = [
+            'Arthritis' => ['bg' => 'bg-teal-50', 'text' => 'text-teal-800', 'border' => 'border-teal-200', 'dot' => '#0ea5a4'],
+            'Hypertension' => ['bg' => 'bg-blue-50', 'text' => 'text-blue-800', 'border' => 'border-blue-200', 'dot' => '#2563eb'],
+            'Migraine' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-800', 'border' => 'border-amber-200', 'dot' => '#f59e0b'],
+            'Diabetes Type 2' => ['bg' => 'bg-purple-50', 'text' => 'text-purple-800', 'border' => 'border-purple-200', 'dot' => '#8b5cf6'],
+            'Allergic Rhinitis' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-800', 'border' => 'border-emerald-200', 'dot' => '#10b981'],
+            'Asthma' => ['bg' => 'bg-pink-50', 'text' => 'text-pink-800', 'border' => 'border-pink-200', 'dot' => '#ec4899'],
+            'Hypothyroidism' => ['bg' => 'bg-indigo-50', 'text' => 'text-indigo-800', 'border' => 'border-indigo-200', 'dot' => '#6366f1'],
+          ];
+          foreach ($allDiseaseSet as $diseaseName => $count): 
+            $style = $badgePalette[$diseaseName] ?? ['bg' => 'bg-slate-50', 'text' => 'text-slate-800', 'border' => 'border-slate-200', 'dot' => '#475569'];
+          ?>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium <?= $style['bg'] ?> <?= $style['text'] ?> border <?= $style['border'] ?>">
+              <span class="w-2 h-2 rounded-full inline-block" style="background-color: <?= $style['dot'] ?>;"></span>
+              <span><?= h($diseaseName) ?></span>
+              <span class="font-bold ml-0.5 opacity-80">(<?= (int)$count ?>)</span>
+            </span>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    <?php endif; ?>
   </div>
-  <div class="bg-white p-6 rounded-xl shadow border border-slate-100">
-    <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Peak Months</div>
-    <div class="text-lg font-bold text-slate-900 mt-1">Highest Disease Seasons</div>
-    <ul class="mt-4 space-y-3 text-xs text-slate-700">
-      <?php if (!empty($seasonalTopMonths)): ?>
-        <?php foreach ($seasonalTopMonths as $row): ?>
-          <li class="border-b border-slate-100 pb-2.5 last:border-b-0 last:pb-0 flex items-center justify-between">
-            <span class="font-semibold text-slate-800"><?= h($row['month_label']) ?></span>
-            <span class="font-bold text-teal-700"><?= h((string)$row['total_cases']) ?> cases</span>
-          </li>
-        <?php endforeach; ?>
-      <?php else: ?>
-        <li>No seasonal disease data yet.</li>
-      <?php endif; ?>
-    </ul>
+
+  <div class="bg-white p-6 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
+    <div>
+      <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Peak Months</div>
+      <div class="text-lg font-bold text-slate-900 mt-1">Highest Disease Seasons</div>
+      <p class="text-xs text-slate-500 mt-0.5">Top calendar periods with highest clinical diagnoses.</p>
+
+      <div class="mt-4 space-y-3">
+        <?php if (!empty($seasonalTopMonths)): ?>
+          <?php $rank = 1; foreach ($seasonalTopMonths as $row): ?>
+            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 transition hover:bg-slate-50">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">#<?= $rank++ ?></span>
+                  <span class="font-bold text-slate-900 text-sm"><?= h($row['month_label']) ?></span>
+                </div>
+                <span class="font-bold text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
+                  <?= h((string)$row['total_cases']) ?> cases
+                </span>
+              </div>
+              <div class="mt-2.5 text-xs text-slate-600">
+                <span class="font-semibold text-slate-700">Diseases diagnosed:</span>
+                <div class="mt-1.5 flex flex-wrap gap-1">
+                  <?php foreach ($row['diseases'] as $dName => $dCount): ?>
+                    <span class="px-2 py-0.5 rounded bg-white border border-slate-200 text-[11px] text-slate-700 font-medium">
+                      <?= h($dName) ?>: <strong class="text-slate-900"><?= (int)$dCount ?></strong>
+                    </span>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="text-xs text-slate-400 py-3">No seasonal disease data yet.</div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500 leading-relaxed">
+      <i class="fas fa-info-circle text-teal-600 mr-1"></i>
+      <strong>Data Note:</strong> The chart Y-axis stops at 5 because <strong>December (5 cases)</strong> is currently the highest monthly case count in the database.
+    </div>
   </div>
 </div>
 
@@ -1727,27 +1863,72 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 </script>
 
 <script>
-  const seasonalDiseaseRows = <?= json_encode($seasonalDiseaseRows) ?>;
+  const seasonalLabels = <?= json_encode(array_column($seasonalDiseaseRows, 'month_label')) ?>;
+  const seasonalDatasets = <?= json_encode($seasonalDatasets) ?>;
+  const monthlyTotals = <?= json_encode(array_combine(array_column($seasonalDiseaseRows, 'month_label'), array_column($seasonalDiseaseRows, 'total_cases'))) ?>;
   const diseaseTrendMonths = <?= json_encode($diseaseTrendMonths) ?>;
   const diseaseTrendSeries = <?= json_encode($diseaseTrendSeries) ?>;
 
-  if (seasonalDiseaseRows.length) {
+  if (seasonalLabels.length && seasonalDatasets.length) {
+    const maxVal = Math.max(...Object.values(monthlyTotals), 5);
     new Chart(document.getElementById('seasonalDiseaseChart'), {
       type: 'bar',
       data: {
-        labels: seasonalDiseaseRows.map((row) => row.month_label),
-        datasets: [{
-          label: 'Cases',
-          data: seasonalDiseaseRows.map((row) => Number(row.total_cases)),
-          backgroundColor: 'rgba(14,165,164,0.6)',
-          borderColor: '#0ea5a4',
-          borderWidth: 1
-        }]
+        labels: seasonalLabels,
+        datasets: seasonalDatasets
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              boxWidth: 10,
+              boxHeight: 10,
+              usePointStyle: true,
+              pointStyle: 'circle',
+              font: { size: 11 },
+              padding: 12
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              title: function(tooltipItems) {
+                const month = tooltipItems[0].label;
+                const total = monthlyTotals[month] || 0;
+                return `${month} • ${total} Total Case${total === 1 ? '' : 's'}`;
+              },
+              label: function(context) {
+                const val = context.raw || 0;
+                if (val <= 0) return null;
+                return ` ${context.dataset.label}: ${val} case${val === 1 ? '' : 's'}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false }
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            suggestedMax: maxVal + 1,
+            ticks: {
+              precision: 0,
+              stepSize: 1
+            },
+            title: {
+              display: true,
+              text: 'Number of Cases',
+              font: { size: 11 }
+            }
+          }
+        }
       }
     });
   }

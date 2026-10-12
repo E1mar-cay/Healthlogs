@@ -12,14 +12,49 @@ $received_date = $_POST['received_date'] ?? date('Y-m-d');
 $qty = (int)($_POST['quantity_received'] ?? 0);
 $userId = $_SESSION['user_id'] ?? null;
 
-if (!preg_match('/^\d{3}$/', $batch_no)) {
-    $batch_no = '001';
+$redirectUrl = $isEdit
+    ? ($isEmbed ? "/HealthLogs/public/inventory/batches/form_embed.php?id=$id" : "/HealthLogs/public/inventory/batches/form.php?id=$id")
+    : ($isEmbed ? "/HealthLogs/public/inventory/batches/form_embed.php" : "/HealthLogs/public/inventory/batches/form.php");
+
+if ($medicine_id <= 0) {
+    $_SESSION['error_message'] = 'Please select a valid medicine.';
+    $_SESSION['old_input'] = $_POST;
+    header("Location: $redirectUrl");
+    exit;
+}
+
+if ($batch_no === '') {
+    $_SESSION['error_message'] = 'Batch number is required.';
+    $_SESSION['old_input'] = $_POST;
+    header("Location: $redirectUrl");
+    exit;
+}
+
+if (ctype_digit($batch_no)) {
+    $batch_no = str_pad($batch_no, 3, '0', STR_PAD_LEFT);
+}
+
+if ($qty < 0) {
+    $_SESSION['error_message'] = 'Quantity received cannot be negative.';
+    $_SESSION['old_input'] = $_POST;
+    header("Location: $redirectUrl");
+    exit;
 }
 
 $med = ActivityLogger::getMedicineInfo($medicine_id);
 $medName = $med['name'] ?? "Medicine #{$medicine_id}";
 $unit = $med['unit'] ?? 'units';
 $oldStock = ActivityLogger::getMedicineStock($medicine_id);
+
+// Check if batch number already exists for this medicine (excluding current record on edit)
+$dupStmt = $pdo->prepare("SELECT id FROM medicine_batches WHERE medicine_id = ? AND batch_no = ? AND id != ? LIMIT 1");
+$dupStmt->execute([$medicine_id, $batch_no, $id]);
+if ($dupStmt->fetch()) {
+    $_SESSION['error_message'] = "Batch '{$batch_no}' already exists for {$medName}. Please select an available batch number.";
+    $_SESSION['old_input'] = $_POST;
+    header("Location: $redirectUrl");
+    exit;
+}
 
 $pdo->beginTransaction();
 
@@ -90,13 +125,16 @@ try {
 
     $pdo->commit();
 } catch (Throwable $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     error_log("Batch save error: " . $e->getMessage());
-    $_SESSION['error_message'] = 'An error occurred while saving the batch. Please try again.';
+    if ($e instanceof PDOException && ((int)$e->getCode() === 23000 || str_contains($e->getMessage(), '1062 Duplicate entry') || str_contains($e->getMessage(), 'uq_batch'))) {
+        $_SESSION['error_message'] = "Batch '{$batch_no}' already exists for {$medName}. Please select an available batch number.";
+    } else {
+        $_SESSION['error_message'] = 'An error occurred while saving the batch. Please try again.';
+    }
     $_SESSION['old_input'] = $_POST;
-    $redirectUrl = $isEdit
-        ? ($isEmbed ? "/HealthLogs/public/inventory/batches/form_embed.php?id=$id" : "/HealthLogs/public/inventory/batches/form.php?id=$id")
-        : ($isEmbed ? "/HealthLogs/public/inventory/batches/form_embed.php" : "/HealthLogs/public/inventory/batches/form.php");
     header("Location: $redirectUrl");
     exit;
 }

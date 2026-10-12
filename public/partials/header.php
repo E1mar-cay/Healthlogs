@@ -387,9 +387,13 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
           <span class="nav-text font-medium">Non-Communicable</span>
         </a>
 
-        <a class="nav-link <?= $isActive('/HealthLogs/public/inventory') ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicine Inventory">
+        <a class="nav-link <?= ($currentPath === '/HealthLogs/public/inventory.php' || $isActive('/HealthLogs/public/inventory/medicines')) ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicine Inventory">
           <span class="nav-icon">IN</span>
           <span class="nav-text font-medium">Medicine Inventory</span>
+        </a>
+        <a class="nav-link <?= ($isActive('/HealthLogs/public/medicine_supplies') || $isActive('/HealthLogs/public/inventory/batches') || $isActive('/HealthLogs/public/inventory/transactions')) ? 'active' : '' ?>" href="/HealthLogs/public/medicine_supplies.php" title="Medicine Supply">
+          <span class="nav-icon">MS</span>
+          <span class="nav-text font-medium">Medicine Supply</span>
         </a>
         <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php" title="Reminders">
           <span class="nav-icon">RM</span>

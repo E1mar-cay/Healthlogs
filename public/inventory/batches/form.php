@@ -26,11 +26,13 @@ foreach ($existingBatchRows as $row) {
 
 $selectedMedicineId = (int)old('medicine_id', $rec['medicine_id'] ?? ($meds[0]['id'] ?? 0));
 $selectedBatchNo = (string)old('batch_no', $rec['batch_no'] ?? '');
+$originalBatchNo = $rec ? (string)$rec['batch_no'] : '';
+$originalMedicineId = $rec ? (int)$rec['medicine_id'] : 0;
 
-$buildBatchOptions = static function (array $usedBatchNumbers, string $currentBatchNo = ''): array {
+$buildBatchOptions = static function (array $usedBatchNumbers, string $allowedBatchNo = ''): array {
     $usedLookup = array_fill_keys($usedBatchNumbers, true);
-    if ($currentBatchNo !== '') {
-        unset($usedLookup[$currentBatchNo]);
+    if ($allowedBatchNo !== '') {
+        unset($usedLookup[$allowedBatchNo]);
     }
 
     $options = [];
@@ -41,14 +43,19 @@ $buildBatchOptions = static function (array $usedBatchNumbers, string $currentBa
         }
     }
 
-    if ($currentBatchNo !== '' && !in_array($currentBatchNo, $options, true)) {
-        array_unshift($options, $currentBatchNo);
+    if ($allowedBatchNo !== '' && !in_array($allowedBatchNo, $options, true)) {
+        array_unshift($options, $allowedBatchNo);
     }
 
     return $options;
 };
 
-$initialBatchOptions = $buildBatchOptions($batchNumbersByMedicine[$selectedMedicineId] ?? [], $selectedBatchNo);
+$allowedBatch = ($rec && $originalMedicineId === $selectedMedicineId) ? $originalBatchNo : '';
+$initialBatchOptions = $buildBatchOptions($batchNumbersByMedicine[$selectedMedicineId] ?? [], $allowedBatch);
+
+if (!in_array($selectedBatchNo, $initialBatchOptions, true)) {
+    $selectedBatchNo = $initialBatchOptions[0] ?? '';
+}
 
 $pageTitle = $rec ? 'Edit Batch' : 'New Batch';
 require __DIR__ . '/../../partials/header.php';
@@ -101,39 +108,50 @@ require __DIR__ . '/../../partials/header.php';
 
 <script>
 const batchNumbersByMedicine = <?= json_encode($batchNumbersByMedicine, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const originalBatchNo = <?= json_encode($rec ? (string)$rec['batch_no'] : '') ?>;
+const originalMedicineId = <?= $rec ? (int)$rec['medicine_id'] : 'null' ?>;
 const medicineSelect = document.getElementById('medicine_id');
 const batchSelect = document.getElementById('batch_no');
 const preservedSelectedBatch = batchSelect?.dataset.selectedBatch || '';
 
-function buildBatchOptionsForMedicine(medicineId, selectedBatch) {
+function buildBatchOptionsForMedicine(medicineId) {
   const used = new Set((batchNumbersByMedicine[medicineId] || []).map(String));
-  if (selectedBatch) used.delete(String(selectedBatch));
-
+  const isOriginalRecordMed = originalMedicineId !== null && Number(medicineId) === originalMedicineId;
+  if (isOriginalRecordMed && originalBatchNo) {
+    used.delete(String(originalBatchNo));
+  }
   const options = [];
   for (let i = 1; i <= 50; i += 1) {
     const candidate = String(i).padStart(3, '0');
     if (!used.has(candidate)) options.push(candidate);
   }
-
-  if (selectedBatch && !options.includes(String(selectedBatch))) {
-    options.unshift(String(selectedBatch));
+  if (isOriginalRecordMed && originalBatchNo && !options.includes(String(originalBatchNo))) {
+    options.unshift(String(originalBatchNo));
   }
-
   return options;
 }
 
-function renderBatchOptions() {
+function renderBatchOptions(preferredBatch) {
   if (!medicineSelect || !batchSelect) return;
   const medicineId = medicineSelect.value;
-  const currentSelected = batchSelect.value || preservedSelectedBatch;
-  const options = buildBatchOptionsForMedicine(medicineId, currentSelected);
+  const options = buildBatchOptionsForMedicine(medicineId);
 
   batchSelect.innerHTML = '';
+  if (options.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No batch numbers available (1-50 full)';
+    batchSelect.appendChild(option);
+    return;
+  }
+
+  const selectedValue = (preferredBatch && options.includes(preferredBatch)) ? preferredBatch : options[0];
+
   options.forEach((optionValue) => {
     const option = document.createElement('option');
     option.value = optionValue;
     option.textContent = optionValue;
-    if (optionValue === currentSelected) option.selected = true;
+    if (optionValue === selectedValue) option.selected = true;
     batchSelect.appendChild(option);
   });
 }
@@ -143,7 +161,7 @@ if (medicineSelect && batchSelect) {
     batchSelect.dataset.selectedBatch = '';
     renderBatchOptions();
   });
-  renderBatchOptions();
+  renderBatchOptions(preservedSelectedBatch || batchSelect.value);
 }
 </script>
 
