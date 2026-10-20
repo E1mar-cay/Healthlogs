@@ -53,6 +53,7 @@ if ($host !== '127.0.0.1' && $host !== 'localhost') {
 
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
+    $pdo->exec("SET SESSION sql_mode = (SELECT REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))");
 } catch (PDOException $e) {
     http_response_code(500);
     error_log('Database connection failed: ' . $e->getMessage());

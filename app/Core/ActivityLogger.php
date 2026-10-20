@@ -429,7 +429,7 @@ class ActivityLogger
                 JOIN medicines m ON m.id = mb.medicine_id
                 LEFT JOIN medicine_transactions mt ON mt.batch_id = mb.id
                 WHERE mb.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
-                GROUP BY mb.id
+                GROUP BY mb.id, mb.medicine_id, mb.batch_no, mb.expiry_date, m.name, m.unit
                 HAVING on_hand > 0
                 ORDER BY mb.expiry_date ASC";
 
@@ -456,7 +456,7 @@ class ActivityLogger
                 JOIN medicines m ON m.id = mb.medicine_id
                 LEFT JOIN medicine_transactions mt ON mt.batch_id = mb.id
                 WHERE mb.expiry_date < CURDATE()
-                GROUP BY mb.id
+                GROUP BY mb.id, mb.medicine_id, mb.batch_no, mb.expiry_date, m.name, m.unit
                 HAVING on_hand > 0
                 ORDER BY mb.expiry_date ASC";
 
