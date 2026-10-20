@@ -23,7 +23,16 @@ $recaptchaSiteKey = Recaptcha::siteKey();
   <!-- Local Assets for 100% Offline Support -->
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
   <?php if ($recaptchaSiteKey !== ''): ?>
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script>
+    window.onRecaptchaLoaded = function () {
+      if (typeof window.initRecaptchaWidget === 'function') {
+        window.initRecaptchaWidget();
+      } else {
+        window.recaptchaReady = true;
+      }
+    };
+  </script>
+  <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoaded&render=explicit" async defer></script>
   <?php endif; ?>
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
   <style>
@@ -337,7 +346,6 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       var offlineNotice = document.getElementById('recaptchaOfflineNotice');
       var loadingNotice = document.getElementById('recaptchaLoadingNotice');
       var widgetId = null;
-      var scriptInjected = false;
 
       function setOfflineState() {
         if (loadingNotice) loadingNotice.style.display = 'none';
@@ -349,6 +357,7 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       }
 
       function setOnlineState() {
+        if (loadingNotice) loadingNotice.style.display = 'none';
         if (offlineNotice) {
           offlineNotice.classList.add('hidden');
           offlineNotice.style.display = 'none';
@@ -356,72 +365,55 @@ $recaptchaSiteKey = Recaptcha::siteKey();
         if (container) container.style.display = 'block';
       }
 
-      window.onRecaptchaLoaded = function () {
-        if (loadingNotice) loadingNotice.style.display = 'none';
+      window.initRecaptchaWidget = function () {
+        if (!navigator.onLine) {
+          setOfflineState();
+          return;
+        }
+
         setOnlineState();
-        if (container && widgetId === null && window.grecaptcha) {
+        if (container && widgetId === null && window.grecaptcha && typeof window.grecaptcha.render === 'function') {
           try {
             widgetId = grecaptcha.render('recaptchaContainer', {
               'sitekey': siteKey
             });
+            window.recaptchaWidgetId = widgetId;
           } catch (e) {
             console.warn('reCAPTCHA render notice:', e);
           }
         }
       };
 
-      function checkAndLoadRecaptcha() {
-        if (!navigator.onLine) {
-          setOfflineState();
-          return;
-        }
-
-        if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
-          window.onRecaptchaLoaded();
-          return;
-        }
-
-        if (!scriptInjected) {
-          scriptInjected = true;
-          var script = document.createElement('script');
-          script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoaded&render=explicit';
-          script.async = true;
-          script.defer = true;
-
-          var fallbackTimer = setTimeout(function () {
-            if (widgetId === null && (!window.grecaptcha || typeof window.grecaptcha.render !== 'function')) {
-              setOfflineState();
-            }
-          }, 3500);
-
-          script.onerror = function () {
-            clearTimeout(fallbackTimer);
-            setOfflineState();
-          };
-
-          document.head.appendChild(script);
-        } else {
-          setOnlineState();
-        }
+      // If Google script already fired callback or initialized
+      if (window.recaptchaReady || (window.grecaptcha && typeof window.grecaptcha.render === 'function')) {
+        window.initRecaptchaWidget();
       }
+
+      // Safety timeout: If reCAPTCHA script fails to load after 4.5 seconds, activate offline bypass
+      setTimeout(function () {
+        if (widgetId === null && (!window.grecaptcha || typeof window.grecaptcha.render !== 'function')) {
+          setOfflineState();
+        }
+      }, 4500);
 
       // Real-time network transitions
       window.addEventListener('online', function () {
-        checkAndLoadRecaptcha();
+        if (widgetId !== null) {
+          setOnlineState();
+        } else {
+          window.initRecaptchaWidget();
+        }
       });
 
       window.addEventListener('offline', function () {
         setOfflineState();
       });
 
-      // Initial check on page load
-      checkAndLoadRecaptcha();
-
       // Form validation
-      var form = container ? container.closest('form') : null;
+      var form = document.getElementById('loginForm') || (container ? container.closest('form') : null);
       if (form) {
         form.addEventListener('submit', function (e) {
-          if (navigator.onLine && widgetId !== null && window.grecaptcha && container.style.display !== 'none') {
+          if (navigator.onLine && widgetId !== null && window.grecaptcha && container && container.style.display !== 'none') {
             var response = grecaptcha.getResponse(widgetId);
             if (!response) {
               e.preventDefault();

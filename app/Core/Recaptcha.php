@@ -16,6 +16,12 @@ class Recaptcha {
             return self::$cachedIsOnline;
         }
 
+        // On Vercel or cloud environments, internet is always available
+        if (!empty($_SERVER['VERCEL']) || getenv('VERCEL') || (!empty($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'vercel.app') !== false)) {
+            self::$cachedIsOnline = true;
+            return true;
+        }
+
         // Test connection to Google DNS / Recaptcha server
         $fp = @fsockopen('www.google.com', 443, $errno, $errstr, $timeoutSeconds);
         if ($fp) {
@@ -30,7 +36,7 @@ class Recaptcha {
 
     public static function isOfflineMode(): bool {
         self::loadEnv();
-        $val = strtolower(trim((string)(getenv('OFFLINE_MODE') ?: 'auto')));
+        $val = strtolower(trim((string)($_ENV['OFFLINE_MODE'] ?? $_SERVER['OFFLINE_MODE'] ?? getenv('OFFLINE_MODE') ?: 'auto')));
         if (in_array($val, ['1', 'true', 'yes', 'on'], true)) {
             return true;
         }
@@ -43,12 +49,12 @@ class Recaptcha {
 
     public static function siteKey(): string {
         self::loadEnv();
-        return trim((string)(getenv('RECAPTCHA_SITE_KEY') ?: ''));
+        return trim((string)($_ENV['RECAPTCHA_SITE_KEY'] ?? $_SERVER['RECAPTCHA_SITE_KEY'] ?? getenv('RECAPTCHA_SITE_KEY') ?: '6LeAwwItAAAAAF06F7HO3RXPV_Padj6sWg0HeuPt'));
     }
 
     public static function secretKey(): string {
         self::loadEnv();
-        return trim((string)(getenv('RECAPTCHA_SECRET_KEY') ?: ''));
+        return trim((string)($_ENV['RECAPTCHA_SECRET_KEY'] ?? $_SERVER['RECAPTCHA_SECRET_KEY'] ?? getenv('RECAPTCHA_SECRET_KEY') ?: '6LeAwwItAAAAAA8eHQY9e9Orv4H1GP1jQwzgIA6e'));
     }
 
     public static function isConfigured(): bool {
@@ -116,6 +122,7 @@ class Recaptcha {
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 4,
                 CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
             ]);
 
