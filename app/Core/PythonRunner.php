@@ -4,10 +4,10 @@ class PythonRunner
 {
     private static ?string $cachedExecutable = null;
 
-    public static function executable(string $projectRoot): string
+    public static function findExecutable(string $projectRoot): ?string
     {
         if (self::$cachedExecutable !== null) {
-            return self::$cachedExecutable;
+            return self::$cachedExecutable !== '' ? self::$cachedExecutable : null;
         }
 
         $candidates = [];
