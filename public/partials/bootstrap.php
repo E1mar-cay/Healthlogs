@@ -31,10 +31,18 @@ if (!function_exists('h')) {
 
 if (!function_exists('require_login')) {
     function require_login(): void {
-        $public = ['/HealthLogs/public/login.php', '/HealthLogs/public/auth.php'];
+        $public = [
+            '/HealthLogs/public/login.php',
+            '/HealthLogs/public/auth.php',
+            '/public/login.php',
+            '/public/auth.php',
+            '/login.php',
+            '/auth.php'
+        ];
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
         if (!isset($_SESSION['user_id']) && !in_array($path, $public, true)) {
-            header('Location: /HealthLogs/public/login.php');
+            $redirect = (strpos($path, '/HealthLogs/public/') === 0) ? '/HealthLogs/public/login.php' : '/login.php';
+            header("Location: $redirect");
             exit;
         }
     }
