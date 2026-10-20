@@ -4,6 +4,14 @@
       "runtime": "vercel-php@0.6.2"
     }
   },
+  "env": {
+    "DB_HOST": "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+    "DB_PORT": "4000",
+    "DB_NAME": "healthlogs",
+    "DB_USER": "43HNEh1fm4dWAMd.root",
+    "DB_PASS": "VIpsog5XitGl9Cud",
+    "APP_TIMEZONE": "Asia/Manila"
+  },
   "routes": [
     {
       "src": "/HealthLogs/public/assets/(.*)",
