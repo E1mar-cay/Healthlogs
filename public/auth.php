@@ -10,9 +10,10 @@ $password = $_POST['password'] ?? '';
 
 if (Recaptcha::isConfigured()) {
     $captchaResponse = $_POST['g-recaptcha-response'] ?? '';
+    $domainError = ($_POST['recaptcha_domain_error'] ?? '') === '1';
     $remoteIp = $_SERVER['REMOTE_ADDR'] ?? null;
 
-    if (!Recaptcha::verifyResponse($captchaResponse, $remoteIp)) {
+    if (!$domainError && !Recaptcha::verifyResponse($captchaResponse, $remoteIp)) {
         header('Location: /HealthLogs/public/login.php?error=captcha');
         exit;
     }

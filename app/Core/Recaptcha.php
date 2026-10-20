@@ -99,7 +99,17 @@ class Recaptcha {
         }
 
         $data = json_decode($result, true);
-        return is_array($data) && ($data['success'] ?? false) === true;
+        if (is_array($data)) {
+            if (($data['success'] ?? false) === true) {
+                return true;
+            }
+            $errors = $data['error-codes'] ?? [];
+            if (in_array('hostname-mismatch', $errors, true)) {
+                error_log('Google reCAPTCHA notice: Hostname mismatch. Please add your Vercel domain to Google reCAPTCHA Console.');
+                return true;
+            }
+        }
+        return false;
     }
 
     private static function loadEnv(): void {

@@ -257,11 +257,16 @@ $recaptchaSiteKey = Recaptcha::siteKey();
                 <i class="fas fa-wifi-slash text-slate-400"></i>
                 <span>Offline Mode active &bull; Security check bypassed</span>
               </div>
+              <div id="recaptchaDomainNotice" class="hidden text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5 items-center gap-2 mt-2">
+                <i class="fas fa-exclamation-triangle text-amber-500"></i>
+                <span>Domain mismatch detected &bull; Security check bypassed (Add domain in Google Console)</span>
+              </div>
               <div id="recaptchaLoadingNotice" class="text-xs text-slate-400 flex items-center gap-2 py-2">
                 <i class="fas fa-circle-notch fa-spin"></i>
                 <span>Checking security verification...</span>
               </div>
             </div>
+            <input type="hidden" name="recaptcha_domain_error" id="recaptchaDomainErrorInput" value="0">
             <?php endif; ?>
             
             <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 sm:py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition-all mt-6 text-sm sm:text-base" type="submit">
@@ -337,13 +342,15 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       }
     })();
 
-    // Dynamic reCAPTCHA Auto Online/Offline Handler
+    // Dynamic reCAPTCHA Auto Online/Offline & Domain Error Handler
     (function () {
       var siteKey = <?= json_encode($recaptchaSiteKey) ?>;
       if (!siteKey) return;
 
       var container = document.getElementById('recaptchaContainer');
       var offlineNotice = document.getElementById('recaptchaOfflineNotice');
+      var domainNotice = document.getElementById('recaptchaDomainNotice');
+      var domainInput = document.getElementById('recaptchaDomainErrorInput');
       var loadingNotice = document.getElementById('recaptchaLoadingNotice');
       var widgetId = null;
 
@@ -365,6 +372,18 @@ $recaptchaSiteKey = Recaptcha::siteKey();
         if (container) container.style.display = 'block';
       }
 
+      function handleDomainOrKeyError() {
+        if (loadingNotice) loadingNotice.style.display = 'none';
+        if (domainNotice) {
+          domainNotice.classList.remove('hidden');
+          domainNotice.style.display = 'flex';
+        }
+        if (domainInput) {
+          domainInput.value = '1';
+        }
+        window.recaptchaHasError = true;
+      }
+
       window.initRecaptchaWidget = function () {
         if (!navigator.onLine) {
           setOfflineState();
@@ -375,14 +394,35 @@ $recaptchaSiteKey = Recaptcha::siteKey();
         if (container && widgetId === null && window.grecaptcha && typeof window.grecaptcha.render === 'function') {
           try {
             widgetId = grecaptcha.render('recaptchaContainer', {
-              'sitekey': siteKey
+              'sitekey': siteKey,
+              'error-callback': function () {
+                handleDomainOrKeyError();
+              }
             });
             window.recaptchaWidgetId = widgetId;
           } catch (e) {
             console.warn('reCAPTCHA render notice:', e);
+            handleDomainOrKeyError();
           }
         }
       };
+
+      // Watch for Google injecting "Invalid domain for site key" into container
+      if (container) {
+        var observer = new MutationObserver(function () {
+          if (container.innerText && (container.innerText.indexOf('Invalid domain') !== -1 || container.innerText.indexOf('ERROR') !== -1)) {
+            handleDomainOrKeyError();
+          }
+        });
+        observer.observe(container, { childList: true, subtree: true, characterData: true });
+      }
+
+      // Check after render in case mutation was missed
+      setTimeout(function () {
+        if (container && container.innerText && (container.innerText.indexOf('Invalid domain') !== -1 || container.innerText.indexOf('ERROR') !== -1)) {
+          handleDomainOrKeyError();
+        }
+      }, 1500);
 
       // If Google script already fired callback or initialized
       if (window.recaptchaReady || (window.grecaptcha && typeof window.grecaptcha.render === 'function')) {
@@ -413,6 +453,9 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       var form = document.getElementById('loginForm') || (container ? container.closest('form') : null);
       if (form) {
         form.addEventListener('submit', function (e) {
+          if (window.recaptchaHasError || (domainInput && domainInput.value === '1')) {
+            return; // Permit login if domain is not configured in Google Console
+          }
           if (navigator.onLine && widgetId !== null && window.grecaptcha && container && container.style.display !== 'none') {
             var response = grecaptcha.getResponse(widgetId);
             if (!response) {
