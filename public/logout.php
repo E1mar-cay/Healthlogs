@@ -3,7 +3,8 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../app/Core/ActivityLogger.php';
 ActivityLogger::init($pdo);
 
-session_start();
+require_once __DIR__ . '/../app/Core/SessionManager.php';
+SessionManager::start($pdo);
 
 if (!empty($_SESSION['username'])) {
     ActivityLogger::logAuth('logout', $_SESSION['username'], true, [

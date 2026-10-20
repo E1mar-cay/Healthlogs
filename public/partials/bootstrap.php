@@ -15,9 +15,8 @@ require_once __DIR__ . '/../../app/Core/ActivityLogger.php';
 require_once __DIR__ . '/../../app/Core/PatientClassifier.php';
 ActivityLogger::init($pdo);
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
+require_once __DIR__ . '/../../app/Core/SessionManager.php';
+SessionManager::start($pdo);
 
 if (!function_exists('h')) {
     function h($value): string {
