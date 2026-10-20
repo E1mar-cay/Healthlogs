@@ -22,6 +22,7 @@ class SessionManager implements SessionHandlerInterface
 
         $handler = new self($pdo);
         session_set_save_handler($handler, true);
+        session_register_shutdown();
         session_start();
     }
 
@@ -43,6 +44,7 @@ class SessionManager implements SessionHandlerInterface
             $data = $stmt->fetchColumn();
             return $data !== false ? (string)$data : '';
         } catch (Throwable $e) {
+            error_log('Session read error: ' . $e->getMessage());
             return '';
         }
     }
@@ -50,9 +52,10 @@ class SessionManager implements SessionHandlerInterface
     public function write(string $id, string $data): bool
     {
         try {
-            $stmt = $this->pdo->prepare("REPLACE INTO php_sessions (id, data, last_accessed) VALUES (?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO php_sessions (id, data, last_accessed) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data), last_accessed = VALUES(last_accessed)");
             return $stmt->execute([$id, $data, time()]);
         } catch (Throwable $e) {
+            error_log('Session write error: ' . $e->getMessage());
             return false;
         }
     }
