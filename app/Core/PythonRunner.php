@@ -77,7 +77,22 @@ class PythonRunner
             }
         }
 
-        // Fallback default
+        self::$cachedExecutable = '';
+        return null;
+    }
+
+    public static function isAvailable(string $projectRoot): bool
+    {
+        return self::findExecutable($projectRoot) !== null;
+    }
+
+    public static function executable(string $projectRoot): string
+    {
+        $found = self::findExecutable($projectRoot);
+        if ($found !== null) {
+            return $found;
+        }
+
         return PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
     }
 

@@ -2,6 +2,7 @@
 require __DIR__ . '/partials/bootstrap.php';
 require_once __DIR__ . '/../app/Core/ForecastLogger.php';
 require_once __DIR__ . '/../app/Core/PythonRunner.php';
+require_once __DIR__ . '/../app/Core/ArimaService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: /HealthLogs/public/forecast.php');
@@ -227,41 +228,34 @@ try {
     $startTime = microtime(true);
     $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
 
-    $python = PythonRunner::executable(__DIR__ . '/..');
-    $script = __DIR__ . '/../scripts/forecast_arima.py';
-    $cmd = PythonRunner::buildCommand($python, $script, [
-        '--series-key' => $seriesKey,
-        '--horizon' => (string)$horizon,
-    ]);
+    $data = null;
 
-    $output = shell_exec($cmd);
+    // 1. Try Python execution if available in this environment
+    if (PythonRunner::isAvailable(__DIR__ . '/..')) {
+        $python = PythonRunner::executable(__DIR__ . '/..');
+        $script = __DIR__ . '/../scripts/forecast_arima.py';
+        $cmd = PythonRunner::buildCommand($python, $script, [
+            '--series-key' => $seriesKey,
+            '--horizon' => (string)$horizon,
+        ]);
+
+        $output = @shell_exec($cmd);
+        if ($output) {
+            $parsed = json_decode($output, true);
+            if (is_array($parsed) && empty($parsed['error']) && isset($parsed['forecast'], $parsed['summary'])) {
+                $data = $parsed;
+            }
+        }
+    }
+
+    // 2. Native Pure-PHP ARIMA & Statistical Engine (cloud serverless / no-python environment)
+    if (!$data) {
+        $data = ArimaService::forecast($pdo, $seriesKey, $horizon);
+    }
+
     $executionTime = round(microtime(true) - $startTime, 3);
 
-    if (!$output) {
-        ForecastLogger::logFailure($runId, 'No output from ARIMA script.', $executionTime);
-        http_response_code(500);
-        echo json_encode(['error' => 'No output from ARIMA script.']);
-        exit;
-    }
-
-    $data = json_decode($output, true);
-    if (!is_array($data)) {
-        $cleanedOutput = trim(strip_tags((string)$output));
-        $errMsg = 'Forecasting script failed. ' . ($cleanedOutput !== '' ? $cleanedOutput : 'Invalid JSON from Python.');
-        ForecastLogger::logFailure($runId, $errMsg, $executionTime);
-        http_response_code(500);
-        echo json_encode(['error' => $errMsg]);
-        exit;
-    }
-
-    if (!empty($data['error'])) {
-        ForecastLogger::logFailure($runId, $data['error'], $executionTime);
-        http_response_code(500);
-        echo json_encode(['error' => $data['error']]);
-        exit;
-    }
-
-    // Extract diagnostic information from Python script output
+    // Extract diagnostic information
     $metrics = $data['metrics'] ?? null;
     $diagnostics = null;
     if (isset($data['diagnostics'])) {
@@ -287,6 +281,9 @@ try {
 
     echo json_encode($data);
 } catch (Throwable $e) {
+    if (isset($runId)) {
+        ForecastLogger::logFailure($runId, $e->getMessage(), round(microtime(true) - ($startTime ?? microtime(true)), 3));
+    }
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }

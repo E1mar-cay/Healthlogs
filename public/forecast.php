@@ -3,6 +3,7 @@ $pageTitle = 'Forecasting';
 require __DIR__ . '/partials/bootstrap.php';
 require_once __DIR__ . '/../app/Core/ForecastLogger.php';
 require_once __DIR__ . '/../app/Core/PythonRunner.php';
+require_once __DIR__ . '/../app/Core/ArimaService.php';
 require __DIR__ . '/partials/header.php';
 
 $seriesOptions = [
@@ -25,117 +26,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $startTime = microtime(true);
     $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
 
-    $python = PythonRunner::executable(__DIR__ . '/..');
-    $script = __DIR__ . '/../scripts/forecast_arima.py';
-    $cmd = PythonRunner::buildCommand($python, $script, [
-        '--series-key' => $seriesKey,
-        '--horizon' => (string)$horizon,
-    ]);
-    $output = shell_exec($cmd);
+    $data = null;
 
-    $executionTime = round(microtime(true) - $startTime, 3);
+    // 1. Try Python execution if available in this environment
+    if (PythonRunner::isAvailable(__DIR__ . '/..')) {
+        $python = PythonRunner::executable(__DIR__ . '/..');
+        $script = __DIR__ . '/../scripts/forecast_arima.py';
+        $cmd = PythonRunner::buildCommand($python, $script, [
+            '--series-key' => $seriesKey,
+            '--horizon' => (string)$horizon,
+        ]);
 
-    if (!$output) {
-        $error = 'No output from forecasting script.';
-        ForecastLogger::logFailure($runId, $error, $executionTime);
-    } else {
-        $data = json_decode($output, true);
-        if (!is_array($data)) {
-            $cleanedOutput = trim(strip_tags((string)$output));
-            $error = 'Forecasting script failed. ' . ($cleanedOutput !== '' ? $cleanedOutput : 'No valid response from Python.');
-            ForecastLogger::logFailure($runId, 'Invalid output from python: ' . substr($output, 0, 500), $executionTime);
-        } elseif (!empty($data['error'])) {
-            $error = $data['error'];
-            ForecastLogger::logFailure($runId, $error, $executionTime);
-        } elseif (!isset($data['forecast'], $data['summary'])) {
-            $error = 'Forecast response is incomplete.';
-            ForecastLogger::logFailure($runId, $error, $executionTime);
-        } else {
-            $result = $data;
-
-            // Extract diagnostics and metrics
-            $metrics = $data['metrics'] ?? null;
-            $diagnostics = null;
-            if (isset($data['diagnostics'])) {
-                $diagnostics = $data['diagnostics'];
-                $diagnostics['model_order'] = $data['summary']['model'] ?? null;
-                $diagnostics['seasonal_order'] = $data['summary']['seasonal_model'] ?? null;
-                if ($metrics) {
-                    $diagnostics['mae'] = $metrics['mae'] ?? null;
-                    $diagnostics['rmse'] = $metrics['rmse'] ?? null;
-                    $diagnostics['mape'] = $metrics['mape'] ?? null;
-                }
+        $output = @shell_exec($cmd);
+        if ($output) {
+            $parsed = json_decode($output, true);
+            if (is_array($parsed) && empty($parsed['error']) && isset($parsed['forecast'], $parsed['summary'])) {
+                $data = $parsed;
             }
-
-            ForecastLogger::logSuccess(
-                $runId,
-                (int)($data['summary']['history_points'] ?? 0),
-                (int)($data['summary']['training_points'] ?? 0),
-                $executionTime,
-                $data['forecast'],
-                $diagnostics,
-                $metrics
-            );
         }
     }
 
-    // Cloud Serverless Fallback: If Python virtual environment is not installed on the server (e.g. Vercel)
-    if ($error !== null && (strpos($error, 'command not found') !== false || strpos($error, 'No output') !== false || strpos($error, 'No valid response') !== false)) {
+    // 2. Native Pure-PHP ARIMA & Statistical Engine (cloud serverless / no-python environment)
+    if (!$data) {
         try {
-            $stmt = $pdo->prepare("SELECT id, horizon, mae, rmse, mape FROM forecast_runs WHERE series_key = ? AND status = 'success' ORDER BY id DESC LIMIT 1");
-            $stmt->execute([$seriesKey]);
-            $cachedRun = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($cachedRun) {
-                $fStmt = $pdo->prepare("SELECT forecast_date AS `date`, forecast_value AS `value`, lower_bound AS `lower`, upper_bound AS `upper` FROM forecast_results WHERE run_id = ? ORDER BY forecast_date ASC LIMIT " . (int)$horizon);
-                $fStmt->execute([$cachedRun['id']]);
-                $cachedForecast = $fStmt->fetchAll(PDO::FETCH_ASSOC);
-
-                if (!empty($cachedForecast)) {
-                    $pStmt = $pdo->prepare("SELECT model_order, seasonal_order, aic, bic FROM arima_parameters WHERE run_id = ? LIMIT 1");
-                    $pStmt->execute([$cachedRun['id']]);
-                    $paramRow = $pStmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-                    // Fetch history data points from timeseries_daily
-                    $hStmt = $pdo->prepare("SELECT series_date AS `date`, value AS `value` FROM timeseries_daily WHERE series_key = ? ORDER BY series_date DESC LIMIT 60");
-                    $hStmt->execute([$seriesKey]);
-                    $historyPoints = array_reverse($hStmt->fetchAll(PDO::FETCH_ASSOC));
-
-                    $totalVal = array_sum(array_column($cachedForecast, 'value'));
-                    $avgVal = round($totalVal / count($cachedForecast), 2);
-
-                    $result = [
-                        'series_key' => $seriesKey,
-                        'forecast' => $cachedForecast,
-                        'history' => $historyPoints,
-                        'summary' => [
-                            'series_key' => $seriesKey,
-                            'total_forecast' => $totalVal,
-                            'mean_forecast' => $avgVal,
-                            'model' => $paramRow['model_order'] ?? 'ARIMA(1,1,1)',
-                            'seasonal_model' => $paramRow['seasonal_order'] ?? 'None',
-                            'mae' => (float)$cachedRun['mae'],
-                            'rmse' => (float)$cachedRun['rmse'],
-                            'mape' => (float)$cachedRun['mape'],
-                            'accuracy_rating' => ((float)$cachedRun['mape'] <= 10) ? 'Highly Accurate (MAPE ≤ 10%)' : 'Good Forecast',
-                            'history_points' => count($historyPoints) ?: 365,
-                            'training_points' => count($historyPoints) ?: 335,
-                        ],
-                        'metrics' => [
-                            'mae' => (float)$cachedRun['mae'],
-                            'rmse' => (float)$cachedRun['rmse'],
-                            'mape' => (float)$cachedRun['mape'],
-                            'accuracy_rating' => ((float)$cachedRun['mape'] <= 10) ? 'Highly Accurate (MAPE ≤ 10%)' : 'Good Forecast'
-                        ],
-                        'is_serverless_cache' => true
-                    ];
-
-                    $error = null; // Successfully fell back to pre-computed ARIMA model!
-                }
-            }
-        } catch (Throwable $fallbackEx) {
-            // Keep original error message if database lookup fails
+            $data = ArimaService::forecast($pdo, $seriesKey, $horizon);
+        } catch (Throwable $engineEx) {
+            $error = 'ARIMA forecast engine failed: ' . $engineEx->getMessage();
+            ForecastLogger::logFailure($runId, $error, round(microtime(true) - $startTime, 3));
         }
+    }
+
+    if ($data) {
+        $result = $data;
+        $executionTime = round(microtime(true) - $startTime, 3);
+
+        // Extract diagnostics and metrics
+        $metrics = $data['metrics'] ?? null;
+        $diagnostics = null;
+        if (isset($data['diagnostics'])) {
+            $diagnostics = $data['diagnostics'];
+            $diagnostics['model_order'] = $data['summary']['model'] ?? null;
+            $diagnostics['seasonal_order'] = $data['summary']['seasonal_model'] ?? null;
+            if ($metrics) {
+                $diagnostics['mae'] = $metrics['mae'] ?? null;
+                $diagnostics['rmse'] = $metrics['rmse'] ?? null;
+                $diagnostics['mape'] = $metrics['mape'] ?? null;
+            }
+        }
+
+        ForecastLogger::logSuccess(
+            $runId,
+            (int)($data['summary']['history_points'] ?? 0),
+            (int)($data['summary']['training_points'] ?? 0),
+            $executionTime,
+            $data['forecast'],
+            $diagnostics,
+            $metrics
+        );
+
+        $error = null;
     }
 }
 

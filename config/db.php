@@ -47,6 +47,7 @@ if ($host !== '127.0.0.1' && $host !== 'localhost') {
     }
 
     if (!$caFound) {
+        $options[PDO::MYSQL_ATTR_SSL_CA] = true;
         $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
     }
 }
