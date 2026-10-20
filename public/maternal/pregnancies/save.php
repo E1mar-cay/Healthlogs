@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require __DIR__ . '/../../partials/bootstrap.php';
 
 $isEdit = !empty($_POST['id']);

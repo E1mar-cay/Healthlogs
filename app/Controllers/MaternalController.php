@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 class MaternalController extends Controller
 {

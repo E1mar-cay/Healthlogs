@@ -1,4 +1,4 @@
-﻿<?php $pageTitle = 'ARIMA Forecasting'; ?>
+<?php $pageTitle = 'ARIMA Forecasting'; ?>
 
 <div class="bg-white p-6 rounded shadow">
   <div class="text-sm text-slate-500">ARIMA Demo</div>

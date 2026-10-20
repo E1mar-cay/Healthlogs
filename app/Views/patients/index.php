@@ -1,4 +1,4 @@
-﻿<?php $pageTitle = 'Patient Record Management'; ?>
+<?php $pageTitle = 'Patient Record Management'; ?>
 
 <div class="flex items-center justify-between">
   <div>

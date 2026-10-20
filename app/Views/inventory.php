@@ -1,4 +1,4 @@
-﻿<?php $pageTitle = 'Medicine Inventory Management'; ?>
+<?php $pageTitle = 'Medicine Inventory Management'; ?>
 
 <div class="bg-white p-6 rounded shadow">
   <div class="text-sm text-slate-500">Module Placeholder</div>

@@ -1,4 +1,4 @@
-﻿<?php $pageTitle = 'Patient Record Management'; ?>
+<?php $pageTitle = 'Patient Record Management'; ?>
 
 <div class="bg-white p-6 rounded shadow">
   <div class="text-sm text-slate-500">Module Placeholder</div>

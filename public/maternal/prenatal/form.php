@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require __DIR__ . '/../../partials/bootstrap.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

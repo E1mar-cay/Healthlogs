@@ -1,4 +1,4 @@
-﻿<?php $pageTitle = 'Dashboard Overview'; ?>
+<?php $pageTitle = 'Dashboard Overview'; ?>
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
   <div class="bg-white p-4 rounded shadow">

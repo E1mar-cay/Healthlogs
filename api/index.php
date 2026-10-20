@@ -1,6 +1,11 @@
 <?php
 // api/index.php - Vercel Serverless Function Entry Point for HealthLogs
 
+// Start output buffering immediately so headers/sessions are never blocked by early output
+if (ob_get_level() === 0) {
+    ob_start();
+}
+
 $rawUri = $_SERVER['REQUEST_URI'] ?? '/';
 $path = parse_url($rawUri, PHP_URL_PATH) ?: '/';
 

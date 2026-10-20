@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 class PatientsController extends Controller
 {

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require __DIR__ . '/../partials/bootstrap.php';
 
 $ids = array_map('intval', (array)($_POST['ids'] ?? []));
