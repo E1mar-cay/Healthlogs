@@ -566,16 +566,6 @@ require __DIR__ . '/partials/header.php';
           </div>
         </div>
 
-        <!-- Raw JSON Payload View -->
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Raw Details (JSON)</label>
-            <button type="button" id="copyJsonBtn" class="text-xs text-teal-600 hover:text-teal-700 font-medium">
-              <i class="fas fa-copy mr-1"></i> Copy JSON
-            </button>
-          </div>
-          <pre class="bg-slate-950 text-emerald-400 p-4 rounded-xl text-xs font-mono overflow-x-auto max-h-56 leading-relaxed" id="modalRawJson"></pre>
-        </div>
       </div>
 
       <!-- Modal Footer -->
@@ -623,24 +613,21 @@ require __DIR__ . '/partials/header.php';
     if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
       structuredContainer.classList.remove('hidden');
       for (const [key, val] of Object.entries(parsed)) {
-        if (typeof val === 'object' && val !== null) {
-          continue;
-        }
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50';
         const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const displayVal = val !== null 
+          ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) 
+          : '<span class="text-slate-400">null</span>';
         tr.innerHTML = `
           <td class="py-2 px-3 font-semibold text-slate-500 w-1/3 bg-slate-50/60">${formattedKey}</td>
-          <td class="py-2 px-3 text-slate-900 font-mono text-[11px]">${val !== null ? String(val) : '<span class="text-slate-400">null</span>'}</td>
+          <td class="py-2 px-3 text-slate-900 font-mono text-[11px]">${displayVal}</td>
         `;
         structuredTable.appendChild(tr);
       }
     } else {
       structuredContainer.classList.add('hidden');
     }
-
-    const jsonStr = JSON.stringify(parsed, null, 2);
-    document.getElementById('modalRawJson').textContent = jsonStr;
 
     modal.classList.remove('hidden');
   }
@@ -665,20 +652,6 @@ require __DIR__ . '/partials/header.php';
   if (backdrop) backdrop.addEventListener('click', closeModal);
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (closeFooterBtn) closeFooterBtn.addEventListener('click', closeModal);
-
-  // Copy JSON button
-  const copyBtn = document.getElementById('copyJsonBtn');
-  if (copyBtn) {
-    copyBtn.addEventListener('click', function() {
-      const code = document.getElementById('modalRawJson').textContent;
-      navigator.clipboard.writeText(code).then(() => {
-        copyBtn.innerHTML = '<i class="fas fa-check mr-1 text-emerald-600"></i> Copied!';
-        setTimeout(() => {
-          copyBtn.innerHTML = '<i class="fas fa-copy mr-1"></i> Copy JSON';
-        }, 2000);
-      });
-    });
-  }
 })();
 </script>
 

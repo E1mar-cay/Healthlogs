@@ -245,9 +245,16 @@ function ncd_risk_badge(?string $r): string {
                 <div class="text-xs text-slate-700 max-w-xs truncate" title="<?= h($row['maintenance_meds']) ?>">
                   <?= h($row['maintenance_meds'] ?: 'None recorded') ?>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-0.5">
-                  Target BP: <?= h($row['target_bp'] ?: '<140/90') ?>
-                </div>
+                <?php if (!empty($row['target_bp'])): ?>
+                  <div class="text-[11px] text-slate-500 mt-0.5">
+                    BP: <?= h($row['target_bp']) ?>
+                  </div>
+                <?php endif; ?>
+                <?php if (!empty($row['target_fbs'])): ?>
+                  <div class="text-[11px] text-slate-500 mt-0.5">
+                    FBS: <?= h($row['target_fbs']) ?>
+                  </div>
+                <?php endif; ?>
               </td>
 
               <td class="px-4 py-3.5 whitespace-nowrap">

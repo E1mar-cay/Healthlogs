@@ -16,8 +16,8 @@ $riskLevel = trim($_POST['philpen_risk_level'] ?? 'low');
 $isSmoker = trim($_POST['is_smoker'] ?? 'never');
 $isAlcohol = trim($_POST['is_alcohol_drinker'] ?? 'never');
 $maintenanceMeds = trim($_POST['maintenance_meds'] ?? '');
-$targetBp = trim($_POST['target_bp'] ?? '<140/90');
-$targetFbs = trim($_POST['target_fbs'] ?? '<126 mg/dL');
+$targetBp = trim($_POST['target_bp'] ?? $_POST['actual_bp'] ?? '');
+$targetFbs = trim($_POST['target_fbs'] ?? '');
 $status = trim($_POST['status'] ?? 'active');
 $remarks = trim($_POST['remarks'] ?? '');
 
@@ -58,13 +58,54 @@ try {
         'is_smoker' => $isSmoker,
         'is_alcohol_drinker' => $isAlcohol,
         'maintenance_meds' => $maintenanceMeds ?: null,
-        'target_bp' => $targetBp ?: '<140/90',
-        'target_fbs' => $targetFbs ?: '<126 mg/dL',
+        'target_bp' => $targetBp ?: null,
+        'target_fbs' => $targetFbs ?: null,
         'status' => $status,
         'remarks' => $remarks ?: null,
     ]);
 
     $newId = (int)$pdo->lastInsertId();
+
+    // If an actual BP or actual FBS was provided upon enrollment, automatically create initial baseline visit
+    $sys = null;
+    $dia = null;
+    $bsVal = null;
+    $bsType = 'none';
+
+    if (!empty($targetBp) && preg_match('/^(\d{2,3})\s*[\/\-]\s*(\d{2,3})$/', $targetBp, $bpMatches)) {
+        $sys = (int)$bpMatches[1];
+        $dia = (int)$bpMatches[2];
+    }
+    if (!empty($targetFbs) && preg_match('/(\d+(?:\.\d+)?)/', $targetFbs, $fbsMatches)) {
+        $bsVal = (float)$fbsMatches[1];
+        $bsType = 'fbs';
+    }
+
+    if ($sys !== null || $bsVal !== null) {
+        try {
+            $vStmt = $pdo->prepare("
+                INSERT INTO ncd_visits (
+                    ncd_record_id, visit_date, bp_systolic, bp_diastolic, blood_sugar_mgdl, blood_sugar_type,
+                    treatment_adherence, findings_complaints, management_plan, recorded_by
+                ) VALUES (
+                    :ncd_record_id, :visit_date, :bp_systolic, :bp_diastolic, :blood_sugar_mgdl, :blood_sugar_type,
+                    'good', 'Baseline clinical vitals recorded upon program enrollment.', 'Initial clinical enrollment & PhilPEN risk assessment.', :recorded_by
+                )
+            ");
+            $vStmt->execute([
+                'ncd_record_id' => $newId,
+                'visit_date' => $regDate,
+                'bp_systolic' => $sys,
+                'bp_diastolic' => $dia,
+                'blood_sugar_mgdl' => $bsVal,
+                'blood_sugar_type' => $bsType,
+                'recorded_by' => function_exists('current_user_id') ? current_user_id() : null,
+            ]);
+        } catch (Throwable $ve) {
+            // Non-critical, continue
+        }
+    }
+
     set_flash('success', "NCD Client [{$ncdCode}] successfully registered!");
     header("Location: /HealthLogs/public/ncd/visits/index.php?record_id={$newId}");
     exit;

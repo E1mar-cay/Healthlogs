@@ -312,11 +312,11 @@ require __DIR__ . '/../../partials/header.php';
           <label class="block text-xs font-semibold text-slate-700 mb-1">Blood Pressure (Systolic / Diastolic)</label>
           <div class="grid grid-cols-2 gap-2">
             <div class="relative">
-              <input type="number" name="bp_systolic" min="60" max="260" placeholder="Systolic (120)" class="w-full border rounded-lg px-2.5 py-2 text-xs pr-10" />
+              <input type="number" id="vBpSys" name="bp_systolic" min="60" max="260" placeholder="Systolic (120)" class="w-full border rounded-lg px-2.5 py-2 text-xs pr-10" />
               <span class="absolute right-2 top-2 text-[10px] text-slate-400 font-semibold">sys</span>
             </div>
             <div class="relative">
-              <input type="number" name="bp_diastolic" min="40" max="160" placeholder="Diastolic (80)" class="w-full border rounded-lg px-2.5 py-2 text-xs pr-10" />
+              <input type="number" id="vBpDia" name="bp_diastolic" min="40" max="160" placeholder="Diastolic (80)" class="w-full border rounded-lg px-2.5 py-2 text-xs pr-10" />
               <span class="absolute right-2 top-2 text-[10px] text-slate-400 font-semibold">dia</span>
             </div>
           </div>
@@ -326,19 +326,35 @@ require __DIR__ . '/../../partials/header.php';
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Blood Sugar (mg/dL)</label>
           <div class="relative">
-            <input type="number" step="0.1" name="blood_sugar_mgdl" placeholder="e.g. 110" class="w-full border rounded-lg px-3 py-2 text-xs pr-14" />
+            <input type="number" step="0.1" id="vBloodSugar" name="blood_sugar_mgdl" placeholder="e.g. 110" class="w-full border rounded-lg px-3 py-2 text-xs pr-14" />
             <span class="absolute right-2.5 top-2 text-[10px] text-slate-400 font-semibold">mg/dL</span>
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Blood Sugar Type</label>
-          <select name="blood_sugar_type" class="w-full border rounded-lg px-3 py-2 text-xs bg-white">
+          <select name="blood_sugar_type" id="vBloodSugarType" class="w-full border rounded-lg px-3 py-2 text-xs bg-white">
             <option value="fbs">FBS (Fasting Blood Sugar)</option>
             <option value="rbs">RBS (Random Blood Sugar)</option>
             <option value="hba1c">HbA1c (%)</option>
             <option value="none">None / Not Tested</option>
           </select>
+        </div>
+
+        <!-- Live PhilPEN CVD Risk Preview -->
+        <div class="p-2.5 rounded-xl border bg-slate-50 border-slate-200 flex items-center justify-between" id="visitRiskBanner">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
+              <i class="fas fa-heart-pulse"></i>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase font-bold text-slate-400">Assessed PhilPEN CVD Risk</div>
+              <div class="text-[11px] font-semibold text-slate-800" id="visitRiskSummary">Enter BP &amp; Blood Sugar to calculate risk</div>
+            </div>
+          </div>
+          <span id="visitRiskBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-lg border bg-slate-100 text-slate-700 border-slate-200 shrink-0">
+            &lt;10% Risk
+          </span>
         </div>
 
         <!-- Anthropometrics -->
@@ -624,6 +640,69 @@ if (selectPatient) {
     }
   });
 }
+
+// Live PhilPEN CVD Risk Calculator for Consultation
+function calcVisitPhilpenRisk() {
+  const sysVal = parseFloat(document.getElementById('vBpSys')?.value || 0);
+  const diaVal = parseFloat(document.getElementById('vBpDia')?.value || 0);
+  const bsVal = parseFloat(document.getElementById('vBloodSugar')?.value || 0);
+  const bsType = document.getElementById('vBloodSugarType')?.value || 'fbs';
+
+  const bannerSummary = document.getElementById('visitRiskSummary');
+  const bannerBadge = document.getElementById('visitRiskBadge');
+  if (!bannerSummary || !bannerBadge) return;
+
+  const isDiabetic = (bsType === 'fbs' && bsVal >= 126) || (bsType === 'rbs' && bsVal >= 200) || (bsType === 'hba1c' && bsVal >= 6.5);
+  const isSevereBs = (bsVal >= 200);
+
+  const isCrisisBp = (sysVal >= 180 || diaVal >= 110);
+  const isStage2Bp = (sysVal >= 160 || diaVal >= 100);
+  const isStage1Bp = (sysVal >= 140 || diaVal >= 90);
+  const isElevatedBp = (sysVal >= 130 || diaVal >= 85);
+
+  let pillText = '<10% Risk';
+  let badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+  let summaryText = 'Normal range (<10% 10-year CVD risk)';
+
+  if (isCrisisBp || (isStage2Bp && isDiabetic) || (isStage1Bp && isSevereBs)) {
+    pillText = '≥30% Risk (Very High)';
+    badgeColor = 'bg-rose-100 text-rose-800 border-rose-200';
+    summaryText = isCrisisBp 
+      ? 'Severe High BP (≥180/110 mmHg) indicates ≥30% CVD risk' 
+      : 'Stage 2 BP with Diabetes indicates ≥30% CVD risk';
+  } else if (isStage2Bp || (isStage1Bp && isDiabetic) || isSevereBs) {
+    pillText = '20% to <30% Risk (High)';
+    badgeColor = 'bg-orange-100 text-orange-800 border-orange-200';
+    summaryText = isStage2Bp 
+      ? 'Stage 2 HTN (≥160/100 mmHg) indicates 20% to <30% CVD risk' 
+      : 'Hypertension with Diabetes indicates 20% to <30% CVD risk';
+  } else if (isStage1Bp || isDiabetic || (isElevatedBp && bsVal >= 100)) {
+    pillText = '10% to <20% Risk (Moderate)';
+    badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+    summaryText = isStage1Bp 
+      ? 'Stage 1 HTN (≥140/90 mmHg) indicates 10% to <20% CVD risk' 
+      : 'Elevated Blood Sugar/Pre-hypertension (10% to <20% risk)';
+  } else {
+    pillText = '<10% Risk (Low)';
+    badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    summaryText = (sysVal > 0 || bsVal > 0) 
+      ? 'Measured vitals indicate <10% (Low) 10-year CVD risk' 
+      : 'Enter BP & Blood Sugar to assess risk';
+  }
+
+  bannerSummary.textContent = summaryText;
+  bannerBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-lg border shrink-0 ' + badgeColor;
+  bannerBadge.textContent = pillText;
+}
+
+const vSysEl = document.getElementById('vBpSys');
+const vDiaEl = document.getElementById('vBpDia');
+const vBsEl = document.getElementById('vBloodSugar');
+const vBsTypeEl = document.getElementById('vBloodSugarType');
+if (vSysEl) vSysEl.addEventListener('input', calcVisitPhilpenRisk);
+if (vDiaEl) vDiaEl.addEventListener('input', calcVisitPhilpenRisk);
+if (vBsEl) vBsEl.addEventListener('input', calcVisitPhilpenRisk);
+if (vBsTypeEl) vBsTypeEl.addEventListener('change', calcVisitPhilpenRisk);
 </script>
 
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

@@ -175,8 +175,8 @@ if ($export) {
         'PhilPEN Risk Level',
         'Smoker History',
         'Alcohol History',
-        'Target BP',
-        'Target FBS',
+        'Actual / Baseline BP',
+        'Actual / Baseline FBS',
         'Maintenance Medications',
         'Last BP (mmHg)',
         'Last Blood Sugar (mg/dL)',
@@ -208,8 +208,8 @@ if ($export) {
             ucfirst($r['philpen_risk_level']) . ' Risk',
             ucfirst($r['is_smoker']),
             ucfirst($r['is_alcohol_drinker']),
-            $r['target_bp'] ?: '<140/90',
-            $r['target_fbs'] ?: '<126 mg/dL',
+            $r['target_bp'] ?: 'N/A',
+            $r['target_fbs'] ?: 'N/A',
             $r['maintenance_meds'] ?: 'None',
             $bp,
             $bs,
@@ -495,8 +495,8 @@ require __DIR__ . '/../partials/header.php';
           <th class="min-w-[90px]">Lifestyle Factors</th>
 
           <!-- Target & Regimen -->
-          <th class="min-w-[75px]">Target BP</th>
-          <th class="min-w-[85px]">Target FBS</th>
+          <th class="min-w-[75px]">Actual BP</th>
+          <th class="min-w-[85px]">Actual FBS</th>
           <th class="min-w-[150px] text-left px-2">Maintenance Medications</th>
 
           <!-- Vitals -->
@@ -588,14 +588,14 @@ require __DIR__ . '/../partials/header.php';
                 <span>Alc: <strong class="<?= $r['is_alcohol_drinker'] === 'heavy' ? 'text-rose-600 font-bold' : '' ?>"><?= ucfirst(substr($r['is_alcohol_drinker'], 0, 1)) ?></strong></span>
               </td>
 
-              <!-- Target BP -->
+              <!-- Actual / Baseline BP -->
               <td class="text-center font-mono font-medium text-slate-700 text-[10px]">
-                <?= h($r['target_bp'] ?: '<140/90') ?>
+                <?= h($r['target_bp'] ?: '—') ?>
               </td>
 
-              <!-- Target FBS -->
+              <!-- Actual / Baseline FBS -->
               <td class="text-center font-mono font-medium text-slate-700 text-[10px]">
-                <?= h($r['target_fbs'] ?: '<126 mg/dL') ?>
+                <?= h($r['target_fbs'] ?: '—') ?>
               </td>
 
               <!-- Maintenance Medications -->
