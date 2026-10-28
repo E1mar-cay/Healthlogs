@@ -14,16 +14,44 @@ $patients = $pdo->query("
 $services = $pdo->query("
     SELECT id, service_code, service_name, category, description, target_classification, estimated_duration_minutes
     FROM health_services
-    WHERE is_active = 1
-    ORDER BY service_name ASC
+    WHERE is_active = 1 AND category IN ('immunization', 'maternal', 'family_planning')
+    ORDER BY 
+      CASE category
+        WHEN 'immunization' THEN 1
+        WHEN 'maternal' THEN 2
+        WHEN 'family_planning' THEN 3
+        ELSE 4
+      END,
+      id ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
+
+$servicesByProgram = [
+    'immunization' => [
+        'name' => 'Immunization Program (Child Healthcare)',
+        'items' => []
+    ],
+    'maternal' => [
+        'name' => 'Maternal Health Program (Prenatal & Postnatal)',
+        'items' => []
+    ],
+    'family_planning' => [
+        'name' => 'Family Planning Program (Reproductive Health)',
+        'items' => []
+    ]
+];
+
+foreach ($services as $s) {
+    if (isset($servicesByProgram[$s['category']])) {
+        $servicesByProgram[$s['category']]['items'][] = $s;
+    }
+}
 ?>
 
 <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs max-w-3xl mx-auto">
   <div class="mb-5 pb-3 border-b border-slate-100 flex items-center justify-between">
     <div>
       <h1 class="text-xl font-bold text-slate-900">Schedule Patient Appointment</h1>
-      <p class="text-xs text-slate-500 mt-0.5">Book required healthcare services based on patient classification and clinical protocols.</p>
+      <p class="text-xs text-slate-500 mt-0.5">Book appointments for the 3 core health programs (Immunization, Maternal Health, Family Planning).</p>
     </div>
     <a href="/HealthLogs/public/appointments/index.php" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition">
       Back to Appointments
@@ -33,9 +61,22 @@ $services = $pdo->query("
   <?php display_flash_messages(true, true); ?>
 
   <form method="post" action="/HealthLogs/public/appointments/save.php" class="space-y-4">
-    <!-- Patient Selector -->
+    <!-- Patient Selector with Search Function -->
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Select Patient <span class="text-rose-500">*</span></label>
+      <div class="flex items-center justify-between mb-1">
+        <label class="block text-xs font-semibold text-slate-700 uppercase">Select Patient <span class="text-rose-500">*</span></label>
+        <span id="patientMatchCount" class="text-[11px] text-slate-500 font-medium"></span>
+      </div>
+      <div class="relative mb-2">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
+          <i class="fas fa-search text-xs"></i>
+        </span>
+        <input type="search" id="patientSearchInput" placeholder="Quick search patient by name, purok, or category..." 
+          class="w-full pl-9 pr-8 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white" autocomplete="off" />
+        <button type="button" id="clearPatientSearch" class="hidden absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </div>
       <select id="patientSelect" name="patient_id" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
         <option value="">-- Choose a patient from registry --</option>
         <?php foreach ($patients as $p): ?>
@@ -59,21 +100,27 @@ $services = $pdo->query("
 
     <!-- Health Service Required -->
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Required Health Service <span class="text-rose-500">*</span></label>
+      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Required Health Service (3 Programs) <span class="text-rose-500">*</span></label>
       <select id="serviceSelect" name="service_id" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
-        <option value="">-- Select Health Service --</option>
-        <?php foreach ($services as $s): ?>
-          <option value="<?= (int)$s['id'] ?>"
-                  data-category="<?= h($s['category']) ?>"
-                  data-description="<?= h($s['description']) ?>"
-                  data-target="<?= h($s['target_classification']) ?>"
-                  data-duration="<?= (int)$s['estimated_duration_minutes'] ?>">
-            <?= h($s['service_name']) ?> (<?= ucfirst(h($s['category'])) ?> • ~<?= (int)$s['estimated_duration_minutes'] ?>m)
-          </option>
+        <option value="">-- Select Required Health Service --</option>
+        <?php foreach ($servicesByProgram as $progKey => $prog): ?>
+          <?php if (!empty($prog['items'])): ?>
+            <optgroup label="<?= h($prog['name']) ?>">
+              <?php foreach ($prog['items'] as $s): ?>
+                <option value="<?= (int)$s['id'] ?>"
+                        data-category="<?= h($s['category']) ?>"
+                        data-description="<?= h($s['description']) ?>"
+                        data-target="<?= h($s['target_classification']) ?>"
+                        data-duration="<?= (int)$s['estimated_duration_minutes'] ?>">
+                  <?= h($s['service_name']) ?> (~<?= (int)$s['estimated_duration_minutes'] ?>m)
+                </option>
+              <?php endforeach; ?>
+            </optgroup>
+          <?php endif; ?>
         <?php endforeach; ?>
       </select>
       <div id="serviceDescription" class="mt-1 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-        Choose a service to view standard clinical protocols and estimated visit duration.
+        Choose a program service to view clinical protocol details and estimated duration.
       </div>
     </div>
 
@@ -118,6 +165,66 @@ $services = $pdo->query("
   const serviceDesc = document.getElementById('serviceDescription');
   const patientSelect = document.getElementById('patientSelect');
   const patientMeta = document.getElementById('patientMetaPills');
+  const patientSearch = document.getElementById('patientSearchInput');
+  const clearPatientSearch = document.getElementById('clearPatientSearch');
+  const matchCount = document.getElementById('patientMatchCount');
+  const allPatientOptions = Array.from(patientSelect.options).slice(1);
+
+  function filterPatients() {
+    if (!patientSearch) return;
+    const term = patientSearch.value.trim().toLowerCase();
+    if (clearPatientSearch) {
+      clearPatientSearch.classList.toggle('hidden', term === '');
+    }
+
+    let visibleCount = 0;
+    let firstVisibleOpt = null;
+
+    allPatientOptions.forEach(opt => {
+      const text = (opt.textContent + ' ' + (opt.getAttribute('data-purok') || '') + ' ' + (opt.getAttribute('data-classification') || '')).toLowerCase();
+      const matches = (term === '' || text.includes(term));
+      opt.hidden = !matches;
+      opt.style.display = matches ? '' : 'none';
+      if (matches) {
+        visibleCount++;
+        if (!firstVisibleOpt) firstVisibleOpt = opt;
+      }
+    });
+
+    if (matchCount) {
+      if (term === '') {
+        matchCount.textContent = allPatientOptions.length + ' patients';
+      } else {
+        matchCount.textContent = visibleCount + ' match' + (visibleCount === 1 ? '' : 'es') + ' found';
+      }
+    }
+
+    return { visibleCount, firstVisibleOpt };
+  }
+
+  if (patientSearch) {
+    patientSearch.addEventListener('input', filterPatients);
+    patientSearch.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const res = filterPatients();
+        if (res && res.firstVisibleOpt) {
+          patientSelect.value = res.firstVisibleOpt.value;
+          updatePatientMeta();
+        }
+      }
+    });
+  }
+
+  if (clearPatientSearch) {
+    clearPatientSearch.addEventListener('click', function() {
+      if (patientSearch) {
+        patientSearch.value = '';
+        filterPatients();
+        patientSearch.focus();
+      }
+    });
+  }
 
   function updateServiceDesc() {
     const opt = serviceSelect.options[serviceSelect.selectedIndex];
@@ -151,5 +258,6 @@ $services = $pdo->query("
   patientSelect.addEventListener('change', updatePatientMeta);
   updateServiceDesc();
   updatePatientMeta();
+  filterPatients();
 })();
 </script>

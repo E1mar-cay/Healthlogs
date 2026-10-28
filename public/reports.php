@@ -195,17 +195,17 @@ try {
     usort($sortedSeason, fn($a, $b) => (int)$b['total_cases'] <=> (int)$a['total_cases']);
     $seasonalTopMonths = array_filter(array_slice($sortedSeason, 0, 3), fn($r) => $r['total_cases'] > 0);
 
-    // Color palette matching forecast.php exactly
+    // Muted slate palette keeps the charts consistent with the reports UI.
     $diseaseColors = [
-        'Arthritis' => '#0ea5a4',
-        'Hypertension' => '#2563eb',
-        'Migraine' => '#f59e0b',
-        'Diabetes Type 2' => '#8b5cf6',
-        'Allergic Rhinitis' => '#10b981',
-        'Asthma' => '#ec4899',
-        'Hypothyroidism' => '#6366f1',
+        'Arthritis' => '#14b8a6',
+        'Hypertension' => '#60a5fa',
+        'Migraine' => '#fbbf24',
+        'Diabetes Type 2' => '#a78bfa',
+        'Allergic Rhinitis' => '#34d399',
+        'Asthma' => '#fb7185',
+        'Hypothyroidism' => '#818cf8',
     ];
-    $fallbackPalette = ['#0284c7', '#d97706', '#059669', '#7c3aed', '#db2777', '#475569'];
+    $fallbackPalette = ['#14b8a6', '#60a5fa', '#fbbf24', '#a78bfa', '#34d399', '#fb7185', '#818cf8'];
     $colorIdx = 0;
 
     foreach ($allDiseaseSet as $diseaseName => $overallCount) {
@@ -484,6 +484,94 @@ try {
     $femaleCounts = [0, 0, 0, 0, 0, 0];
 }
 
+// 6. Number of Patients per Classification (Item 6: RHU Lifecourse & Priority Groups)
+$allClassificationsMeta = PatientClassifier::getClassifications();
+$classificationSummaryRows = [];
+$totalClassifiedPatients = 0;
+$specialPoverty = ['pwd_count' => 0, 'four_ps_count' => 0];
+
+try {
+    $classWhere = ["p.status <> 'deceased'"];
+    $classParams = [];
+    if ($barangayFilter !== '') {
+        $classWhere[] = "p.barangay = ?";
+        $classParams[] = $barangayFilter;
+    }
+    if (in_array($sexFilter, $validSex, true)) {
+        $classWhere[] = "p.sex = ?";
+        $classParams[] = $sexFilter;
+    }
+    if ($fromDate !== '') {
+        $classWhere[] = "DATE(p.created_at) >= ?";
+        $classParams[] = $fromDate;
+    }
+    if ($toDate !== '') {
+        $classWhere[] = "DATE(p.created_at) <= ?";
+        $classParams[] = $toDate;
+    }
+
+    $classSql = "SELECT
+            COALESCE(NULLIF(p.classification, ''), 'adult') AS classification_key,
+            SUM(CASE WHEN p.sex = 'male' THEN 1 ELSE 0 END) AS male_count,
+            SUM(CASE WHEN p.sex = 'female' THEN 1 ELSE 0 END) AS female_count,
+            COUNT(*) AS total_count
+        FROM patients p
+        WHERE " . implode(' AND ', $classWhere) . "
+        GROUP BY classification_key
+        ORDER BY total_count DESC";
+    $classStmt = $pdo->prepare($classSql);
+    $classStmt->execute($classParams);
+    $rawClassRows = $classStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $classCountsMap = [];
+    foreach ($rawClassRows as $r) {
+        $classCountsMap[$r['classification_key']] = $r;
+        $totalClassifiedPatients += (int)$r['total_count'];
+    }
+
+    // Build complete classification matrix ensuring all standard DOH/RHU groups exist
+    foreach ($allClassificationsMeta as $cKey => $cMeta) {
+        $mCount = (int)($classCountsMap[$cKey]['male_count'] ?? 0);
+        $fCount = (int)($classCountsMap[$cKey]['female_count'] ?? 0);
+        $tCount = (int)($classCountsMap[$cKey]['total_count'] ?? 0);
+        $pct = $totalClassifiedPatients > 0 ? round(($tCount / $totalClassifiedPatients) * 100, 1) : 0;
+
+        $classificationSummaryRows[] = [
+            'key' => $cKey,
+            'label' => $cMeta['label'],
+            'short_label' => $cMeta['short_label'],
+            'category' => $cMeta['category'],
+            'description' => $cMeta['description'],
+            'badge' => $cMeta['badge'],
+            'icon' => $cMeta['icon'],
+            'priority' => $cMeta['priority'],
+            'male_count' => $mCount,
+            'female_count' => $fCount,
+            'total_count' => $tCount,
+            'pct' => $pct
+        ];
+    }
+
+    // Sort by priority and total count
+    usort($classificationSummaryRows, function($a, $b) {
+        return $b['total_count'] <=> $a['total_count'];
+    });
+
+    // PWD & 4Ps flags
+    $specialPovertySql = "SELECT
+            SUM(CASE WHEN p.is_pwd = 1 THEN 1 ELSE 0 END) AS pwd_count,
+            SUM(CASE WHEN p.is_4ps = 1 THEN 1 ELSE 0 END) AS four_ps_count
+        FROM patients p
+        WHERE " . implode(' AND ', $classWhere);
+    $specialPovertyStmt = $pdo->prepare($specialPovertySql);
+    $specialPovertyStmt->execute($classParams);
+    $specialPoverty = $specialPovertyStmt->fetch(PDO::FETCH_ASSOC) ?: ['pwd_count' => 0, 'four_ps_count' => 0];
+
+} catch (Throwable $e) {
+    $classificationSummaryRows = [];
+    $totalClassifiedPatients = 0;
+}
+
 // Handle CSV Exports
 if ($exportType !== '') {
     if ($exportType === 'medical_records') {
@@ -518,6 +606,19 @@ if ($exportType !== '') {
             $rows[] = [$label, $maleCounts[$idx] ?? 0, $femaleCounts[$idx] ?? 0];
         }
         $csvOutput('population_by_age_gender_tangcul.csv', ['Age Group', 'Male', 'Female'], $rows);
+    } elseif ($exportType === 'classification') {
+        $rows = array_map(function (array $c): array {
+            return [
+                $c['label'],
+                $c['category'],
+                $c['male_count'],
+                $c['female_count'],
+                $c['total_count'],
+                $c['pct'] . '%',
+                $c['priority'] ? 'Yes' : 'No'
+            ];
+        }, $classificationSummaryRows);
+        $csvOutput('patients_by_classification_tangcul.csv', ['Classification', 'Category', 'Male', 'Female', 'Total Count', 'Percentage', 'RHU Priority'], $rows);
     }
 }
 
@@ -544,6 +645,161 @@ $currentDateTimeFormatted = date('F j, Y, h:i A');
 require __DIR__ . '/partials/header.php';
 ?>
 
+<style>
+  .app-main [class*=" bg-teal-"], .app-main [class^="bg-teal-"],
+  .app-main [class*=" bg-indigo-"], .app-main [class^="bg-indigo-"],
+  .app-main [class*=" bg-emerald-"], .app-main [class^="bg-emerald-"],
+  .app-main [class*=" bg-rose-"], .app-main [class^="bg-rose-"],
+  .app-main [class*=" bg-amber-"], .app-main [class^="bg-amber-"],
+  .app-main [class*=" bg-sky-"], .app-main [class^="bg-sky-"],
+  .app-main [class*=" bg-purple-"], .app-main [class^="bg-purple-"],
+  .app-main [class*=" bg-blue-"], .app-main [class^="bg-blue-"],
+  .app-main [class*=" bg-orange-"], .app-main [class^="bg-orange-"],
+  .app-main [class*=" bg-pink-"], .app-main [class^="bg-pink-"],
+  .app-main [class*=" bg-cyan-"], .app-main [class^="bg-cyan-"],
+  .app-main [class*=" bg-yellow-"], .app-main [class^="bg-yellow-"],
+  .app-main [class*=" bg-red-"], .app-main [class^="bg-red-"],
+  .app-main [class*=" bg-green-"], .app-main [class^="bg-green-"] {
+    background-color: #f1f5f9 !important;
+  }
+
+  .app-main [class*=" bg-teal-6"], .app-main [class*=" bg-teal-7"], .app-main [class*=" bg-teal-8"], .app-main [class*=" bg-teal-9"],
+  .app-main [class*=" bg-indigo-6"], .app-main [class*=" bg-indigo-7"], .app-main [class*=" bg-indigo-8"], .app-main [class*=" bg-indigo-9"],
+  .app-main [class*=" bg-emerald-6"], .app-main [class*=" bg-emerald-7"], .app-main [class*=" bg-emerald-8"], .app-main [class*=" bg-emerald-9"],
+  .app-main [class*=" bg-rose-6"], .app-main [class*=" bg-rose-7"], .app-main [class*=" bg-rose-8"], .app-main [class*=" bg-rose-9"],
+  .app-main [class*=" bg-amber-6"], .app-main [class*=" bg-amber-7"], .app-main [class*=" bg-amber-8"], .app-main [class*=" bg-amber-9"],
+  .app-main [class*=" bg-sky-6"], .app-main [class*=" bg-sky-7"], .app-main [class*=" bg-sky-8"], .app-main [class*=" bg-sky-9"],
+  .app-main [class*=" bg-purple-6"], .app-main [class*=" bg-purple-7"], .app-main [class*=" bg-purple-8"], .app-main [class*=" bg-purple-9"],
+  .app-main [class*=" bg-blue-6"], .app-main [class*=" bg-blue-7"], .app-main [class*=" bg-blue-8"], .app-main [class*=" bg-blue-9"],
+  .app-main [class*=" bg-orange-6"], .app-main [class*=" bg-orange-7"], .app-main [class*=" bg-orange-8"], .app-main [class*=" bg-orange-9"],
+  .app-main [class*=" bg-pink-6"], .app-main [class*=" bg-pink-7"], .app-main [class*=" bg-pink-8"], .app-main [class*=" bg-pink-9"],
+  .app-main [class*=" bg-cyan-6"], .app-main [class*=" bg-cyan-7"], .app-main [class*=" bg-cyan-8"], .app-main [class*=" bg-cyan-9"],
+  .app-main [class*=" bg-yellow-6"], .app-main [class*=" bg-yellow-7"], .app-main [class*=" bg-yellow-8"], .app-main [class*=" bg-yellow-9"],
+  .app-main [class*=" bg-red-6"], .app-main [class*=" bg-red-7"], .app-main [class*=" bg-red-8"], .app-main [class*=" bg-red-9"],
+  .app-main [class*=" bg-green-6"], .app-main [class*=" bg-green-7"], .app-main [class*=" bg-green-8"], .app-main [class*=" bg-green-9"] {
+    background-color: #475569 !important;
+  }
+
+  .app-main [class*="text-teal-"], .app-main [class*="text-indigo-"],
+  .app-main [class*="text-emerald-"], .app-main [class*="text-rose-"],
+  .app-main [class*="text-amber-"], .app-main [class*="text-sky-"],
+  .app-main [class*="text-purple-"], .app-main [class*="text-blue-"],
+  .app-main [class*="text-orange-"], .app-main [class*="text-pink-"],
+  .app-main [class*="text-cyan-"], .app-main [class*="text-yellow-"],
+  .app-main [class*="text-red-"], .app-main [class*="text-green-"] {
+    color: #475569 !important;
+  }
+
+  .app-main [class*="border-teal-"], .app-main [class*="border-indigo-"],
+  .app-main [class*="border-emerald-"], .app-main [class*="border-rose-"],
+  .app-main [class*="border-amber-"], .app-main [class*="border-sky-"],
+  .app-main [class*="border-purple-"], .app-main [class*="border-blue-"],
+  .app-main [class*="border-orange-"], .app-main [class*="border-pink-"],
+  .app-main [class*="border-cyan-"], .app-main [class*="border-yellow-"],
+  .app-main [class*="border-red-"], .app-main [class*="border-green-"] {
+    border-color: #e2e8f0 !important;
+  }
+
+  .app-main [class*="hover:bg-teal-"]:hover, .app-main [class*="hover:bg-indigo-"]:hover,
+  .app-main [class*="hover:bg-emerald-"]:hover, .app-main [class*="hover:bg-rose-"]:hover,
+  .app-main [class*="hover:bg-amber-"]:hover, .app-main [class*="hover:bg-sky-"]:hover,
+  .app-main [class*="hover:bg-purple-"]:hover, .app-main [class*="hover:bg-blue-"]:hover,
+  .app-main [class*="hover:bg-orange-"]:hover, .app-main [class*="hover:bg-pink-"]:hover,
+  .app-main [class*="hover:bg-cyan-"]:hover, .app-main [class*="hover:bg-yellow-"]:hover,
+  .app-main [class*="hover:bg-red-"]:hover, .app-main [class*="hover:bg-green-"]:hover {
+    background-color: #e2e8f0 !important;
+  }
+
+  .app-main [class*="hover:text-teal-"]:hover, .app-main [class*="hover:text-indigo-"]:hover,
+  .app-main [class*="hover:text-emerald-"]:hover, .app-main [class*="hover:text-rose-"]:hover,
+  .app-main [class*="hover:text-amber-"]:hover, .app-main [class*="hover:text-sky-"]:hover,
+  .app-main [class*="hover:text-purple-"]:hover, .app-main [class*="hover:text-blue-"]:hover,
+  .app-main [class*="hover:text-orange-"]:hover, .app-main [class*="hover:text-pink-"]:hover,
+  .app-main [class*="hover:text-cyan-"]:hover, .app-main [class*="hover:text-yellow-"]:hover,
+  .app-main [class*="hover:text-red-"]:hover, .app-main [class*="hover:text-green-"]:hover {
+    color: #0f172a !important;
+  }
+
+  .app-main [class*="shadow"] {
+    box-shadow: none !important;
+  }
+
+  #tclSection a {
+    background-color: #fff !important;
+    border-color: #e2e8f0 !important;
+    border-radius: 0.75rem !important;
+    box-shadow: none !important;
+  }
+  #tclSection a:hover {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    filter: none;
+  }
+  #tclSection a span:first-child {
+    background-color: #f0fdfa !important;
+    color: #0f766e !important;
+    box-shadow: none !important;
+  }
+  #tclSection a > div > div > div:first-child {
+    color: #0f172a !important;
+  }
+  #tclSection a > div > div > div:last-child {
+    color: #64748b !important;
+  }
+
+  #reportsFilters button[type="submit"] {
+    background-color: #0f766e !important;
+    color: #fff !important;
+  }
+  #reportsFilters button[type="submit"]:hover { background-color: #115e59 !important; }
+  #reportsFilters .active-filter {
+    background-color: #f0fdfa !important;
+    color: #115e59 !important;
+    border-color: #99f6e4 !important;
+  }
+
+  #classificationSummaryCards > div {
+    background-color: #fff !important;
+    border-color: #e2e8f0 !important;
+    border-radius: 0.75rem !important;
+    box-shadow: none !important;
+  }
+  #classificationSummaryCards > div > div:first-child { color: #475569 !important; }
+  #classificationSummaryCards > div > div:first-child i { color: #0f766e !important; }
+  #classificationSummaryCards > div > div:nth-child(2) { color: #0f172a !important; }
+  #classificationSummaryCards > div > div:last-child { color: #64748b !important; }
+
+  .app-main > div.bg-white[class*="border-slate-"] {
+    border-color: #e2e8f0 !important;
+    border-radius: 0.875rem !important;
+    box-shadow: none !important;
+  }
+
+  #reportsFilters {
+    border-color: #e2e8f0 !important;
+    border-radius: 0.875rem !important;
+    box-shadow: none !important;
+  }
+
+  #reportsFilters input,
+  #reportsFilters select {
+    border-color: #cbd5e1;
+    border-radius: 0.5rem;
+    background-color: #fff;
+  }
+
+  #reportsFilters input:focus,
+  #reportsFilters select:focus {
+    outline: none;
+    border-color: #0f766e;
+    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+  }
+
+  .app-main table thead tr {
+    background-color: #f8fafc;
+  }
+</style>
+
 <!-- Printable Official Header (Visible only when full-page printing) -->
 <div id="printOfficialHeader" class="hidden print:block mb-6 border-b-2 border-slate-800 pb-4">
   <div class="flex items-center justify-between gap-4">
@@ -567,32 +823,93 @@ require __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:hidden">
+<div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 print:hidden">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold mb-1">Health Analytics & Reporting</div>
-      <div class="text-2xl font-bold text-slate-900 tracking-tight">Reports (Barangay Tangcul)</div>
-      <p class="text-sm text-slate-500 mt-1">Dynamic reporting synchronized across patient medical records, consultations, demographics, and disease trends.</p>
+      <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold mb-1">Health Analytics &amp; Master Registries</div>
+      <h1 class="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Reports &amp; Program Registers (Barangay Tangcul)</h1>
+      <p class="text-sm text-slate-500 mt-1">Official DOH Target Client Lists (TCL), demographic lifecourse cohorts, consultations, and epidemiological disease trends.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2.5">
-      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition">
-        <i class="fas fa-syringe text-xs"></i>
-        <span>Child TCL-2</span>
-      </a>
-      <a href="/HealthLogs/public/maternal/tcl.php" class="inline-flex items-center gap-1.5 bg-rose-700 hover:bg-rose-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition">
-        <i class="fas fa-person-pregnant text-xs"></i>
-        <span>Maternal 8-ANC TCL</span>
-      </a>
-      <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs hover:bg-slate-800 transition">
+      <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition">
         <i class="fas fa-print text-xs"></i>
         <span>Print Full Report</span>
       </button>
     </div>
   </div>
+
+  <!-- Item 11: Target Client Lists (TCL) by Program Hub -->
+  <div id="tclSection" class="mt-5 pt-4 border-t border-slate-100">
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-xs uppercase tracking-widest font-bold text-slate-500 flex items-center gap-2">
+        <i class="fas fa-folder-closed text-teal-600"></i>
+        <span>Official Target Client Lists (TCL) By Health Program</span>
+      </div>
+      <span class="text-[11px] text-slate-400">Department of Health Master Clinical Registries</span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <!-- Child Immunization TCL-2 -->
+      <a href="/HealthLogs/public/immunization/tcl.php" class="p-3.5 rounded-xl border border-teal-200 bg-teal-50/60 hover:bg-teal-50 hover:border-teal-300 transition block group shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform">
+            <i class="fas fa-syringe"></i>
+          </span>
+          <div>
+            <div class="text-xs font-bold text-slate-900 group-hover:text-teal-700 transition">Child Immunization (TCL-2)</div>
+            <div class="text-[10px] text-teal-700 font-medium">0–23 Months Infant Cohort</div>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Vaccines, antigens, fully-immunized child (FIC) tracking.</p>
+      </a>
+
+      <!-- Maternal 8-ANC TCL -->
+      <a href="/HealthLogs/public/maternal/tcl.php" class="p-3.5 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-50 hover:border-rose-300 transition block group shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform">
+            <i class="fas fa-person-pregnant"></i>
+          </span>
+          <div>
+            <div class="text-xs font-bold text-slate-900 group-hover:text-rose-700 transition">Maternal Health (8-ANC TCL)</div>
+            <div class="text-[10px] text-rose-700 font-medium">Pregnancies &amp; 4-PNC Registry</div>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Antenatal care, risk factors, tetanus toxoid, postpartum.</p>
+      </a>
+
+      <!-- NCD TCL -->
+      <a href="/HealthLogs/public/ncd/tcl.php" class="p-3.5 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-50 hover:border-blue-300 transition block group shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform">
+            <i class="fas fa-heart-pulse"></i>
+          </span>
+          <div>
+            <div class="text-xs font-bold text-slate-900 group-hover:text-blue-700 transition">Non-Communicable (TCL-NCD)</div>
+            <div class="text-[10px] text-blue-700 font-medium">Hypertension &amp; Diabetes PhilPEN</div>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Risk stratification, BP tracking, blood glucose, meds.</p>
+      </a>
+
+      <!-- Family Planning TCL -->
+      <a href="/HealthLogs/public/family_planning/tcl.php" class="p-3.5 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-50 hover:border-purple-300 transition block group shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs shadow-2xs group-hover:scale-105 transition-transform">
+            <i class="fas fa-venus-mars"></i>
+          </span>
+          <div>
+            <div class="text-xs font-bold text-slate-900 group-hover:text-purple-700 transition">Family Planning (TCL-FP)</div>
+            <div class="text-[10px] text-purple-700 font-medium">Contraceptive Users &amp; Refills</div>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Pills, DMPA injectables, condoms, IUD follow-ups.</p>
+      </a>
+    </div>
+  </div>
 </div>
 
 <!-- Dynamic Filter Bar -->
-<form method="get" class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-100 print:hidden">
+<form id="reportsFilters" method="get" class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-100 print:hidden">
   <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">Filter Options (Dynamic Filtering)</div>
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
     <div>
@@ -643,7 +960,7 @@ require __DIR__ . '/partials/header.php';
     <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
       <div class="flex items-center gap-1.5 flex-wrap">
         <span class="font-semibold text-slate-700">Active Filter:</span>
-        <span class="inline-flex items-center bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-0.5 rounded-full font-medium">
+        <span class="active-filter inline-flex items-center bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-0.5 rounded-full font-medium">
           <?= h($filterSummaryText) ?>
         </span>
       </div>
@@ -651,6 +968,167 @@ require __DIR__ . '/partials/header.php';
     </div>
   <?php endif; ?>
 </form>
+<!-- ============================================================ -->
+<!-- Item 6: Number of Patients per Classification Section       -->
+<!-- ============================================================ -->
+<div class="mt-6 bg-white p-4 sm:p-6 rounded-2xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300 print:mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 mb-1">
+        <i class="fas fa-layer-group text-[10px]"></i> RHU Priority Demographics
+      </div>
+      <div class="text-xl font-bold text-slate-900 tracking-tight">Number of Patients per Classification</div>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Distribution of registered community members across DOH lifecourse stages and priority clinical cohorts (Total: <?= number_format($totalClassifiedPatients) ?> patients).</p>
+    </div>
+    <div class="flex items-center gap-2 self-end sm:self-auto print:hidden">
+      <button type="button" class="inline-flex items-center text-xs font-semibold text-slate-700 hover:text-slate-900 border border-slate-200 bg-white px-3 py-1.5 rounded-xl hover:bg-slate-50 transition shadow-2xs" onclick="printReportSection('section-patient-classification', 'Official Report: Patients by Classification')">
+        <i class="fas fa-print mr-1.5 text-xs text-indigo-600"></i>Print Section
+      </button>
+      <a class="inline-flex items-center text-xs font-semibold text-indigo-700 hover:text-indigo-900 border border-indigo-200 bg-indigo-50/70 px-3 py-1.5 rounded-xl hover:bg-indigo-100 transition shadow-2xs" href="/HealthLogs/public/reports.php?<?= h(http_build_query(array_filter(['from' => $fromDate, 'to' => $toDate, 'barangay' => $barangayFilter, 'sex' => $sexFilter, 'export' => 'classification']))) ?>">
+        <i class="fas fa-file-csv mr-1.5 text-xs"></i>Export CSV
+      </a>
+    </div>
+  </div>
+
+  <div id="section-patient-classification">
+    <!-- Quick Cohort Summary Cards -->
+    <div id="classificationSummaryCards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4 print:grid-cols-5">
+      <?php
+        $pediatricTotal = 0;
+        $maternalTotal = 0;
+        $seniorTotal = 0;
+        $adultTotal = 0;
+        foreach ($classificationSummaryRows as $cr) {
+            if (in_array($cr['key'], ['infant', 'under_five', 'school_age'], true)) $pediatricTotal += $cr['total_count'];
+            if (in_array($cr['key'], ['pregnant', 'postpartum'], true)) $maternalTotal += $cr['total_count'];
+            if ($cr['key'] === 'senior') $seniorTotal += $cr['total_count'];
+            if ($cr['key'] === 'adult') $adultTotal += $cr['total_count'];
+        }
+      ?>
+      <div class="p-3 rounded-xl border border-pink-200 bg-pink-50/60">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-pink-700 flex items-center justify-between">
+          <span>Pediatric (0-9y)</span>
+          <i class="fas fa-baby"></i>
+        </div>
+        <div class="text-xl font-black text-pink-900 mt-1"><?= number_format($pediatricTotal) ?></div>
+        <div class="text-[10px] text-pink-600 font-medium">Routine EPI &amp; Nutrition</div>
+      </div>
+
+      <div class="p-3 rounded-xl border border-rose-200 bg-rose-50/60">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-rose-700 flex items-center justify-between">
+          <span>Maternal Care</span>
+          <i class="fas fa-person-pregnant"></i>
+        </div>
+        <div class="text-xl font-black text-rose-900 mt-1"><?= number_format($maternalTotal) ?></div>
+        <div class="text-[10px] text-rose-600 font-medium">Prenatal &amp; Postpartum</div>
+      </div>
+
+      <div class="p-3 rounded-xl border border-purple-200 bg-purple-50/60">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-purple-700 flex items-center justify-between">
+          <span>Seniors (60+)</span>
+          <i class="fas fa-person-cane"></i>
+        </div>
+        <div class="text-xl font-black text-purple-900 mt-1"><?= number_format($seniorTotal) ?></div>
+        <div class="text-[10px] text-purple-600 font-medium">Geriatric &amp; NCD Free Meds</div>
+      </div>
+
+      <div class="p-3 rounded-xl border border-blue-200 bg-blue-50/60">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-blue-700 flex items-center justify-between">
+          <span>PWD Registered</span>
+          <i class="fas fa-wheelchair"></i>
+        </div>
+        <div class="text-xl font-black text-blue-900 mt-1"><?= (int)($specialPoverty['pwd_count'] ?? 0) ?></div>
+        <div class="text-[10px] text-blue-600 font-medium">Special Assistance</div>
+      </div>
+
+      <div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50/60">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center justify-between">
+          <span>4Ps Beneficiaries</span>
+          <i class="fas fa-hand-holding-heart"></i>
+        </div>
+        <div class="text-xl font-black text-emerald-900 mt-1"><?= (int)($specialPoverty['four_ps_count'] ?? 0) ?></div>
+        <div class="text-[10px] text-emerald-600 font-medium">Priority Welfare Program</div>
+      </div>
+    </div>
+
+    <!-- Breakdown Table -->
+    <div class="overflow-x-auto mt-4 -mx-4 sm:mx-0 px-4 sm:px-0">
+      <table class="w-full text-left text-xs min-w-[760px] border-collapse">
+        <thead class="bg-slate-100/70 text-slate-600 uppercase font-semibold border-b border-slate-200">
+          <tr>
+            <th class="py-2.5 px-3">Classification &amp; Lifecourse Stage</th>
+            <th class="py-2.5 px-3">Category</th>
+            <th class="py-2.5 px-3">Target Scope &amp; Eligibility</th>
+            <th class="py-2.5 px-3 text-right">Male</th>
+            <th class="py-2.5 px-3 text-right">Female</th>
+            <th class="py-2.5 px-3 text-right font-bold text-slate-900">Total Count</th>
+            <th class="py-2.5 px-3 text-right font-bold text-indigo-700">Share (%)</th>
+            <th class="py-2.5 px-3 text-center">Priority</th>
+            <th class="py-2.5 px-3 text-center print:hidden">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <?php if (empty($classificationSummaryRows)): ?>
+            <tr><td colspan="9" class="py-6 text-center text-slate-400">No patient classification records found.</td></tr>
+          <?php else: ?>
+            <?php foreach ($classificationSummaryRows as $row): ?>
+              <tr class="hover:bg-slate-50/60 transition">
+                <td class="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 text-xs">
+                      <i class="fas <?= h($row['icon']) ?>"></i>
+                    </span>
+                    <span><?= h($row['label']) ?></span>
+                  </div>
+                </td>
+                <td class="py-2.5 px-3 whitespace-nowrap">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                    <?= h($row['category']) ?>
+                  </span>
+                </td>
+                <td class="py-2.5 px-3 text-slate-500 max-w-xs truncate" title="<?= h($row['description']) ?>">
+                  <?= h($row['description']) ?>
+                </td>
+                <td class="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap"><?= number_format($row['male_count']) ?></td>
+                <td class="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap"><?= number_format($row['female_count']) ?></td>
+                <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                  <?= number_format($row['total_count']) ?>
+                </td>
+                <td class="py-2.5 px-3 text-right font-mono font-bold text-indigo-700 whitespace-nowrap">
+                  <?= number_format($row['pct'], 1) ?>%
+                </td>
+                <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                  <?php if ($row['priority']): ?>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                      <i class="fas fa-star text-[9px] text-amber-500"></i> Priority
+                    </span>
+                  <?php else: ?>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
+                      Standard
+                    </span>
+                  <?php endif; ?>
+                </td>
+                <td class="py-2.5 px-3 text-center whitespace-nowrap print:hidden">
+                  <a href="/HealthLogs/public/patients/index.php?classification=<?= h($row['key']) ?>" class="text-[11px] font-semibold text-teal-700 hover:text-teal-900 hover:underline">
+                    View List <i class="fas fa-arrow-right text-[9px] ml-0.5"></i>
+                  </a>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+            <tr class="bg-slate-50 font-bold border-t-2 border-slate-200 text-slate-900">
+              <td colspan="3" class="py-2.5 px-3 uppercase text-[11px] tracking-wider text-slate-600">Total Classified Population</td>
+              <td class="py-2.5 px-3 text-right font-mono"><?= number_format(array_sum(array_column($classificationSummaryRows, 'male_count'))) ?></td>
+              <td class="py-2.5 px-3 text-right font-mono"><?= number_format(array_sum(array_column($classificationSummaryRows, 'female_count'))) ?></td>
+              <td class="py-2.5 px-3 text-right font-mono text-teal-800"><?= number_format($totalClassifiedPatients) ?></td>
+              <td class="py-2.5 px-3 text-right font-mono text-indigo-700">100.0%</td>
+              <td colspan="2"></td>
+            </tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <!-- Section: Patient Medical Records -->
 <div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300 print:mb-6">
@@ -909,13 +1387,13 @@ require __DIR__ . '/partials/header.php';
         <div class="flex flex-wrap gap-1.5">
           <?php 
           $badgePalette = [
-            'Arthritis' => ['bg' => 'bg-teal-50', 'text' => 'text-teal-800', 'border' => 'border-teal-200', 'dot' => '#0ea5a4'],
-            'Hypertension' => ['bg' => 'bg-blue-50', 'text' => 'text-blue-800', 'border' => 'border-blue-200', 'dot' => '#2563eb'],
-            'Migraine' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-800', 'border' => 'border-amber-200', 'dot' => '#f59e0b'],
-            'Diabetes Type 2' => ['bg' => 'bg-purple-50', 'text' => 'text-purple-800', 'border' => 'border-purple-200', 'dot' => '#8b5cf6'],
-            'Allergic Rhinitis' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-800', 'border' => 'border-emerald-200', 'dot' => '#10b981'],
-            'Asthma' => ['bg' => 'bg-pink-50', 'text' => 'text-pink-800', 'border' => 'border-pink-200', 'dot' => '#ec4899'],
-            'Hypothyroidism' => ['bg' => 'bg-indigo-50', 'text' => 'text-indigo-800', 'border' => 'border-indigo-200', 'dot' => '#6366f1'],
+            'Arthritis' => ['bg' => 'bg-teal-50', 'text' => 'text-teal-800', 'border' => 'border-teal-200', 'dot' => '#14b8a6'],
+            'Hypertension' => ['bg' => 'bg-blue-50', 'text' => 'text-blue-800', 'border' => 'border-blue-200', 'dot' => '#60a5fa'],
+            'Migraine' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-800', 'border' => 'border-amber-200', 'dot' => '#fbbf24'],
+            'Diabetes Type 2' => ['bg' => 'bg-purple-50', 'text' => 'text-purple-800', 'border' => 'border-purple-200', 'dot' => '#a78bfa'],
+            'Allergic Rhinitis' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-800', 'border' => 'border-emerald-200', 'dot' => '#34d399'],
+            'Asthma' => ['bg' => 'bg-pink-50', 'text' => 'text-pink-800', 'border' => 'border-pink-200', 'dot' => '#fb7185'],
+            'Hypothyroidism' => ['bg' => 'bg-indigo-50', 'text' => 'text-indigo-800', 'border' => 'border-indigo-200', 'dot' => '#818cf8'],
           ];
           foreach ($allDiseaseSet as $diseaseName => $count): 
             $style = $badgePalette[$diseaseName] ?? ['bg' => 'bg-slate-50', 'text' => 'text-slate-800', 'border' => 'border-slate-200', 'dot' => '#475569'];
@@ -1098,7 +1576,7 @@ require __DIR__ . '/partials/header.php';
 
   const trendDiseaseNames = Object.keys(diseaseTrendSeries || {});
   if (diseaseTrendMonths.length && trendDiseaseNames.length && document.getElementById('diseaseTrendChart')) {
-    const palette = ['#0ea5a4', '#2563eb', '#9333ea', '#f97316', '#16a34a'];
+    const palette = ['#14b8a6', '#60a5fa', '#fbbf24', '#a78bfa', '#34d399'];
     const datasets = trendDiseaseNames.map((name, idx) => ({
       label: name,
       data: diseaseTrendSeries[name],
@@ -1151,8 +1629,8 @@ require __DIR__ . '/partials/header.php';
           {
             label: 'Male',
             data: maleCounts,
-            backgroundColor: 'rgba(37, 99, 235, 0.8)',
-            borderColor: '#2563eb',
+            backgroundColor: 'rgba(96, 165, 250, 0.75)',
+            borderColor: '#60a5fa',
             borderRadius: 6,
             borderWidth: 1,
             maxBarThickness: 32
@@ -1160,8 +1638,8 @@ require __DIR__ . '/partials/header.php';
           {
             label: 'Female',
             data: femaleCounts,
-            backgroundColor: 'rgba(236, 72, 153, 0.8)',
-            borderColor: '#ec4899',
+            backgroundColor: 'rgba(251, 113, 133, 0.75)',
+            borderColor: '#fb7185',
             borderRadius: 6,
             borderWidth: 1,
             maxBarThickness: 32
@@ -1368,19 +1846,19 @@ require __DIR__ . '/partials/header.php';
             line-height: 1.2;
           }
           .pill-teal {
-            background-color: #f0fdfa;
-            color: #0f766e;
-            border: 1px solid #99f6e4;
+            background-color: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
           }
           .pill-amber {
-            background-color: #fffbeb;
-            color: #b45309;
-            border: 1px solid #fde68a;
+            background-color: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
           }
           .pill-emerald {
-            background-color: #ecfdf5;
-            color: #047857;
-            border: 1px solid #a7f3d0;
+            background-color: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
           }
           .pill-slate {
             background-color: #f1f5f9;
@@ -1388,9 +1866,9 @@ require __DIR__ . '/partials/header.php';
             border: 1px solid #cbd5e1;
           }
           .pill-rose {
-            background-color: #fff1f2;
-            color: #be123c;
-            border: 1px solid #fecdd3;
+            background-color: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
           }
           .signatory-grid {
             margin-top: 36px;

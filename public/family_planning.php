@@ -6,42 +6,18 @@ require __DIR__ . '/partials/header.php';
 $summary = [
     'active_users' => 0,
     'total_clients' => 0,
-    'due_this_month' => 0,
-    'overdue' => 0,
+    'total_visits' => 0,
+    'visits_this_month' => 0,
 ];
 
 $recentVisits = [];
-$upcomingAppointments = [];
+$methodDistribution = [];
 
 try {
     $summary['total_clients'] = (int)$pdo->query("SELECT COUNT(*) FROM fp_records")->fetchColumn();
     $summary['active_users'] = (int)$pdo->query("SELECT COUNT(*) FROM fp_records WHERE status = 'active'")->fetchColumn();
-
-    // Compute due and overdue counts
-    $today = date('Y-m-d');
-    $monthEnd = date('Y-m-d', strtotime('+30 days'));
-
-    $summary['due_this_month'] = (int)$pdo->query("
-        SELECT COUNT(*) 
-        FROM fp_records r
-        JOIN (
-            SELECT fp_record_id, MAX(next_appointment_date) AS next_date 
-            FROM fp_visits 
-            GROUP BY fp_record_id
-        ) v ON v.fp_record_id = r.id
-        WHERE r.status = 'active' AND v.next_date >= CURDATE() AND v.next_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-    ")->fetchColumn();
-
-    $summary['overdue'] = (int)$pdo->query("
-        SELECT COUNT(*) 
-        FROM fp_records r
-        JOIN (
-            SELECT fp_record_id, MAX(next_appointment_date) AS next_date 
-            FROM fp_visits 
-            GROUP BY fp_record_id
-        ) v ON v.fp_record_id = r.id
-        WHERE r.status = 'active' AND v.next_date < CURDATE()
-    ")->fetchColumn();
+    $summary['total_visits'] = (int)$pdo->query("SELECT COUNT(*) FROM fp_visits")->fetchColumn();
+    $summary['visits_this_month'] = (int)$pdo->query("SELECT COUNT(*) FROM fp_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE())")->fetchColumn();
 
     // Recent Visits
     $recentVisits = $pdo->query("
@@ -54,22 +30,13 @@ try {
         LIMIT 5
     ")->fetchAll();
 
-    // Upcoming Appointments
-    $upcomingAppointments = $pdo->query("
-        SELECT r.client_code, r.method_accepted, p.first_name, p.last_name, p.contact_no, p.barangay,
-               lv.next_appointment_date
-        FROM fp_records r
-        JOIN patients p ON p.id = r.patient_id
-        JOIN (
-            SELECT fp_record_id, MAX(next_appointment_date) AS next_appointment_date
-            FROM fp_visits
-            WHERE next_appointment_date IS NOT NULL
-            GROUP BY fp_record_id
-        ) lv ON lv.fp_record_id = r.id
-        WHERE r.status = 'active'
-        ORDER BY 
-            CASE WHEN lv.next_appointment_date < CURDATE() THEN 0 ELSE 1 END,
-            lv.next_appointment_date ASC
+    // Contraceptive Method Distribution
+    $methodDistribution = $pdo->query("
+        SELECT method_accepted, COUNT(*) as client_count
+        FROM fp_records
+        WHERE status = 'active'
+        GROUP BY method_accepted
+        ORDER BY client_count DESC
         LIMIT 5
     ")->fetchAll();
 
@@ -98,7 +65,7 @@ function fp_format_method_label(?string $m): string {
 
 <?php display_flash_messages(); ?>
 
-<div class="bg-white p-6 rounded shadow">
+<div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Reproductive Health</div>
@@ -117,10 +84,10 @@ function fp_format_method_label(?string $m): string {
   </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/family_planning/records/index.php">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+  <a class="bg-white p-5 rounded-xl border border-slate-200 block hover:border-slate-300 hover:bg-slate-50 transition" href="/HealthLogs/public/family_planning/records/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center">
+      <span class="h-10 w-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
@@ -136,9 +103,9 @@ function fp_format_method_label(?string $m): string {
     <p class="text-sm text-slate-500 mt-4">Profile clients, track accepted contraceptive methods, and partner details.</p>
   </a>
 
-  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/family_planning/visits/index.php">
+  <a class="bg-white p-5 rounded-xl border border-slate-200 block hover:border-slate-300 hover:bg-slate-50 transition" href="/HealthLogs/public/family_planning/visits/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center">
+      <span class="h-10 w-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path>
         </svg>
@@ -151,54 +118,36 @@ function fp_format_method_label(?string $m): string {
     <p class="text-sm text-slate-500 mt-4">Log consultations, vital signs, supplies issued, and next appointment dates.</p>
   </a>
 
-  <a class="bg-white p-6 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/family_planning/tcl.php">
-    <div class="flex items-center gap-3">
-      <span class="h-12 w-12 rounded-2xl bg-pink-100 text-pink-700 flex items-center justify-center">
-        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="3" y1="9" x2="21" y2="9"></line>
-          <line x1="3" y1="15" x2="21" y2="15"></line>
-          <line x1="9" y1="3" x2="9" y2="21"></line>
-          <line x1="15" y1="3" x2="15" y2="21"></line>
-        </svg>
-      </span>
-      <div>
-        <div class="text-sm text-slate-500">DOH Reportable</div>
-        <div class="text-lg font-semibold">Target Client List (TCL-FP)</div>
-      </div>
-    </div>
-    <p class="text-sm text-slate-500 mt-4">Official DOH Form 1 registry with quarterly service logs and CSV export.</p>
-  </a>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-500">Active Users</div>
     <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['active_users'])) ?></div>
     <div class="text-sm text-slate-500 mt-1">Current contraceptive clients</div>
   </div>
 
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-500">Total Registered</div>
     <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['total_clients'])) ?></div>
     <div class="text-sm text-slate-500 mt-1">All-time enrolled cases</div>
   </div>
 
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-xs uppercase tracking-widest text-slate-500">Due for Refill</div>
-    <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['due_this_month'])) ?></div>
-    <div class="text-sm text-slate-500 mt-1">Appointments in next 30 days</div>
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
+    <div class="text-xs uppercase tracking-widest text-slate-500">Total Consultations</div>
+    <div class="text-2xl font-semibold mt-2 text-slate-900"><?= h(number_format($summary['total_visits'])) ?></div>
+    <div class="text-sm text-slate-500 mt-1">Visits &amp; dispensing logged</div>
   </div>
 
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-xs uppercase tracking-widest text-slate-500">Overdue</div>
-    <div class="text-2xl font-semibold mt-2"><?= h(number_format($summary['overdue'])) ?></div>
-    <div class="text-sm text-slate-500 mt-1">Need follow-up outreach</div>
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
+    <div class="text-xs uppercase tracking-widest text-slate-500">This Month</div>
+    <div class="text-2xl font-semibold mt-2 text-slate-900"><?= h(number_format($summary['visits_this_month'])) ?></div>
+    <div class="text-sm text-slate-500 mt-1">Consultations performed</div>
   </div>
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-sm text-slate-500">Recent Activity</div>
     <div class="text-lg font-semibold">Latest Consultations &amp; Dispensing</div>
     <div class="mt-4 space-y-3">
@@ -228,31 +177,22 @@ function fp_format_method_label(?string $m): string {
     </div>
   </div>
 
-  <div class="bg-white p-5 rounded shadow">
-    <div class="text-sm text-slate-500">Summary</div>
-    <div class="text-lg font-semibold">Upcoming Appointments Snapshot</div>
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
+    <div class="text-sm text-slate-500">Method Registry</div>
+    <div class="text-lg font-semibold">Active Contraceptive Method Mix</div>
     <div class="mt-4 space-y-3">
-      <?php if (empty($upcomingAppointments)): ?>
-        <div class="text-sm text-slate-500">No upcoming appointments scheduled.</div>
+      <?php if (empty($methodDistribution)): ?>
+        <div class="text-sm text-slate-500">No active clients enrolled yet.</div>
       <?php else: ?>
-        <?php foreach ($upcomingAppointments as $app): ?>
-          <?php $isOverdue = ($app['next_appointment_date'] < date('Y-m-d')); ?>
-          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <div class="font-medium text-slate-900"><?= h($app['last_name'] . ', ' . $app['first_name']) ?></div>
-                <div class="text-sm text-slate-500 mt-1">
-                  <?= fp_format_method_label($app['method_accepted']) ?> &bull; Brgy. <?= h($app['barangay'] ?: '—') ?>
-                </div>
-              </div>
-              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium <?= $isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700' ?>">
-                <?= $isOverdue ? 'Overdue' : 'Due Soon' ?>
-              </span>
+        <?php foreach ($methodDistribution as $m): ?>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between">
+            <div>
+              <div class="font-medium text-slate-900"><?= fp_format_method_label($m['method_accepted']) ?></div>
+              <div class="text-xs text-slate-500 mt-0.5">DOH Modern FP Commodity</div>
             </div>
-            <div class="text-xs text-slate-400 mt-2 flex items-center justify-between">
-              <span>Appointment: <?= date('M d, Y', strtotime($app['next_appointment_date'])) ?></span>
-              <span class="font-mono"><?= h($app['client_code']) ?></span>
-            </div>
+            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-purple-100 text-purple-700">
+              <?= (int)$m['client_count'] ?> <?= (int)$m['client_count'] === 1 ? 'Client' : 'Clients' ?>
+            </span>
           </div>
         <?php endforeach; ?>
       <?php endif; ?>

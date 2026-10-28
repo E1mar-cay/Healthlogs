@@ -59,7 +59,8 @@ if (!function_exists('is_admin')) {
 
 if (!function_exists('can_manage_clinical_records')) {
     function can_manage_clinical_records(): bool {
-        return !is_admin();
+        // Both Admin and Health Workers have full operational privileges (Create, Edit, Update, Search, View)
+        return true;
     }
 }
 
@@ -80,11 +81,11 @@ if (!function_exists('rbac_enforce')) {
         }
 
         // Exact & Prefix RBAC Access Rules
-        // Admin-only: Reports, Forecasts, User Management, Admin Dashboard
-        // Health Worker-only: Clinical creation, forms, saving, and deletion across all health programs
+        // Admin: Full system access across all modules (reports, forecasting, user management, clinical creation, editing, inventory, etc.)
+        // Health Worker: Clinical encounters, patient intake, inventory movements, schedules, appointments
         $rules = [
-            // Admin only features
-            '/HealthLogs/public/reports.php' => ['admin'],
+            // Admin only features (Administration)
+            '/HealthLogs/public/reports.php' => ['admin', 'health_worker'],
             '/HealthLogs/public/forecast.php' => ['admin'],
             '/HealthLogs/public/forecast_run.php' => ['admin'],
             '/HealthLogs/public/forecast_run_details.php' => ['admin'],
@@ -93,72 +94,73 @@ if (!function_exists('rbac_enforce')) {
             '/HealthLogs/public/users/' => ['admin'],
             '/HealthLogs/public/activity_logs.php' => ['admin'],
 
-            // Clinical / Patient management (Admin is restricted to Monitoring & Oversight only)
-            '/HealthLogs/public/patients/form.php' => ['health_worker'],
-            '/HealthLogs/public/patients/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/patients/save.php' => ['health_worker'],
-            '/HealthLogs/public/patients/delete.php' => ['health_worker'],
+            // Clinical / Patient management (Admin & Health Worker both have full Create, Edit, Update, View privileges)
+            '/HealthLogs/public/patients/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/patients/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/patients/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/patients/delete.php' => ['admin', 'health_worker'],
 
-            '/HealthLogs/public/immunization/records/form.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/records/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/records/save.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/records/delete.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/schedules/form.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/schedules/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/schedules/save.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/schedules/delete.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/vaccines/form.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/vaccines/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/vaccines/save.php' => ['health_worker'],
-            '/HealthLogs/public/immunization/vaccines/delete.php' => ['health_worker'],
+            '/HealthLogs/public/immunization/records/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/records/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/records/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/records/delete.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/schedules/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/schedules/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/schedules/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/schedules/delete.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/vaccines/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/vaccines/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/vaccines/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/immunization/vaccines/delete.php' => ['admin', 'health_worker'],
 
-            '/HealthLogs/public/maternal/pregnancies/form.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/pregnancies/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/pregnancies/save.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/pregnancies/delete.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/prenatal/form.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/prenatal/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/prenatal/save.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/prenatal/delete.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/postnatal/form.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/postnatal/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/postnatal/save.php' => ['health_worker'],
-            '/HealthLogs/public/maternal/postnatal/delete.php' => ['health_worker'],
+            '/HealthLogs/public/maternal/pregnancies/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/pregnancies/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/pregnancies/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/pregnancies/delete.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/prenatal/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/prenatal/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/prenatal/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/prenatal/delete.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/postnatal/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/postnatal/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/postnatal/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/maternal/postnatal/delete.php' => ['admin', 'health_worker'],
 
-            '/HealthLogs/public/family_planning/records/create.php' => ['health_worker'],
-            '/HealthLogs/public/family_planning/records/save.php' => ['health_worker'],
-            '/HealthLogs/public/family_planning/records/delete.php' => ['health_worker'],
+            '/HealthLogs/public/family_planning/records/create.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/family_planning/records/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/family_planning/records/delete.php' => ['admin', 'health_worker'],
 
-            '/HealthLogs/public/ncd/records/create.php' => ['health_worker'],
-            '/HealthLogs/public/ncd/records/save.php' => ['health_worker'],
-            '/HealthLogs/public/ncd/records/delete.php' => ['health_worker'],
+            '/HealthLogs/public/ncd/records/create.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/ncd/records/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/ncd/records/delete.php' => ['admin', 'health_worker'],
 
-            '/HealthLogs/public/inventory/medicines/form.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/medicines/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/medicines/save.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/medicines/delete.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/batches/form.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/batches/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/batches/save.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/batches/delete.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/transactions/form.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/transactions/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/transactions/save.php' => ['health_worker'],
-            '/HealthLogs/public/inventory/transactions/delete.php' => ['health_worker'],
+            '/HealthLogs/public/inventory/medicines/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/medicines/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/medicines/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/medicines/delete.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/batches/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/batches/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/batches/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/batches/delete.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/batches/write_off_expired.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/transactions/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/transactions/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/transactions/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/inventory/transactions/delete.php' => ['admin', 'health_worker'],
 
-            '/HealthLogs/public/reminders/form.php' => ['health_worker'],
-            '/HealthLogs/public/reminders/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/reminders/save.php' => ['health_worker'],
-            '/HealthLogs/public/reminders/delete.php' => ['health_worker'],
+            '/HealthLogs/public/reminders/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/reminders/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/reminders/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/reminders/delete.php' => ['admin', 'health_worker'],
             '/HealthLogs/public/reminders/run_cron.php' => ['admin', 'health_worker'],
 
-            '/HealthLogs/public/appointments/form.php' => ['health_worker'],
-            '/HealthLogs/public/appointments/form_embed.php' => ['health_worker'],
-            '/HealthLogs/public/appointments/save.php' => ['health_worker'],
-            '/HealthLogs/public/appointments/reschedule.php' => ['health_worker'],
-            '/HealthLogs/public/appointments/complete.php' => ['health_worker'],
-            '/HealthLogs/public/appointments/cancel.php' => ['health_worker'],
-            '/HealthLogs/public/appointments/delete.php' => ['health_worker'],
+            '/HealthLogs/public/appointments/form.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/appointments/form_embed.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/appointments/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/appointments/reschedule.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/appointments/complete.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/appointments/cancel.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/appointments/delete.php' => ['admin', 'health_worker'],
         ];
 
         foreach ($rules as $prefix => $allowed) {
@@ -172,11 +174,7 @@ if (!function_exists('rbac_enforce')) {
                     echo '<div class="bg-white border border-slate-200 rounded-2xl shadow-xl max-w-md w-full p-6 text-center">';
                     echo '<div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl mb-4 font-bold">403</div>';
                     echo '<h1 class="text-xl font-bold text-slate-900 mb-2">Access Restricted</h1>';
-                    if ($role === 'admin') {
-                        echo '<p class="text-xs text-slate-600 mb-6">Administrators have monitoring, reporting, and oversight privileges only. Patient intake, clinical encounters, and record modifications are strictly reserved for Barangay Health Workers (BHW).</p>';
-                    } else {
-                        echo '<p class="text-xs text-slate-600 mb-6">You do not have permission to access this administrative feature.</p>';
-                    }
+                    echo '<p class="text-xs text-slate-600 mb-6">You do not have permission to access this administrative feature.</p>';
                     echo '<a href="/HealthLogs/public/index.php" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition">Return to Dashboard</a>';
                     echo '</div></body></html>';
                     exit;

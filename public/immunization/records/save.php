@@ -23,8 +23,46 @@ $lot_no = trim($_POST['lot_no'] ?? '') ?: null;
 $notes = trim($_POST['notes'] ?? '') ?: null;
 
 try {
-    if ($patient_id <= 0 || $vaccine_id <= 0) {
-        throw new InvalidArgumentException('Please select a valid patient and vaccine.');
+    if ($patient_id <= 0 || $vaccine_id <= 0 || $dose_no <= 0) {
+        throw new InvalidArgumentException('Please select a valid baby, vaccine, and dose.');
+    }
+
+    $currentPatientId = null;
+    if ($id) {
+        $existingRecord = $pdo->prepare("SELECT patient_id FROM immunization_records WHERE id = ?");
+        $existingRecord->execute([$id]);
+        $currentPatientId = $existingRecord->fetchColumn();
+        if ($currentPatientId === false) {
+            throw new InvalidArgumentException('Immunization record not found.');
+        }
+        $patient_id = (int)$currentPatientId;
+    }
+
+    if (!$id || (int)$currentPatientId !== $patient_id) {
+        $babyCheck = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM patients
+            WHERE id = ?
+              AND status = 'active'
+              AND TIMESTAMPDIFF(MONTH, birth_date, CURDATE()) < 12
+              AND birth_date <= CURDATE()
+        ");
+        $babyCheck->execute([$patient_id]);
+        if ((int)$babyCheck->fetchColumn() === 0) {
+            throw new InvalidArgumentException('New immunization records can only be added for active babies under 12 months.');
+        }
+    }
+
+    if (!$id) {
+        $duplicateDose = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM immunization_records
+            WHERE patient_id = ? AND vaccine_id = ? AND dose_no = ?
+        ");
+        $duplicateDose->execute([$patient_id, $vaccine_id, $dose_no]);
+        if ((int)$duplicateDose->fetchColumn() > 0) {
+            throw new InvalidArgumentException('This vaccine dose is already recorded for the selected baby.');
+        }
     }
 
     $pdo->beginTransaction();

@@ -42,7 +42,7 @@ try {
 
     <!-- Modal Form -->
     <form action="/HealthLogs/public/ncd/records/save.php" method="POST" class="p-5 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-      <input type="hidden" name="return_to" value="<?= h($_SERVER['REQUEST_URI'] ?? '/HealthLogs/public/ncd.php') ?>" />
+      <input type="hidden" name="return_to" value="<?= h($_SERVER['REQUEST_URI'] ?? '/HealthLogs/public/ncd/records/index.php') ?>" />
 
       <!-- Section 1: Identification -->
       <div>

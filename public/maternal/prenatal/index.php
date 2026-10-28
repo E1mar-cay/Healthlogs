@@ -57,12 +57,12 @@ $sensitiveVisitsCount = (int)$pdo->query("
 
 <?php display_flash_messages(); ?>
 
-<div class="bg-white p-6 rounded-xl shadow mb-6">
+<div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs mb-5">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500 font-medium">Clinical Antenatal Care</div>
-      <div class="text-2xl font-semibold text-slate-900">Prenatal Checkup Visits</div>
-      <p class="text-sm text-slate-500 mt-1">Track vitals, maternal progression, and highlight sensitive 6–7 months visits.</p>
+      <div class="text-xs font-semibold text-rose-600 uppercase tracking-widest"><i class="fas fa-stethoscope mr-1"></i> Clinical Antenatal Care</div>
+      <div class="text-xl font-bold text-slate-900 mt-0.5">Prenatal Checkup Visits</div>
+      <p class="text-xs text-slate-500 mt-0.5">Track vitals, maternal progression, and highlight sensitive 6–7 months visits.</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <?php if ($sensitiveVisitsCount > 0): ?>
@@ -84,7 +84,7 @@ $sensitiveVisitsCount = (int)$pdo->query("
   </div>
 </div>
 
-<form method="get" class="bg-white rounded-xl shadow p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+<form method="get" class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-5">
   <input name="q" value="<?= h($q) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Search patient name..." />
   <select name="period" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All visit periods</option>
@@ -102,10 +102,10 @@ $sensitiveVisitsCount = (int)$pdo->query("
   </div>
 </form>
 
-<div class="mt-6 bg-white rounded-xl shadow overflow-hidden">
+<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden mb-5">
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+      <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
         <tr>
           <th class="text-left px-4 py-3 font-semibold">Patient</th>
           <th class="text-left px-4 py-3 font-semibold">Visit Date & Time</th>
@@ -135,10 +135,13 @@ $sensitiveVisitsCount = (int)$pdo->query("
             ?>
             <tr class="<?= $rowClass ?>">
               <td class="px-4 py-3">
-                <div class="font-semibold text-slate-900"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></div>
+                <a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['pregnancy_id'] ?>" class="font-semibold text-slate-900 hover:text-teal-700 hover:underline">
+                  <?= h($r['last_name'] . ', ' . $r['first_name']) ?>
+                </a>
                 <?php if ($r['barangay']): ?>
                   <div class="text-xs text-slate-500"><?= h($r['barangay']) ?></div>
                 <?php endif; ?>
+                <a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['pregnancy_id'] ?>" class="text-xs text-teal-700 hover:underline">Open pregnancy record</a>
               </td>
               <td class="px-4 py-3 text-slate-700 whitespace-nowrap font-mono text-xs">
                 <?= date('M d, Y h:i A', strtotime($r['visit_datetime'])) ?>

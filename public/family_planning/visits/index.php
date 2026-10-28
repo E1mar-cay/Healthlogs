@@ -65,6 +65,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         VALUES (?, 'family_planning', ?, ?, 'pending')
                     ");
                     $remStmt->execute([$cl['patient_id'], $next_appointment_date, $reminderMsg]);
+
+                    // Sync directly into patient_appointments so it is managed in Appointments
+                    $aptCheck = $pdo->prepare("SELECT id FROM patient_appointments WHERE patient_id = ? AND service_id = 4 AND appointment_date = ?");
+                    $aptCheck->execute([$cl['patient_id'], $next_appointment_date]);
+                    if (!$aptCheck->fetchColumn()) {
+                        $year = date('Y');
+                        $count = (int)$pdo->query("SELECT COUNT(*) FROM patient_appointments WHERE appointment_code LIKE 'APT-{$year}-%'")->fetchColumn();
+                        $aptCode = sprintf('APT-%s-%04d', $year, $count + 1);
+                        $aptTime = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $next_appointment_time) ? $next_appointment_time . ':00' : '09:00:00';
+                        $aptReason = "Family Planning Consultation & Refill ({$method_prescribed}) [Client: {$cl['client_code']}]";
+                        $insertApt = $pdo->prepare("
+                            INSERT INTO patient_appointments
+                            (appointment_code, patient_id, service_id, appointment_date, appointment_time, status, reason, assigned_personnel, created_by)
+                            VALUES (?, ?, 4, ?, ?, 'scheduled', ?, 'Midwife Corazon Rivera, RM', ?)
+                        ");
+                        $insertApt->execute([$aptCode, $cl['patient_id'], $next_appointment_date, $aptTime, $aptReason, $_SESSION['user_id'] ?? null]);
+                    }
                 }
             }
 
@@ -136,9 +153,6 @@ require __DIR__ . '/../../partials/header.php';
     <div class="flex flex-wrap items-center gap-2">
       <a href="/HealthLogs/public/family_planning/records/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
         <i class="fas fa-address-book mr-1.5 text-xs"></i> Client Registry
-      </a>
-      <a href="/HealthLogs/public/family_planning/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
-        <i class="fas fa-table-list mr-1.5 text-xs"></i> Target Client List
       </a>
     </div>
   </div>

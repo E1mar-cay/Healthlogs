@@ -370,31 +370,62 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         </a>
 
         <div class="nav-section">Programs</div>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/immunization') ? 'active' : '' ?>" href="/HealthLogs/public/immunization.php" title="Immunization">
-          <span class="nav-icon">IM</span>
-          <span class="nav-text font-medium">Immunization</span>
-        </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/maternal') ? 'active' : '' ?>" href="/HealthLogs/public/maternal.php" title="Maternal Health">
-          <span class="nav-icon">MH</span>
-          <span class="nav-text font-medium">Maternal Health</span>
-        </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/family_planning') ? 'active' : '' ?>" href="/HealthLogs/public/family_planning.php" title="Family Planning">
-          <span class="nav-icon">FP</span>
-          <span class="nav-text font-medium">Family Planning</span>
-        </a>
-        <a class="nav-link <?= $isActive('/HealthLogs/public/ncd') ? 'active' : '' ?>" href="/HealthLogs/public/ncd.php" title="Non-Communicable Diseases">
-          <span class="nav-icon">NC</span>
-          <span class="nav-text font-medium">Non-Communicable</span>
-        </a>
+        <?php
+          $programsOpen = $isActive('/HealthLogs/public/immunization')
+            || $isActive('/HealthLogs/public/maternal')
+            || $isActive('/HealthLogs/public/family_planning')
+            || $isActive('/HealthLogs/public/ncd')
+            || $isActive('/HealthLogs/public/tb');
+          $inventoryOpen = $currentPath === '/HealthLogs/public/inventory.php'
+            || $isActive('/HealthLogs/public/inventory/')
+            || $isActive('/HealthLogs/public/medicine_supplies');
+        ?>
+        <!-- Programs collapsible group -->
+        <button type="button" id="navProgramsToggle"
+          class="nav-link w-full text-left <?= $programsOpen ? 'active' : '' ?>"
+          aria-expanded="<?= $programsOpen ? 'true' : 'false' ?>">
+          <span class="nav-icon">PG</span>
+          <span class="nav-text font-medium flex-1">Programs</span>
+          <i class="fas fa-chevron-down nav-text text-[10px] transition-transform duration-200 <?= $programsOpen ? 'rotate-180' : '' ?>" id="navProgramsChevron"></i>
+        </button>
+        <div id="navProgramsMenu" class="<?= $programsOpen ? '' : 'hidden' ?> pl-3 space-y-0.5 mt-0.5">
+          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/immunization') ? 'active' : '' ?>" href="/HealthLogs/public/immunization/records/index.php" title="Immunization">
+            <span class="nav-icon text-[9px]">IM</span>
+            <span class="nav-text">Immunization</span>
+          </a>
+          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/maternal') ? 'active' : '' ?>" href="/HealthLogs/public/maternal.php" title="Maternal Health">
+            <span class="nav-icon text-[9px]">MH</span>
+            <span class="nav-text">Maternal Health</span>
+          </a>
+          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/family_planning') ? 'active' : '' ?>" href="/HealthLogs/public/family_planning.php" title="Family Planning">
+            <span class="nav-icon text-[9px]">FP</span>
+            <span class="nav-text">Family Planning</span>
+          </a>
+          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/ncd') ? 'active' : '' ?>" href="/HealthLogs/public/ncd/records/index.php" title="Non-Communicable Diseases">
+            <span class="nav-icon text-[9px]">NC</span>
+            <span class="nav-text">Non-Communicable</span>
+          </a>
+        </div>
 
-        <a class="nav-link <?= ($currentPath === '/HealthLogs/public/inventory.php' || $isActive('/HealthLogs/public/inventory/medicines')) ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicine Inventory">
-          <span class="nav-icon">IN</span>
-          <span class="nav-text font-medium">Medicine Inventory</span>
-        </a>
-        <a class="nav-link <?= ($isActive('/HealthLogs/public/medicine_supplies') || $isActive('/HealthLogs/public/inventory/batches') || $isActive('/HealthLogs/public/inventory/transactions')) ? 'active' : '' ?>" href="/HealthLogs/public/medicine_supplies.php" title="Medicine Supply">
-          <span class="nav-icon">MS</span>
-          <span class="nav-text font-medium">Medicine Supply</span>
-        </a>
+        <!-- Inventory collapsible group -->
+        <button type="button" id="navInventoryToggle"
+          class="nav-link w-full text-left <?= $inventoryOpen ? 'active' : '' ?>"
+          aria-expanded="<?= $inventoryOpen ? 'true' : 'false' ?>">
+          <span class="nav-icon">IV</span>
+          <span class="nav-text font-medium flex-1">Inventory</span>
+          <i class="fas fa-chevron-down nav-text text-[10px] transition-transform duration-200 <?= $inventoryOpen ? 'rotate-180' : '' ?>" id="navInventoryChevron"></i>
+        </button>
+        <div id="navInventoryMenu" class="<?= $inventoryOpen ? '' : 'hidden' ?> pl-3 space-y-0.5 mt-0.5">
+          <a class="nav-link text-sm <?= ($currentPath === '/HealthLogs/public/inventory.php' || $isActive('/HealthLogs/public/inventory/medicines')) ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicines">
+            <span class="nav-icon text-[9px]">MD</span>
+            <span class="nav-text">Medicines</span>
+          </a>
+          <a class="nav-link text-sm <?= ($isActive('/HealthLogs/public/medicine_supplies') || $isActive('/HealthLogs/public/inventory/batches') || $isActive('/HealthLogs/public/inventory/transactions')) ? 'active' : '' ?>" href="/HealthLogs/public/medicine_supplies.php" title="Supply & Batches">
+            <span class="nav-icon text-[9px]">SB</span>
+            <span class="nav-text">Supply & Batches</span>
+          </a>
+        </div>
+
         <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php" title="Reminders">
           <span class="nav-icon">RM</span>
           <span class="nav-text font-medium">Reminders</span>
@@ -566,6 +597,21 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
             }
           });
         }
+
+        // Collapsible nav groups
+        [['navProgramsToggle','navProgramsMenu','navProgramsChevron'],
+         ['navInventoryToggle','navInventoryMenu','navInventoryChevron']].forEach(function(ids) {
+          var btn = document.getElementById(ids[0]);
+          var menu = document.getElementById(ids[1]);
+          var chevron = document.getElementById(ids[2]);
+          if (!btn || !menu) return;
+          btn.addEventListener('click', function() {
+            var open = !menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', open);
+            if (chevron) chevron.classList.toggle('rotate-180', !open);
+            btn.setAttribute('aria-expanded', String(!open));
+          });
+        });
       })();
       </script>
 

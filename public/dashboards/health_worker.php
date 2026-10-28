@@ -24,9 +24,15 @@ try {
         SELECT COUNT(*) FROM (
             SELECT m.id
             FROM medicines m
-            LEFT JOIN medicine_transactions t ON t.medicine_id = m.id
+            LEFT JOIN (
+                SELECT mb.medicine_id, SUM(mt.quantity) AS valid_stock
+                FROM medicine_batches mb
+                JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                WHERE mb.expiry_date >= CURDATE()
+                GROUP BY mb.medicine_id
+            ) stk ON stk.medicine_id = m.id
             GROUP BY m.id, m.reorder_level
-            HAVING COALESCE(SUM(t.quantity), 0) <= COALESCE(m.reorder_level, 0)
+            HAVING COALESCE(MAX(stk.valid_stock), 0) <= COALESCE(m.reorder_level, 0)
         ) low_stock
     ")->fetchColumn();
 
@@ -44,7 +50,7 @@ require __DIR__ . '/../partials/header.php';
 ?>
 
 <!-- Header Banner -->
-<div class="bg-white p-6 rounded shadow">
+<div class="bg-white p-6 rounded-xl border border-slate-200">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Barangay Health Services</div>
@@ -53,7 +59,7 @@ require __DIR__ . '/../partials/header.php';
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <span class="app-chip">BHW Shift Active</span>
-      <a href="/HealthLogs/public/patients/form.php" class="inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2 rounded shadow text-xs font-semibold hover:bg-slate-800 transition">
+      <a href="/HealthLogs/public/patients/form.php" class="inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-slate-700 transition">
         <i class="fas fa-user-plus mr-1.5 text-xs"></i> New Patient Intake
       </a>
     </div>
@@ -62,9 +68,9 @@ require __DIR__ . '/../partials/header.php';
 
 <!-- Primary Program Navigation Cards -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
-  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/patients/index.php">
+  <a class="bg-white p-5 rounded-xl border border-slate-200 block hover:bg-slate-50 transition" href="/HealthLogs/public/patients/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-10 w-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-base">
+      <span class="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-base">
         <i class="fas fa-users text-base"></i>
       </span>
       <div>
@@ -75,9 +81,9 @@ require __DIR__ . '/../partials/header.php';
     <div class="text-xs text-slate-500 mt-3">Directory &amp; serials.</div>
   </a>
 
-  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/immunization.php">
+  <a class="bg-white p-5 rounded-xl border border-slate-200 block hover:bg-slate-50 transition" href="/HealthLogs/public/immunization/records/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base">
+      <span class="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-base">
         <i class="fas fa-syringe text-base"></i>
       </span>
       <div>
@@ -88,9 +94,9 @@ require __DIR__ . '/../partials/header.php';
     <div class="text-xs text-slate-500 mt-3">Vaccines &amp; TCL-2.</div>
   </a>
 
-  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/maternal.php">
+  <a class="bg-white p-5 rounded-xl border border-slate-200 block hover:bg-slate-50 transition" href="/HealthLogs/public/maternal.php">
     <div class="flex items-center gap-3">
-      <span class="h-10 w-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-base">
+      <span class="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-base">
         <i class="fas fa-person-pregnant text-base"></i>
       </span>
       <div>
@@ -101,9 +107,9 @@ require __DIR__ . '/../partials/header.php';
     <div class="text-xs text-slate-500 mt-3">Prenatal &amp; delivery.</div>
   </a>
 
-  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/family_planning.php">
+  <a class="bg-white p-5 rounded-xl border border-slate-200 block hover:bg-slate-50 transition" href="/HealthLogs/public/family_planning.php">
     <div class="flex items-center gap-3">
-      <span class="h-10 w-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-base">
+      <span class="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-base">
         <i class="fas fa-heart text-base"></i>
       </span>
       <div>
@@ -114,9 +120,9 @@ require __DIR__ . '/../partials/header.php';
     <div class="text-xs text-slate-500 mt-3">Methods &amp; DOH Form 1.</div>
   </a>
 
-  <a class="bg-white p-5 rounded shadow block hover:-translate-y-0.5 transition" href="/HealthLogs/public/ncd.php">
+  <a class="bg-white p-5 rounded-xl border border-slate-200 block hover:bg-slate-50 transition" href="/HealthLogs/public/ncd/records/index.php">
     <div class="flex items-center gap-3">
-      <span class="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-base">
+      <span class="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-base">
         <i class="fas fa-heart-pulse text-base"></i>
       </span>
       <div>
@@ -130,37 +136,37 @@ require __DIR__ . '/../partials/header.php';
 
 <!-- Summary Metric Cards -->
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-6">
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
     <div class="text-xs text-slate-500 font-medium">Registered Patients</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['total_patients']) ?></div>
     <div class="text-xs text-slate-400 mt-1">Active in community</div>
   </div>
 
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
     <div class="text-xs text-slate-500 font-medium">Vaccine Schedules</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['scheduled_vaccines']) ?></div>
     <div class="text-xs text-slate-400 mt-1">Pending child doses</div>
   </div>
 
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
     <div class="text-xs text-slate-500 font-medium">NCD Patients</div>
-    <div class="text-2xl font-bold text-indigo-600 mt-1"><?= number_format($hwStats['ncd_patients']) ?></div>
+    <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['ncd_patients']) ?></div>
     <div class="text-xs text-slate-400 mt-1">HPN, DM &amp; chronic care</div>
   </div>
 
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
     <div class="text-xs text-slate-500 font-medium">Pending Reminders</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['pending_reminders']) ?></div>
     <div class="text-xs text-slate-400 mt-1">
-      <?= $hwStats['due_today_reminders'] > 0 ? '<span class="text-rose-600 font-bold">' . $hwStats['due_today_reminders'] . ' due today</span>' : 'Outreach notifications' ?>
+      <?= $hwStats['due_today_reminders'] > 0 ? '<span class="text-slate-700 font-semibold">' . $hwStats['due_today_reminders'] . ' due today</span>' : 'Outreach notifications' ?>
     </div>
   </div>
 
-  <div class="bg-white p-4 rounded shadow col-span-2 sm:col-span-1">
+  <div class="bg-white p-4 rounded-xl border border-slate-200 col-span-2 sm:col-span-1">
     <div class="text-xs text-slate-500 font-medium">Low Stock Medicines</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($hwStats['low_stock_medicines']) ?></div>
     <div class="text-xs text-slate-400 mt-1">
-      <?= $hwStats['low_stock_medicines'] > 0 ? '<span class="text-amber-700 font-bold">Needs resupply</span>' : 'Supplies healthy' ?>
+      <?= $hwStats['low_stock_medicines'] > 0 ? '<span class="text-slate-700 font-semibold">Needs resupply</span>' : 'Supplies healthy' ?>
     </div>
   </div>
 </div>
@@ -168,7 +174,7 @@ require __DIR__ . '/../partials/header.php';
 <!-- Activity & Shortcuts Section -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
   <!-- Outreach Queue -->
-  <div class="lg:col-span-2 bg-white p-6 rounded shadow">
+  <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200">
     <div class="flex items-center justify-between pb-3 border-b border-slate-100">
       <div>
         <div class="text-xs text-slate-500 uppercase font-semibold">Outreach Queue</div>
@@ -182,7 +188,7 @@ require __DIR__ . '/../partials/header.php';
     <div class="mt-4 space-y-3">
       <?php if (empty($upcomingReminders)): ?>
         <div class="py-8 text-center text-slate-400 text-sm">
-          <i class="fas fa-check-circle text-emerald-500 text-2xl block mb-1"></i>
+          <i class="fas fa-check-circle text-slate-400 text-2xl block mb-1"></i>
           All patient reminders are up to date! No pending follow-ups.
         </div>
       <?php else: ?>
@@ -190,10 +196,10 @@ require __DIR__ . '/../partials/header.php';
           <?php 
             $isPastDue = strtotime($rem['due_date']) < strtotime(date('Y-m-d'));
             $isToday = $rem['due_date'] === date('Y-m-d');
-            $badgeClass = $isPastDue ? 'bg-rose-50 text-rose-700 border-rose-200' : ($isToday ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200');
+            $badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
             $badgeText = $isPastDue ? 'Overdue' : ($isToday ? 'Due Today' : 'Upcoming');
           ?>
-          <div class="flex items-center justify-between p-3 rounded border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition">
+          <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition">
             <div class="flex items-center gap-3">
               <span class="w-8 h-8 rounded bg-white border border-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
                 <i class="fas fa-comment-sms"></i>
@@ -222,28 +228,31 @@ require __DIR__ . '/../partials/header.php';
   </div>
 
   <!-- Quick Actions / Program Shortcuts -->
-  <div class="bg-white p-6 rounded shadow flex flex-col justify-between">
+  <div class="bg-white p-6 rounded-xl border border-slate-200 flex flex-col justify-between">
     <div>
       <div class="text-xs text-slate-500 uppercase font-semibold">Shortcuts</div>
       <div class="text-lg font-semibold text-slate-900">Quick Actions</div>
       
       <div class="mt-4 space-y-2">
-        <a class="block p-3 rounded bg-slate-900 text-white text-xs font-semibold shadow hover:bg-slate-800 transition" href="/HealthLogs/public/patients/form.php">
+        <a class="block p-3 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition" href="/HealthLogs/public/patients/form.php">
           <i class="fas fa-user-plus mr-2"></i>New Patient Intake
         </a>
-        <a class="block p-3 rounded bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/immunization/tcl.php">
+        <a class="block p-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition" href="/HealthLogs/public/immunization/tcl.php">
           <i class="fas fa-table-list mr-2 text-slate-500"></i>Target Client List (TCL-2)
         </a>
-        <a class="block p-3 rounded bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/maternal/tcl.php">
+        <a class="block p-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition" href="/HealthLogs/public/maternal/tcl.php">
           <i class="fas fa-clipboard-list mr-2 text-slate-500"></i>Maternal Care List (8-ANC TCL)
         </a>
-        <a class="block p-3 rounded bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/family_planning/tcl.php">
-          <i class="fas fa-file-lines mr-2 text-slate-500"></i>Family Planning List (DOH Form 1)
+        <a class="block p-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition" href="/HealthLogs/public/ncd/tcl.php">
+          <i class="fas fa-heart-pulse mr-2 text-slate-500"></i>Non-Communicable Disease TCL
         </a>
-        <a class="block p-3 rounded bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/inventory.php">
+        <a class="block p-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition" href="/HealthLogs/public/family_planning/tcl.php">
+          <i class="fas fa-venus-mars mr-2 text-slate-500"></i>Family Planning TCL
+        </a>
+        <a class="block p-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition" href="/HealthLogs/public/inventory.php">
           <i class="fas fa-pills mr-2 text-slate-500"></i>Medicine Inventory &amp; Dispensing
         </a>
-        <a class="block p-3 rounded bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition" href="/HealthLogs/public/reminders.php">
+        <a class="block p-3 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition" href="/HealthLogs/public/reminders.php">
           <i class="fas fa-bell mr-2 text-slate-500"></i>Send SMS Reminder
         </a>
       </div>

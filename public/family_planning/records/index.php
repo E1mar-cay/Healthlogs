@@ -81,9 +81,6 @@ function fp_format_method(?string $m): string {
       <p class="text-sm text-slate-500 mt-1">Directory of all registered family planning clients, current methods, and service histories in Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/family_planning/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
-        <i class="fas fa-table-list mr-1.5 text-xs"></i> View TCL
-      </a>
       <?php if (can_manage_clinical_records()): ?>
         <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow transition">
           <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll Client

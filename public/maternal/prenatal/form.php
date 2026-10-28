@@ -2,6 +2,7 @@
 require __DIR__ . '/../../partials/bootstrap.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$selectedPregnancyId = (int)($_GET['pregnancy_id'] ?? 0);
 $rec = null;
 if ($id) {
     $stmt = $pdo->prepare("SELECT * FROM prenatal_visits WHERE id = ?");
@@ -14,7 +15,23 @@ if ($id) {
     }
 }
 
-$pregs = $pdo->query("SELECT pr.id, p.first_name, p.last_name, pr.lmp_date FROM pregnancies pr JOIN patients p ON p.id = pr.patient_id ORDER BY pr.id DESC")->fetchAll();
+$linkedPregnancyId = $rec ? (int)$rec['pregnancy_id'] : $selectedPregnancyId;
+$pregStmt = $pdo->prepare("
+    SELECT pr.id, pr.lmp_date, pr.edd_date, pr.status, p.first_name, p.last_name
+    FROM pregnancies pr
+    JOIN patients p ON p.id = pr.patient_id
+    WHERE pr.status = 'ongoing' OR pr.id = ?
+    ORDER BY pr.id DESC
+");
+$pregStmt->execute([$linkedPregnancyId]);
+$pregs = $pregStmt->fetchAll(PDO::FETCH_ASSOC);
+$selectedPregnancy = null;
+foreach ($pregs as $pregnancy) {
+    if ((int)$pregnancy['id'] === $linkedPregnancyId) {
+        $selectedPregnancy = $pregnancy;
+        break;
+    }
+}
 
 $pageTitle = $rec ? 'Edit Prenatal Visit' : 'New Prenatal Visit';
 require __DIR__ . '/../../partials/header.php';
@@ -27,22 +44,33 @@ require __DIR__ . '/../../partials/header.php';
       <input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" />
     <?php endif; ?>
 
+    <?php if ($selectedPregnancy): ?>
+      <div class="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <input type="hidden" name="pregnancy_id" value="<?= (int)$selectedPregnancy['id'] ?>" />
+        <input type="hidden" name="return_pregnancy_id" value="<?= (int)$selectedPregnancy['id'] ?>" />
+        <div class="text-xs font-medium text-slate-500">Pregnancy record</div>
+        <div class="mt-1 font-semibold text-slate-900"><?= h($selectedPregnancy['last_name'] . ', ' . $selectedPregnancy['first_name']) ?></div>
+        <div class="mt-1 text-xs text-slate-600">LMP <?= h(date('M d, Y', strtotime($selectedPregnancy['lmp_date']))) ?> · EDD <?= h(date('M d, Y', strtotime($selectedPregnancy['edd_date']))) ?></div>
+      </div>
+    <?php else: ?>
+      <div>
+        <label class="block text-sm text-slate-600" for="prenatalPregnancy">Select ongoing pregnancy</label>
+        <select id="prenatalPregnancy" name="pregnancy_id" required data-searchable-select data-search-placeholder="Search mother name..." class="mt-1 w-full border rounded px-3 py-2">
+          <option value="">Choose a mother</option>
+          <?php foreach ($pregs as $p): ?>
+            <option value="<?= (int)$p['id'] ?>" data-lmp="<?= h($p['lmp_date']) ?>" <?= old('pregnancy_id', $linkedPregnancyId) == $p['id'] ? 'selected' : '' ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?> · LMP <?= h($p['lmp_date']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+    <?php endif; ?>
     <div>
-      <label class="block text-sm text-slate-600">Pregnancy</label>
-      <select name="pregnancy_id" required data-searchable-select data-search-placeholder="Search mother name or LMP date..." class="mt-1 w-full border rounded px-3 py-2">
-        <?php foreach ($pregs as $p): ?>
-          <?php $sel = old('pregnancy_id', $rec['pregnancy_id'] ?? 0) == $p['id'] ? 'selected' : ''; ?>
-          <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($p['last_name'] . ', ' . $p['first_name']) ?> (LMP: <?= h($p['lmp_date']) ?>)</option>
-        <?php endforeach; ?>
-      </select>
+      <label class="block text-sm text-slate-600" for="prenatalVisitDate">Checkup date and time</label>
+      <input id="prenatalVisitDate" name="visit_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('visit_datetime', str_replace(' ', 'T', $rec['visit_datetime'] ?? ''))) ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Visit Date/Time</label>
-      <input name="visit_datetime" type="datetime-local" required class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('visit_datetime', str_replace(' ', 'T', $rec['visit_datetime'] ?? ''))) ?>" />
-    </div>
-    <div>
-      <label class="block text-sm text-slate-600">Gestational Age (weeks)</label>
-      <input name="gestational_age_weeks" type="number" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('gestational_age_weeks', $rec['gestational_age_weeks'] ?? '')) ?>" />
+      <label class="block text-sm text-slate-600" for="prenatalGestationalAge">Pregnancy age at checkup (weeks)</label>
+      <input id="prenatalGestationalAge" name="gestational_age_weeks" type="number" min="1" max="45" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('gestational_age_weeks', $rec['gestational_age_weeks'] ?? '')) ?>" <?= $selectedPregnancy ? 'data-lmp="' . h($selectedPregnancy['lmp_date']) . '"' : '' ?> />
+      <p class="mt-1 text-xs text-slate-500">Used for 8-ANC tracking. Visit ranges: 8–12, 13–20, 21–27, 28–30, 31–34, 35, 36, and 37+ weeks. The date can fill this in automatically.</p>
     </div>
     <div>
       <label class="block text-sm text-slate-600">BP Systolic</label>
@@ -57,11 +85,12 @@ require __DIR__ . '/../../partials/header.php';
       <input name="weight_kg" type="number" step="0.01" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('weight_kg', $rec['weight_kg'] ?? '')) ?>" />
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Next Appointment Date</label>
+      <label class="block text-sm text-slate-600">Schedule next checkup (optional)</label>
       <input name="next_appointment_date" type="date" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('next_appointment_date', '')) ?>" />
+      <p class="mt-1 text-xs text-slate-500">Adding a date also creates an appointment and reminder.</p>
     </div>
     <div>
-      <label class="block text-sm text-slate-600">Appointment Time</label>
+      <label class="block text-sm text-slate-600">Follow-up time (optional)</label>
       <input name="next_appointment_time" type="time" class="mt-1 w-full border rounded px-3 py-2" value="<?= h(old('next_appointment_time', '')) ?>" />
     </div>
     <div class="md:col-span-2">
@@ -70,10 +99,33 @@ require __DIR__ . '/../../partials/header.php';
     </div>
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">
-      <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Save</button>
-      <a class="text-slate-600" href="/HealthLogs/public/maternal/prenatal/index.php">Cancel</a>
+      <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Save checkup</button>
+      <a class="text-slate-600" href="<?= $linkedPregnancyId ? '/HealthLogs/public/maternal/pregnancies/view.php?id=' . $linkedPregnancyId : '/HealthLogs/public/maternal/prenatal/index.php' ?>">Cancel</a>
     </div>
   </form>
 </div>
 
+<script>
+(() => {
+  const dateInput = document.getElementById('prenatalVisitDate');
+  const ageInput = document.getElementById('prenatalGestationalAge');
+  const pregnancySelect = document.getElementById('prenatalPregnancy');
+  if (!dateInput || !ageInput) return;
+
+  let ageWasEdited = ageInput.value !== '';
+  ageInput.addEventListener('input', () => { ageWasEdited = true; });
+  const updateGestationalAge = () => {
+    if (ageWasEdited || !dateInput.value) return;
+    const selectedOption = pregnancySelect && pregnancySelect.selectedOptions[0];
+    const lmpDate = selectedOption ? selectedOption.dataset.lmp : ageInput.dataset.lmp;
+    if (!lmpDate) return;
+    const lmp = new Date(lmpDate + 'T00:00:00');
+    const visit = new Date(dateInput.value);
+    const elapsedDays = Math.floor((visit.getTime() - lmp.getTime()) / 86400000);
+    if (elapsedDays >= 0) ageInput.value = Math.floor(elapsedDays / 7);
+  };
+  dateInput.addEventListener('change', updateGestationalAge);
+  if (pregnancySelect) pregnancySelect.addEventListener('change', updateGestationalAge);
+})();
+</script>
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

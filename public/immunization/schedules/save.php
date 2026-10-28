@@ -60,6 +60,34 @@ try {
         }
     }
 
+    // Sync directly into patient_appointments so it is managed in Appointments
+    $aptCheck = $pdo->prepare("SELECT id FROM patient_appointments WHERE patient_id = ? AND service_id = 1 AND appointment_date = ?");
+    $aptCheck->execute([$patient_id, $scheduled_date]);
+    $existingAptId = $aptCheck->fetchColumn();
+    $aptStatus = match($status) {
+        'completed' => 'completed',
+        'missed' => 'missed',
+        'cancelled' => 'cancelled',
+        default => 'scheduled'
+    };
+    $aptReason = "Immunization: {$vaccineName} (Dose {$dose_no})";
+    $aptTime = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $scheduled_time) ? $scheduled_time . ':00' : '08:30:00';
+
+    if ($existingAptId) {
+        $updateApt = $pdo->prepare("UPDATE patient_appointments SET status = ?, appointment_time = ?, reason = ? WHERE id = ?");
+        $updateApt->execute([$aptStatus, $aptTime, $aptReason, $existingAptId]);
+    } else {
+        $year = date('Y');
+        $count = (int)$pdo->query("SELECT COUNT(*) FROM patient_appointments WHERE appointment_code LIKE 'APT-{$year}-%'")->fetchColumn();
+        $aptCode = sprintf('APT-%s-%04d', $year, $count + 1);
+        $insertApt = $pdo->prepare("
+            INSERT INTO patient_appointments 
+            (appointment_code, patient_id, service_id, appointment_date, appointment_time, status, reason, assigned_personnel, created_by)
+            VALUES (?, ?, 1, ?, ?, ?, ?, 'Barangay Health Worker', ?)
+        ");
+        $insertApt->execute([$aptCode, $patient_id, $scheduled_date, $aptTime, $aptStatus, $aptReason, $_SESSION['user_id'] ?? null]);
+    }
+
     $pairsToReconcile = [];
     if ($previousSchedule) {
         $pairsToReconcile[] = [(int)$previousSchedule['patient_id'], $previousSchedule['scheduled_date']];

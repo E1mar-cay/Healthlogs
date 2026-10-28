@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'Patient Master Record';
+$pageTitle = 'Patient Record';
 require __DIR__ . '/../partials/bootstrap.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -22,16 +22,7 @@ if (!$patient) {
 $fullName = trim($patient['last_name'] . ', ' . $patient['first_name'] . ($patient['middle_name'] ? ' ' . $patient['middle_name'] : ''));
 $isPrintMode = (isset($_GET['print']) && $_GET['print'] === '1');
 
-// 1. Fetch Health History: Allergies & Conditions
-$allergiesStmt = $pdo->prepare("SELECT * FROM patient_allergies WHERE patient_id = ? ORDER BY noted_on DESC, id DESC");
-$allergiesStmt->execute([$id]);
-$allergies = $allergiesStmt->fetchAll(PDO::FETCH_ASSOC);
-
-$conditionsStmt = $pdo->prepare("SELECT * FROM patient_conditions WHERE patient_id = ? ORDER BY diagnosed_on DESC, id DESC");
-$conditionsStmt->execute([$id]);
-$conditions = $conditionsStmt->fetchAll(PDO::FETCH_ASSOC);
-
-// 2. Fetch Consultation Records
+// Fetch records from the service modules used by this patient.
 $visitsStmt = $pdo->prepare("
     SELECT v.*, u.full_name AS staff_name
     FROM visits v
@@ -42,9 +33,9 @@ $visitsStmt = $pdo->prepare("
 $visitsStmt->execute([$id]);
 $visits = $visitsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// NCD Consultations if applicable
+// NCD service records
 $ncdVisitsStmt = $pdo->prepare("
-    SELECT nv.*, nr.diagnosis_type, nr.ncd_code, u.full_name AS staff_name
+    SELECT nv.*, u.full_name AS staff_name
     FROM ncd_visits nv
     JOIN ncd_records nr ON nr.id = nv.ncd_record_id
     LEFT JOIN users u ON u.id = nv.recorded_by
@@ -54,7 +45,7 @@ $ncdVisitsStmt = $pdo->prepare("
 $ncdVisitsStmt->execute([$id]);
 $ncdVisits = $ncdVisitsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Maternal Prenatal & Postnatal Visits if applicable
+// Maternal service records
 $prenatalVisits = [];
 $postnatalVisits = [];
 if ($patient['sex'] === 'female') {
@@ -81,7 +72,7 @@ if ($patient['sex'] === 'female') {
     $postnatalVisits = $postnatalStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Family Planning Consultations if applicable
+// Family planning service records
 $fpVisits = [];
 if ($patient['sex'] === 'female') {
     $fpStmt = $pdo->prepare("
@@ -96,7 +87,7 @@ if ($patient['sex'] === 'female') {
     $fpVisits = $fpStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// 3. Immunization Records
+// Immunization records
 $immStmt = $pdo->prepare("
     SELECT ir.*, v.name AS vaccine_name, v.code AS vaccine_code, u.full_name AS administered_by_name
     FROM immunization_records ir
@@ -108,7 +99,7 @@ $immStmt = $pdo->prepare("
 $immStmt->execute([$id]);
 $immunizations = $immStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// 4. Appointments & Follow-ups
+// Appointments
 $aptStmt = $pdo->prepare("
     SELECT a.*, hs.service_name, hs.service_code, hs.category AS service_category, u.full_name AS booked_by_name
     FROM patient_appointments a
@@ -119,16 +110,6 @@ $aptStmt = $pdo->prepare("
 ");
 $aptStmt->execute([$id]);
 $appointments = $aptStmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Reminders
-$remindersStmt = $pdo->prepare("
-    SELECT * FROM reminders WHERE patient_id = ? ORDER BY due_date DESC LIMIT 10
-");
-$remindersStmt->execute([$id]);
-$patientReminders = $remindersStmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Available services for booking
-$services = $pdo->query("SELECT id, service_code, service_name, category FROM health_services WHERE is_active = 1 ORDER BY service_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle print view
 if ($isPrintMode) {
@@ -148,329 +129,184 @@ require __DIR__ . '/../partials/header.php';
       <i class="fas fa-arrow-left text-teal-600"></i> Back to Registry
     </a>
     <span class="text-xs text-slate-400">/</span>
-    <span class="text-xs font-semibold text-slate-600">Patient Chart #<?= (int)$patient['id'] ?></span>
+    <span class="text-xs font-medium text-slate-600">Patient #<?= (int)$patient['id'] ?></span>
   </div>
   <div class="flex flex-wrap items-center gap-2">
-    <a target="_blank" href="/HealthLogs/public/patients/view.php?id=<?= (int)$patient['id'] ?>&print=1" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition">
-      <i class="fas fa-print text-teal-600"></i> Print Clinical Chart
+    <a target="_blank" href="/HealthLogs/public/patients/view.php?id=<?= (int)$patient['id'] ?>&print=1" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+      Print Patient Summary
     </a>
-    <a href="/HealthLogs/public/appointments/index.php?patient_id=<?= (int)$patient['id'] ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition">
-      <i class="fas fa-calendar-plus"></i> Schedule Appointment
+    <a href="/HealthLogs/public/appointments/index.php?patient_id=<?= (int)$patient['id'] ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition">
+      Schedule Appointment
     </a>
     <?php if (can_manage_clinical_records()): ?>
-      <button type="button" class="patient-modal-edit inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$patient['id'] ?>">
-        <i class="fas fa-pen-to-square"></i> Edit Profile
+      <button type="button" class="patient-modal-edit inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$patient['id'] ?>">
+        Edit Profile
       </button>
     <?php endif; ?>
   </div>
 </div>
 
 <!-- Patient Master Profile Card -->
-<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 mb-6">
-  <div class="flex flex-col md:flex-row md:items-start justify-between gap-6">
-    <div class="flex items-start gap-4">
-      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white flex items-center justify-center font-bold text-2xl shadow-sm shrink-0">
-        <?= substr($patient['first_name'], 0, 1) . substr($patient['last_name'], 0, 1) ?>
-      </div>
-      <div>
-        <div class="flex flex-wrap items-center gap-2">
-          <h1 class="text-2xl font-bold text-slate-900"><?= h($fullName) ?></h1>
-          <span class="px-2 py-0.5 rounded-full text-xs font-semibold border <?= $patient['status'] === 'active' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200' ?>">
-            <?= ucfirst(h($patient['status'])) ?>
-          </span>
-        </div>
-        <div class="flex flex-wrap items-center gap-2 mt-2">
-          <!-- Classification Badge with exact age -->
-          <?= PatientClassifier::renderBadge($patient['classification'] ?? 'adult', $patient['birth_date']) ?>
-          
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-            <i class="fas fa-venus-mars text-[10px] mr-1 text-slate-500"></i> <?= ucfirst(h($patient['sex'])) ?>
-          </span>
-
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-            <i class="fas fa-map-pin text-[10px] mr-1 text-slate-500"></i> <?= h($patient['barangay']) ?>
-          </span>
-
-          <?php if (!empty($patient['is_4ps'])): ?>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-              <i class="fas fa-hand-holding-heart text-[10px] mr-1"></i> 4Ps Beneficiary
-            </span>
-          <?php endif; ?>
-
-          <?php if (!empty($patient['is_pwd'])): ?>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
-              <i class="fas fa-wheelchair text-[10px] mr-1"></i> PWD
-            </span>
-          <?php endif; ?>
-
-          <?php if (!empty($patient['blood_type'])): ?>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-              <i class="fas fa-droplet text-[10px] mr-1"></i> Blood <?= h($patient['blood_type']) ?>
-            </span>
-          <?php endif; ?>
-        </div>
-        <p class="text-xs text-slate-500 mt-2">
-          <?= h(PatientClassifier::getInfo($patient['classification'] ?? 'adult')['description']) ?>
-        </p>
+<div class="bg-white rounded-xl border border-slate-200 p-5 mb-5">
+  <div class="flex flex-col gap-5">
+    <div>
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-xl font-semibold text-slate-900"><?= h($fullName) ?></h1>
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium border <?= $patient['status'] === 'active' ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-slate-100 text-slate-600 border-slate-200' ?>">
+          <?= ucfirst(h($patient['status'])) ?>
+        </span>
       </div>
     </div>
 
-    <!-- Quick Vital Info Box -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs shrink-0 md:min-w-[340px]">
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase font-bold">Birth Date</span>
-        <span class="font-semibold text-slate-800"><?= date('M d, Y', strtotime($patient['birth_date'])) ?></span>
-      </div>
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase font-bold">Exact Age</span>
-        <span class="font-bold text-teal-700"><?= PatientClassifier::formatAge($patient['birth_date']) ?></span>
-      </div>
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase font-bold">Civil Status</span>
-        <span class="font-semibold text-slate-800 capitalize"><?= h($patient['civil_status'] ?? 'Single') ?></span>
-      </div>
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase font-bold">PhilHealth PIN</span>
-        <span class="font-mono font-semibold text-slate-800"><?= h($patient['philhealth_no'] ?: 'Non-Member') ?></span>
-      </div>
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase font-bold">Contact No</span>
-        <span class="font-semibold text-slate-800"><?= h($patient['contact_no'] ?: '—') ?></span>
-      </div>
-      <div>
-        <span class="text-slate-400 block text-[10px] uppercase font-bold">Emergency Contact</span>
-        <span class="font-semibold text-slate-800 truncate block"><?= h($patient['emergency_contact_name'] ?: '—') ?></span>
-      </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-3 text-xs">
+      <div><span class="block text-slate-500">Age</span><span class="font-medium text-slate-900"><?= PatientClassifier::formatAge($patient['birth_date']) ?></span></div>
+      <div><span class="block text-slate-500">Sex</span><span class="font-medium text-slate-900"><?= ucfirst(h($patient['sex'])) ?></span></div>
+      <div><span class="block text-slate-500">Birth Date</span><span class="font-medium text-slate-900"><?= date('M d, Y', strtotime($patient['birth_date'])) ?></span></div>
+      <div><span class="block text-slate-500">Barangay</span><span class="font-medium text-slate-900"><?= h($patient['barangay']) ?></span></div>
     </div>
   </div>
 </div>
 
 <!-- Tabs Navigation -->
-<div class="mb-6 border-b border-slate-200">
-  <nav class="flex space-x-6 overflow-x-auto text-xs font-semibold" aria-label="Tabs">
-    <a href="#overview" class="py-3 px-1 border-b-2 border-teal-600 text-teal-700 flex items-center gap-1.5 shrink-0">
-      <i class="fas fa-clipboard-user"></i> Profile & History
+<div class="mb-5 border-b border-slate-200">
+  <nav class="flex space-x-5 overflow-x-auto text-xs font-medium" aria-label="Patient records">
+    <a href="#overview" class="py-3 px-1 border-b-2 border-slate-900 text-slate-900 shrink-0">
+      Patient Information
     </a>
-    <a href="#consultations" class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5 shrink-0">
-      <i class="fas fa-stethoscope"></i> Consultations (<?= count($visits) + count($ncdVisits) + count($prenatalVisits) + count($postnatalVisits) + count($fpVisits) ?>)
+    <a href="#service-records" class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-900 shrink-0">
+      Service Records
     </a>
-    <a href="#immunizations" class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5 shrink-0">
-      <i class="fas fa-syringe"></i> Immunizations (<?= count($immunizations) ?>)
+    <a href="#immunizations" class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-900 shrink-0">
+      Immunizations (<?= count($immunizations) ?>)
     </a>
-    <a href="#appointments" class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5 shrink-0">
-      <i class="fas fa-calendar-check"></i> Appointments (<?= count($appointments) ?>)
+    <a href="#appointments" class="py-3 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-900 shrink-0">
+      Appointments (<?= count($appointments) ?>)
     </a>
   </nav>
 </div>
 
-<!-- SECTION 1: Health History & Profile Overview -->
-<div id="overview" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-  <!-- Demographics & PhilHealth -->
-  <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
-      <i class="fas fa-address-card text-teal-600"></i> Demographic Details
-    </div>
-    <dl class="divide-y divide-slate-100 text-xs">
-      <div class="py-2 flex justify-between">
-        <dt class="text-slate-500">Address / Purok</dt>
-        <dd class="font-semibold text-slate-800 text-right"><?= h($patient['address_line'] ? $patient['address_line'] . ', ' : '') ?><?= h($patient['barangay']) ?></dd>
-      </div>
-      <div class="py-2 flex justify-between">
-        <dt class="text-slate-500">Email Address</dt>
-        <dd class="font-semibold text-slate-800 text-right"><?= h($patient['email'] ?: '—') ?></dd>
-      </div>
-      <div class="py-2 flex justify-between">
-        <dt class="text-slate-500">PhilHealth Category</dt>
-        <dd class="font-semibold text-slate-800 text-right capitalize"><?= str_replace('_', ' ', h($patient['philhealth_category'] ?? 'non_member')) ?></dd>
-      </div>
-      <div class="py-2 flex justify-between">
-        <dt class="text-slate-500">Emergency Phone</dt>
-        <dd class="font-semibold text-slate-800 text-right"><?= h($patient['emergency_contact_phone'] ?: '—') ?></dd>
-      </div>
-      <div class="py-2 flex justify-between">
-        <dt class="text-slate-500">Registered On</dt>
-        <dd class="font-semibold text-slate-800 text-right"><?= date('M d, Y', strtotime($patient['created_at'])) ?></dd>
-      </div>
-    </dl>
-  </div>
-
-  <!-- Known Allergies -->
-  <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
-      <span class="flex items-center gap-1.5"><i class="fas fa-hand-dots text-rose-600"></i> Allergies & Reactions</span>
-      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold <?= empty($allergies) ? 'bg-slate-100 text-slate-600' : 'bg-rose-100 text-rose-800' ?>">
-        <?= count($allergies) ?> Noted
-      </span>
-    </div>
-    <?php if (empty($allergies)): ?>
-      <div class="p-6 text-center text-slate-400 text-xs">
-        <i class="fas fa-shield-virus text-2xl text-slate-300 mb-2 block"></i>
-        No known allergies documented.
-      </div>
-    <?php else: ?>
-      <ul class="divide-y divide-slate-100 text-xs">
-        <?php foreach ($allergies as $a): ?>
-          <li class="py-2.5">
-            <div class="font-bold text-rose-700 flex items-center gap-1">
-              <i class="fas fa-circle-exclamation text-[10px]"></i> <?= h($a['allergen']) ?>
-            </div>
-            <div class="text-slate-500 text-[11px] mt-0.5">Reaction: <?= h($a['reaction'] ?: 'Not specified') ?></div>
-            <?php if ($a['noted_on']): ?>
-              <div class="text-slate-400 text-[10px] mt-0.5">Noted on: <?= date('M d, Y', strtotime($a['noted_on'])) ?></div>
-            <?php endif; ?>
-          </li>
-        <?php endforeach; ?>
-      </ul>
-    <?php endif; ?>
-  </div>
-
-  <!-- Chronic Conditions & Diagnoses -->
-  <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
-      <span class="flex items-center gap-1.5"><i class="fas fa-notes-medical text-teal-600"></i> Conditions & Diagnoses</span>
-      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold <?= empty($conditions) ? 'bg-slate-100 text-slate-600' : 'bg-teal-100 text-teal-800' ?>">
-        <?= count($conditions) ?> Active
-      </span>
-    </div>
-    <?php if (empty($conditions)): ?>
-      <div class="p-6 text-center text-slate-400 text-xs">
-        <i class="fas fa-heart-circle-check text-2xl text-emerald-400 mb-2 block"></i>
-        No active chronic diagnoses documented.
-      </div>
-    <?php else: ?>
-      <ul class="divide-y divide-slate-100 text-xs">
-        <?php foreach ($conditions as $c): ?>
-          <li class="py-2.5">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-slate-900"><?= h($c['condition_name']) ?></span>
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold <?= $c['status'] === 'active' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600' ?>">
-                <?= ucfirst(h($c['status'])) ?>
-              </span>
-            </div>
-            <?php if (!empty($c['notes'])): ?>
-              <div class="text-slate-500 text-[11px] mt-0.5"><?= h($c['notes']) ?></div>
-            <?php endif; ?>
-            <?php if ($c['diagnosed_on']): ?>
-              <div class="text-slate-400 text-[10px] mt-0.5">Diagnosed: <?= date('M d, Y', strtotime($c['diagnosed_on'])) ?></div>
-            <?php endif; ?>
-          </li>
-        <?php endforeach; ?>
-      </ul>
-    <?php endif; ?>
-  </div>
+<!-- Patient Information -->
+<div id="overview" class="bg-white rounded-xl border border-slate-200 p-5 mb-5">
+  <h2 class="text-sm font-semibold text-slate-900 mb-4">Patient Information</h2>
+  <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 text-xs">
+    <div><dt class="text-slate-500">Address</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['address_line'] ? $patient['address_line'] . ', ' : '') ?><?= h($patient['barangay']) ?></dd></div>
+    <div><dt class="text-slate-500">Sex</dt><dd class="font-medium text-slate-900 mt-0.5"><?= ucfirst(h($patient['sex'])) ?></dd></div>
+    <div><dt class="text-slate-500">Contact Number</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['contact_no'] ?: '—') ?></dd></div>
+    <div><dt class="text-slate-500">Email</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['email'] ?: '—') ?></dd></div>
+    <div><dt class="text-slate-500">Civil Status</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['civil_status'] ?: '—') ?></dd></div>
+    <div><dt class="text-slate-500">Blood Type</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['blood_type'] ?: '—') ?></dd></div>
+    <div><dt class="text-slate-500">PhilHealth PIN</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['philhealth_no'] ?: '—') ?></dd></div>
+    <div><dt class="text-slate-500">PhilHealth Category</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h(str_replace('_', ' ', $patient['philhealth_category'] ?? '—')) ?></dd></div>
+    <div><dt class="text-slate-500">Emergency Contact</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['emergency_contact_name'] ?: '—') ?><?= $patient['emergency_contact_phone'] ? ' · ' . h($patient['emergency_contact_phone']) : '' ?></dd></div>
+    <div><dt class="text-slate-500">Classification</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h(str_replace('_', ' ', $patient['classification'] ?? '—')) ?></dd></div>
+    <div><dt class="text-slate-500">4Ps Beneficiary</dt><dd class="font-medium text-slate-900 mt-0.5"><?= !empty($patient['is_4ps']) ? 'Yes' : 'No' ?></dd></div>
+    <div><dt class="text-slate-500">PWD</dt><dd class="font-medium text-slate-900 mt-0.5"><?= !empty($patient['is_pwd']) ? 'Yes' : 'No' ?></dd></div>
+    <div><dt class="text-slate-500">Registered</dt><dd class="font-medium text-slate-900 mt-0.5"><?= date('M d, Y', strtotime($patient['created_at'])) ?></dd></div>
+  </dl>
 </div>
 
-<!-- SECTION 2: Consultations & RHU Services Received -->
-<div id="consultations" class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 mb-6">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
-    <div>
-      <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-        <i class="fas fa-stethoscope text-teal-600"></i> Clinical Consultations & Services Rendered
-      </h2>
-      <p class="text-xs text-slate-500 mt-0.5">Chronological record of healthcare services provided by Barangay Tangcul Rural Health Center.</p>
-    </div>
+<?php
+  $serviceRecords = [];
+  foreach ($visits as $v) {
+      $serviceRecords[] = [
+          'type' => ucfirst(str_replace('_', ' ', $v['visit_type'])),
+          'date' => $v['visit_datetime'],
+          'title' => $v['reason'] ?: ucfirst(str_replace('_', ' ', $v['visit_type'])) . ' service',
+          'details' => $v['notes'] ?: '',
+          'staff' => $v['staff_name'] ?: '',
+      ];
+  }
+  foreach ($ncdVisits as $nv) {
+      $details = [];
+      if ($nv['bp_systolic'] && $nv['bp_diastolic']) $details[] = "BP: {$nv['bp_systolic']}/{$nv['bp_diastolic']}";
+      if ($nv['blood_sugar_mgdl']) $details[] = "Blood sugar: {$nv['blood_sugar_mgdl']} mg/dL" . ($nv['blood_sugar_type'] ? ' (' . strtoupper($nv['blood_sugar_type']) . ')' : '');
+      if ($nv['weight_kg']) $details[] = "Weight: {$nv['weight_kg']} kg";
+      if ($nv['medications_dispensed']) $details[] = "Medication: {$nv['medications_dispensed']}";
+      if ($nv['findings_complaints']) $details[] = $nv['findings_complaints'];
+      if ($nv['management_plan']) $details[] = $nv['management_plan'];
+      $serviceRecords[] = [
+          'type' => 'NCD',
+          'date' => $nv['visit_date'],
+          'title' => 'NCD Follow-up',
+          'details' => implode(' · ', $details),
+          'staff' => $nv['staff_name'] ?: '',
+      ];
+  }
+  foreach ($prenatalVisits as $pv) {
+      $details = [];
+      if ($pv['bp_systolic'] && $pv['bp_diastolic']) $details[] = "BP: {$pv['bp_systolic']}/{$pv['bp_diastolic']}";
+      if ($pv['weight_kg']) $details[] = "Weight: {$pv['weight_kg']} kg";
+      if ($pv['notes']) $details[] = $pv['notes'];
+      $serviceRecords[] = [
+          'type' => 'Prenatal',
+          'date' => $pv['visit_datetime'],
+          'title' => 'Prenatal Visit' . ($pv['gestational_age_weeks'] ? " · {$pv['gestational_age_weeks']} weeks" : ''),
+          'details' => implode(' · ', $details),
+          'staff' => $pv['staff_name'] ?: '',
+      ];
+  }
+  foreach ($postnatalVisits as $pnv) {
+      $details = [];
+      if ($pnv['mother_condition']) $details[] = 'Mother: ' . $pnv['mother_condition'];
+      if ($pnv['baby_condition']) $details[] = 'Baby: ' . $pnv['baby_condition'];
+      if ($pnv['notes']) $details[] = $pnv['notes'];
+      $serviceRecords[] = [
+          'type' => 'Postnatal',
+          'date' => $pnv['visit_datetime'],
+          'title' => 'Postnatal Visit',
+          'details' => implode(' · ', $details),
+          'staff' => $pnv['staff_name'] ?: '',
+      ];
+  }
+  foreach ($fpVisits as $fv) {
+      $details = [];
+      if ($fv['method_prescribed']) $details[] = 'Method: ' . strtoupper(str_replace('_', ' ', $fv['method_prescribed']));
+      if ($fv['bp_systolic'] && $fv['bp_diastolic']) $details[] = "BP: {$fv['bp_systolic']}/{$fv['bp_diastolic']}";
+      if ($fv['weight_kg']) $details[] = "Weight: {$fv['weight_kg']} kg";
+      if ($fv['findings_complaints']) $details[] = $fv['findings_complaints'];
+      $serviceRecords[] = [
+          'type' => 'Family Planning',
+          'date' => $fv['visit_date'],
+          'title' => 'Family Planning Visit',
+          'details' => implode(' · ', $details),
+          'staff' => $fv['staff_name'] ?: '',
+      ];
+  }
+  usort($serviceRecords, fn($a, $b) => strtotime($b['date']) <=> strtotime($a['date']));
+?>
+
+<div id="service-records" class="bg-white rounded-xl border border-slate-200 p-5 mb-5">
+  <div class="flex items-center justify-between gap-3 mb-4">
+    <h2 class="text-sm font-semibold text-slate-900">Service Records</h2>
+    <span class="text-xs text-slate-500"><?= count($serviceRecords) ?> record<?= count($serviceRecords) === 1 ? '' : 's' ?></span>
   </div>
 
-  <?php
-    $allEncounters = [];
-    foreach ($visits as $v) {
-        $allEncounters[] = [
-            'type' => 'General Consultation',
-            'date' => $v['visit_datetime'],
-            'title' => $v['reason'] ?: 'Routine Primary Care Consultation',
-            'details' => $v['notes'] ?: 'Standard physical assessment and consultation.',
-            'staff' => $v['staff_name'] ?? 'Health Center Staff',
-            'badge' => 'bg-blue-100 text-blue-800'
-        ];
-    }
-    foreach ($ncdVisits as $nv) {
-        $vitals = [];
-        if ($nv['bp_systolic'] && $nv['bp_diastolic']) $vitals[] = "BP: {$nv['bp_systolic']}/{$nv['bp_diastolic']}";
-        if ($nv['blood_sugar_mgdl']) $vitals[] = "Sugar: {$nv['blood_sugar_mgdl']} mg/dL (" . strtoupper($nv['blood_sugar_type'] ?? '') . ")";
-        if ($nv['weight_kg']) $vitals[] = "Wt: {$nv['weight_kg']} kg";
-        $vitalsText = !empty($vitals) ? implode(' | ', $vitals) : '';
-
-        $allEncounters[] = [
-            'type' => 'NCD Maintenance Checkup',
-            'date' => $nv['visit_date'] . ' 09:00:00',
-            'title' => 'NCD Consultation (' . ucfirst(str_replace('_', ' ', $nv['diagnosis_type'])) . ')',
-            'details' => ($vitalsText ? "{$vitalsText} • " : '') . ($nv['management_plan'] ?: $nv['findings_complaints'] ?: 'Maintenance checkup and adherence evaluation.'),
-            'staff' => $nv['staff_name'] ?? 'BHW NCD Focal',
-            'badge' => 'bg-purple-100 text-purple-800'
-        ];
-    }
-    foreach ($prenatalVisits as $pv) {
-        $allEncounters[] = [
-            'type' => 'Prenatal Care Visit',
-            'date' => $pv['visit_datetime'],
-            'title' => 'Prenatal Checkup' . ($pv['gestational_age_weeks'] ? " ({$pv['gestational_age_weeks']} weeks AOG)" : ''),
-            'details' => "BP: {$pv['bp_systolic']}/{$pv['bp_diastolic']} • Weight: {$pv['weight_kg']} kg • Notes: " . ($pv['notes'] ?: 'Maternal vital signs & fetal development assessment.'),
-            'staff' => $pv['staff_name'] ?? 'Midwife',
-            'badge' => 'bg-rose-100 text-rose-800'
-        ];
-    }
-    foreach ($postnatalVisits as $pnv) {
-        $allEncounters[] = [
-            'type' => 'Postnatal Checkup',
-            'date' => $pnv['visit_datetime'],
-            'title' => 'Postpartum & Lactation Assessment',
-            'details' => "Mother: {$pnv['mother_condition']} • Baby: {$pnv['baby_condition']} • Notes: " . ($pnv['notes'] ?: 'Lochia and breastfeeding check.'),
-            'staff' => $pnv['staff_name'] ?? 'Midwife',
-            'badge' => 'bg-fuchsia-100 text-fuchsia-800'
-        ];
-    }
-    foreach ($fpVisits as $fv) {
-        $allEncounters[] = [
-            'type' => 'Family Planning Visit',
-            'date' => $fv['visit_date'] . ' 10:00:00',
-            'title' => 'Family Planning (' . strtoupper(str_replace('_', ' ', $fv['method_prescribed'])) . ')',
-            'details' => "Contraceptive method issued • " . ($fv['findings_complaints'] ?: 'Routine resupply and side-effects monitoring.'),
-            'staff' => $fv['staff_name'] ?? 'BHW FP Coordinator',
-            'badge' => 'bg-indigo-100 text-indigo-800'
-        ];
-    }
-
-    // Sort descending by date
-    usort($allEncounters, function($a, $b) {
-        return strtotime($b['date']) <=> strtotime($a['date']);
-    });
-  ?>
-
-  <?php if (empty($allEncounters)): ?>
-    <div class="p-8 text-center text-slate-400 text-xs">
-      <i class="fas fa-notes-medical text-3xl text-slate-300 mb-2 block"></i>
-      No clinical visits recorded for this patient yet.
-    </div>
+  <?php if (empty($serviceRecords)): ?>
+    <p class="py-6 text-center text-xs text-slate-500">No service records found.</p>
   <?php else: ?>
     <div class="overflow-x-auto">
       <table class="min-w-full text-xs">
-        <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+        <thead class="border-b border-slate-200 text-left text-slate-500">
           <tr>
-            <th class="text-left px-4 py-3">Date & Time</th>
-            <th class="text-left px-4 py-3">Service Type</th>
-            <th class="text-left px-4 py-3">Clinical Findings / Notes</th>
-            <th class="text-left px-4 py-3">Attending Staff</th>
+            <th class="px-3 py-2 font-medium">Date</th>
+            <th class="px-3 py-2 font-medium">Service</th>
+            <th class="px-3 py-2 font-medium">Details</th>
+            <th class="px-3 py-2 font-medium">Recorded By</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-          <?php foreach ($allEncounters as $enc): ?>
-            <tr class="hover:bg-slate-50/70 transition">
-              <td class="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">
-                <?= date('M d, Y', strtotime($enc['date'])) ?>
-                <span class="text-[10px] text-slate-400 block"><?= date('h:i A', strtotime($enc['date'])) ?></span>
+          <?php foreach ($serviceRecords as $record): ?>
+            <tr>
+              <td class="px-3 py-3 text-slate-700 whitespace-nowrap">
+                <?= date('M d, Y', strtotime($record['date'])) ?>
+                <?php if (strlen($record['date']) > 10): ?><span class="block text-slate-500"><?= date('h:i A', strtotime($record['date'])) ?></span><?php endif; ?>
               </td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold <?= $enc['badge'] ?>">
-                  <?= h($enc['type']) ?>
-                </span>
-                <div class="font-bold text-slate-900 mt-0.5"><?= h($enc['title']) ?></div>
+              <td class="px-3 py-3 font-medium text-slate-900">
+                <span class="block text-slate-500 font-normal"><?= h($record['type']) ?></span>
+                <?= h($record['title']) ?>
               </td>
-              <td class="px-4 py-3 text-slate-600 max-w-md">
-                <?= h($enc['details']) ?>
-              </td>
-              <td class="px-4 py-3 text-slate-500 whitespace-nowrap">
-                <i class="fas fa-user-doctor text-[10px] mr-1 text-slate-400"></i> <?= h($enc['staff']) ?>
-              </td>
+              <td class="px-3 py-3 text-slate-600"><?= h($record['details'] ?: '—') ?></td>
+              <td class="px-3 py-3 text-slate-600 whitespace-nowrap"><?= h($record['staff'] ?: '—') ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
@@ -479,34 +315,22 @@ require __DIR__ . '/../partials/header.php';
   <?php endif; ?>
 </div>
 
-<!-- SECTION 3: Immunization Records & Vaccine Passport -->
-<div id="immunizations" class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 mb-6">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
-    <div>
-      <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-        <i class="fas fa-syringe text-teal-600"></i> Immunization Records & Vaccine Card
-      </h2>
-      <p class="text-xs text-slate-500 mt-0.5">DOH Expanded Program on Immunization (EPI) and adult/senior vaccinations.</p>
-    </div>
-    <?php if ($patient['classification'] === 'infant' || $patient['classification'] === 'under_five'): ?>
-      <span class="px-3 py-1 rounded-full text-xs font-bold bg-pink-50 text-pink-700 border border-pink-200">
-        <i class="fas fa-baby mr-1"></i> Child Routine Immunization Target
-      </span>
-    <?php endif; ?>
+<!-- Immunization Records -->
+<div id="immunizations" class="bg-white rounded-xl border border-slate-200 p-5 mb-5">
+  <div class="mb-4 pb-3 border-b border-slate-100">
+    <h2 class="text-sm font-semibold text-slate-900">Immunization Records</h2>
   </div>
 
   <?php if (empty($immunizations)): ?>
-    <div class="p-8 text-center text-slate-400 text-xs">
-      <i class="fas fa-shield-virus text-3xl text-slate-300 mb-2 block"></i>
-      No immunization administrations logged for this patient yet.
-    </div>
+    <p class="py-6 text-center text-xs text-slate-500">No immunization records found.</p>
   <?php else: ?>
     <div class="overflow-x-auto">
       <table class="min-w-full text-xs">
-        <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+        <thead class="border-b border-slate-200 text-slate-500 font-medium">
           <tr>
             <th class="text-left px-4 py-3">Vaccine</th>
             <th class="text-left px-4 py-3">Dose No</th>
+            <th class="text-left px-4 py-3">Status</th>
             <th class="text-left px-4 py-3">Date Administered</th>
             <th class="text-left px-4 py-3">Lot / Batch No</th>
             <th class="text-left px-4 py-3">Administered By</th>
@@ -515,14 +339,15 @@ require __DIR__ . '/../partials/header.php';
         </thead>
         <tbody class="divide-y divide-slate-100">
           <?php foreach ($immunizations as $imm): ?>
-            <tr class="hover:bg-slate-50/70 transition">
-              <td class="px-4 py-3 font-bold text-slate-900">
-                <?= h($imm['vaccine_name']) ?> (<?= h($imm['vaccine_code']) ?>)
+            <tr>
+              <td class="px-4 py-3 font-medium text-slate-900">
+                <?= h($imm['vaccine_name']) ?>
               </td>
               <td class="px-4 py-3">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                  Dose <?= (int)$imm['dose_no'] ?>
-                </span>
+                Dose <?= (int)$imm['dose_no'] ?>
+              </td>
+              <td class="px-4 py-3">
+                Administered
               </td>
               <td class="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">
                 <?= date('M d, Y', strtotime($imm['administered_on'])) ?>
@@ -531,10 +356,10 @@ require __DIR__ . '/../partials/header.php';
                 <?= h($imm['lot_no'] ?: '—') ?>
               </td>
               <td class="px-4 py-3 text-slate-600">
-                <?= h($imm['administered_by_name'] ?? 'Healthcare Worker') ?>
+                <?= h($imm['administered_by_name'] ?: '—') ?>
               </td>
               <td class="px-4 py-3 text-slate-500">
-                <?= h($imm['notes'] ?: 'Routine dose given per protocol') ?>
+                <?= h($imm['notes'] ?: '—') ?>
               </td>
             </tr>
           <?php endforeach; ?>
@@ -544,85 +369,71 @@ require __DIR__ . '/../partials/header.php';
   <?php endif; ?>
 </div>
 
-<!-- SECTION 4: Appointments, Reminders, and Follow-ups -->
-<div id="appointments" class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 mb-6">
+<!-- Appointments -->
+<div id="appointments" class="bg-white rounded-xl border border-slate-200 p-5 mb-5">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
-    <div>
-      <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-        <i class="fas fa-calendar-check text-teal-600"></i> Patient Appointments & Follow-up Tracking
-      </h2>
-      <p class="text-xs text-slate-500 mt-0.5">Manage scheduled visits, reschedules, and completion notes for required services.</p>
-    </div>
-    <a href="/HealthLogs/public/appointments/index.php?patient_id=<?= (int)$patient['id'] ?>" class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition">
-      <i class="fas fa-plus mr-1"></i> Book New Appointment
+    <h2 class="text-sm font-semibold text-slate-900">Appointments</h2>
+    <a href="/HealthLogs/public/appointments/index.php?patient_id=<?= (int)$patient['id'] ?>" class="px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition">
+      Book Appointment
     </a>
   </div>
 
   <?php if (empty($appointments)): ?>
-    <div class="p-8 text-center text-slate-400 text-xs">
-      <i class="fas fa-calendar-xmark text-3xl text-slate-300 mb-2 block"></i>
-      No appointments on record for this patient. Click "Book New Appointment" to schedule one.
-    </div>
+    <p class="py-6 text-center text-xs text-slate-500">No appointments found.</p>
   <?php else: ?>
     <div class="overflow-x-auto">
       <table class="min-w-full text-xs">
-        <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+        <thead class="border-b border-slate-200 text-slate-500 font-medium">
           <tr>
-            <th class="text-left px-4 py-3">Code</th>
-            <th class="text-left px-4 py-3">Service Required</th>
-            <th class="text-left px-4 py-3">Date & Time</th>
-            <th class="text-left px-4 py-3">Assigned Staff</th>
-            <th class="text-left px-4 py-3">Status</th>
-            <th class="text-left px-4 py-3">Reason / Clinical Notes</th>
-            <th class="text-right px-4 py-3">Actions</th>
+            <th class="text-left px-3 py-2">Code</th>
+            <th class="text-left px-3 py-2">Service</th>
+            <th class="text-left px-3 py-2">Date & Time</th>
+            <th class="text-left px-3 py-2">Assigned Staff</th>
+            <th class="text-left px-3 py-2">Status</th>
+            <th class="text-left px-3 py-2">Reason / Notes</th>
+            <th class="text-right px-3 py-2">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <?php foreach ($appointments as $apt): ?>
             <?php
-              $statusBadge = match($apt['status']) {
-                  'scheduled' => 'bg-blue-100 text-blue-800 border-blue-200',
-                  'rescheduled' => 'bg-amber-100 text-amber-800 border-amber-200',
-                  'completed' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                  'cancelled' => 'bg-rose-100 text-rose-800 border-rose-200',
-                  default => 'bg-slate-100 text-slate-700 border-slate-200',
-              };
+              $statusBadge = 'bg-slate-50 text-slate-700 border-slate-200';
             ?>
-            <tr class="hover:bg-slate-50/70 transition">
-              <td class="px-4 py-3 font-mono font-bold text-slate-900">
+            <tr>
+              <td class="px-3 py-3 font-mono font-medium text-slate-900">
                 <?= h($apt['appointment_code']) ?>
               </td>
-              <td class="px-4 py-3 font-semibold text-slate-800">
+              <td class="px-3 py-3 font-medium text-slate-800">
                 <?= h($apt['service_name']) ?>
                 <span class="text-[10px] text-slate-400 uppercase font-mono block"><?= h($apt['service_code']) ?></span>
               </td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="font-bold text-slate-800"><?= date('M d, Y', strtotime($apt['appointment_date'])) ?></span>
+              <td class="px-3 py-3 whitespace-nowrap">
+                <span class="font-medium text-slate-800"><?= date('M d, Y', strtotime($apt['appointment_date'])) ?></span>
                 <span class="text-[11px] text-slate-500 block"><?= date('h:i A', strtotime($apt['appointment_time'])) ?></span>
               </td>
-              <td class="px-4 py-3 text-slate-600 whitespace-nowrap">
+              <td class="px-3 py-3 text-slate-600 whitespace-nowrap">
                 <?= h($apt['assigned_personnel']) ?>
               </td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border <?= $statusBadge ?>">
+              <td class="px-3 py-3 whitespace-nowrap">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border <?= $statusBadge ?>">
                   <?= ucfirst(h($apt['status'])) ?>
                 </span>
                 <?php if ($apt['status'] === 'rescheduled' && $apt['previous_appointment_date']): ?>
-                  <div class="text-[10px] text-amber-700 mt-0.5">Prev: <?= date('M d, Y', strtotime($apt['previous_appointment_date'])) ?></div>
+                  <div class="text-[10px] text-slate-500 mt-0.5">Previous: <?= date('M d, Y', strtotime($apt['previous_appointment_date'])) ?></div>
                 <?php endif; ?>
               </td>
-              <td class="px-4 py-3 max-w-xs text-slate-600">
+              <td class="px-3 py-3 max-w-xs text-slate-600">
                 <?php if ($apt['reason']): ?>
                   <div><strong>Reason:</strong> <?= h($apt['reason']) ?></div>
                 <?php endif; ?>
                 <?php if ($apt['clinical_notes']): ?>
-                  <div class="mt-1 text-emerald-700"><strong>Notes:</strong> <?= h($apt['clinical_notes']) ?></div>
+                  <div class="mt-1"><strong>Notes:</strong> <?= h($apt['clinical_notes']) ?></div>
                 <?php endif; ?>
                 <?php if ($apt['cancellation_reason']): ?>
-                  <div class="mt-1 text-rose-700"><strong>Cancelled:</strong> <?= h($apt['cancellation_reason']) ?></div>
+                  <div class="mt-1"><strong>Cancelled:</strong> <?= h($apt['cancellation_reason']) ?></div>
                 <?php endif; ?>
               </td>
-              <td class="px-4 py-3 text-right whitespace-nowrap">
+              <td class="px-3 py-3 text-right whitespace-nowrap">
                 <a href="/HealthLogs/public/appointments/index.php?q=<?= urlencode($apt['appointment_code']) ?>" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
                   Manage in Appointments &rarr;
                 </a>

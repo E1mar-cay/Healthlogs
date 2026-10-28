@@ -2,9 +2,11 @@
 $pageTitle = '8 - ANC Target Client List for Maternal Care and Services';
 require __DIR__ . '/../partials/bootstrap.php';
 
-// Active Sheet Tab (1: 8-ANC Checkups, 2: Nutrition & Td, 3: Screenings & Outcomes, 4: Delivery & 4PNC, all: Master)
+// Active Sheet Tab (1: 8-ANC Checkups, 2: Delivery & 4PNC, all: Master)
 $activeSheet = trim($_GET['sheet'] ?? '1');
-if (!in_array($activeSheet, ['1', '2', '3', '4', 'all'], true)) {
+if ($activeSheet === '4') {
+    $activeSheet = '2';
+} elseif (!in_array($activeSheet, ['1', '2', 'all'], true)) {
     $activeSheet = '1';
 }
 
@@ -118,7 +120,7 @@ if (!empty($pregnancyIds)) {
     }
 
     // Td vaccines from immunization records
-    $patientIds = array_unique(array_column($pregnancies, 'patient_id'));
+    $patientIds = array_values(array_unique(array_column($pregnancies, 'patient_id')));
     if (!empty($patientIds)) {
         $patPlaceholders = implode(',', array_fill(0, count($patientIds), '?'));
         $tdSql = "
@@ -167,7 +169,6 @@ function mapMaternalTcl(array $pr, array $prenatals, array $postnatals, array $t
     $bmiFirstVisit = null;
     $bmiCategory = 'Normal';
 
-    $vCount = 0;
     foreach ($prenatals as $pv) {
         $weeks = (int)($pv['gestational_age_weeks'] ?? 0);
         $vDate = !empty($pv['visit_datetime']) ? date('m-d-y', strtotime($pv['visit_datetime'])) : null;
@@ -186,45 +187,28 @@ function mapMaternalTcl(array $pr, array $prenatals, array $postnatals, array $t
         }
 
         // Slot into 8 ANC
-        if ($weeks <= 12 && !$visits8Anc['v1']) {
+        if ($weeks >= 8 && $weeks <= 12 && !$visits8Anc['v1']) {
             $visits8Anc['v1'] = $vDate;
-            $vCount++;
         } elseif ($weeks >= 13 && $weeks <= 20 && !$visits8Anc['v2']) {
             $visits8Anc['v2'] = $vDate;
-            $vCount++;
         } elseif ($weeks >= 21 && $weeks <= 27 && !$visits8Anc['v3']) {
             $visits8Anc['v3'] = $vDate;
-            $vCount++;
         } elseif ($weeks >= 28 && $weeks <= 30 && !$visits8Anc['v4']) {
             $visits8Anc['v4'] = $vDate;
-            $vCount++;
         } elseif ($weeks >= 31 && $weeks <= 34 && !$visits8Anc['v5']) {
             $visits8Anc['v5'] = $vDate;
-            $vCount++;
         } elseif ($weeks == 35 && !$visits8Anc['v6']) {
             $visits8Anc['v6'] = $vDate;
-            $vCount++;
         } elseif ($weeks == 36 && !$visits8Anc['v7']) {
             $visits8Anc['v7'] = $vDate;
-            $vCount++;
         } elseif ($weeks >= 37 && !$visits8Anc['v8']) {
             $visits8Anc['v8'] = $vDate;
-            $vCount++;
-        } else {
-            // Fill next available slot
-            foreach ($visits8Anc as $k => $val) {
-                if ($val === null) {
-                    $visits8Anc[$k] = $vDate;
-                    $vCount++;
-                    break;
-                }
-            }
         }
     }
 
-    $completed8Anc = ($visits8Anc['v1'] && ($visits8Anc['v2'] || $visits8Anc['v3']) && ($visits8Anc['v4'] || $visits8Anc['v5'] || $visits8Anc['v8'])) ? 1 : 0;
+    $completed8Anc = !in_array(null, $visits8Anc, true);
 
-    // Td Vaccines (Sheet 2)
+    // Td Vaccines
     $tdDoses = ['td1' => null, 'td2' => null, 'td3' => null, 'td4' => null, 'td5' => null];
     foreach ($tds as $td) {
         $dNo = (int)($td['dose_no'] ?? 1);
@@ -235,7 +219,7 @@ function mapMaternalTcl(array $pr, array $prenatals, array $postnatals, array $t
     }
     $isFim = !empty($tdDoses['td2']) || !empty($tdDoses['td3']) || !empty($tdDoses['td4']) || !empty($tdDoses['td5']);
 
-    // Postnatal Care 4PNC (Sheet 4)
+    // Postnatal Care 4PNC
     $postnatal4Pnc = [
         'c1' => null, // < 24h
         'c2' => null, // Day 3
@@ -252,7 +236,7 @@ function mapMaternalTcl(array $pr, array $prenatals, array $postnatals, array $t
         elseif ($pncCount === 3) $postnatal4Pnc['c4'] = $pDate;
         $pncCount++;
     }
-    $completed4Pnc = $pncCount >= 2 ? 1 : 0;
+    $completed4Pnc = $pncCount >= count($postnatal4Pnc);
 
     return [
         'reg_date' => $regDate,
@@ -318,8 +302,6 @@ if ($export) {
     
     fputcsv($out, ['PHILIPPINE DEPARTMENT OF HEALTH - TARGET CLIENT LIST FOR MATERNAL CARE (TCL-MATERNAL)']);
     fputcsv($out, ['Barangay Tangcul, City of Ilagan, Isabela', 'Purok: ' . ($barangayFilter ?: 'All Puroks'), 'Year: ' . $yearFilter, 'Generated: ' . date('Y-m-d H:i:s')]);
-    fputcsv($out, []);
-
     fputcsv($out, [
         'No.', 'Reg Date', 'Family Serial No.', 'Full Name', 'Purok / Address', 'Age', 'Age Group',
         'LMP (mm/dd/yy)', 'G-P', 'EDD (mm/dd/yy)',
@@ -354,7 +336,7 @@ if ($export) {
             $d['visits']['v6'] ?? '',
             $d['visits']['v7'] ?? '',
             $d['visits']['v8'] ?? '',
-            $d['completed_8anc'] ? '1' : '0',
+            $d['completed_8anc'] ? 'Complete' : 'Incomplete',
             $d['bmi'] ?? '',
             $d['td']['td1'] ?? '',
             $d['td']['td2'] ?? '',
@@ -366,7 +348,7 @@ if ($export) {
             $d['postnatal']['c2'] ?? '',
             $d['postnatal']['c3'] ?? '',
             $d['postnatal']['c4'] ?? '',
-            $d['completed_4pnc'] ? '1' : '0',
+            $d['completed_4pnc'] ? 'Complete' : 'Incomplete',
             $d['status'],
         ]);
     }
@@ -467,8 +449,8 @@ require __DIR__ . '/../partials/header.php';
       <p class="text-xs text-slate-500 mt-0.5">Official Department of Health (DOH) standard master register tracking prenatal 8-ANC visits, nutrition, Td immunization, laboratory screenings, and 4PNC postnatal care for Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/maternal.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs">
-        <i class="fas fa-arrow-left"></i> Maternal Hub
+      <a href="/HealthLogs/public/maternal/pregnancies/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium">
+        Back to Pregnancy Records
       </a>
       <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
         <i class="fas fa-file-csv text-slate-600"></i> Export CSV
@@ -511,13 +493,7 @@ require __DIR__ . '/../partials/header.php';
     <i class="fas fa-clipboard-check mr-1.5"></i> Part 1: 8-ANC Prenatal Visits
   </a>
   <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '2'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === '2' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
-    <i class="fas fa-syringe mr-1.5"></i> Part 2: Nutrition, Td Vaccine &amp; IFA
-  </a>
-  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '3'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === '3' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
-    <i class="fas fa-vial mr-1.5"></i> Part 3: Screenings &amp; Outcomes
-  </a>
-  <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => '4'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === '4' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
-    <i class="fas fa-baby mr-1.5"></i> Part 4: Delivery &amp; Postnatal (4PNC)
+    <i class="fas fa-baby mr-1.5"></i> Part 2: Delivery &amp; Postnatal (4PNC)
   </a>
   <a href="?<?= http_build_query(array_merge($_GET, ['sheet' => 'all'])) ?>" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition <?= $activeSheet === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' ?>">
     <i class="fas fa-table mr-1.5"></i> Master All-in-One View
@@ -621,7 +597,7 @@ require __DIR__ . '/../partials/header.php';
               Date of Prenatal Check-up (8 ANC) <span class="text-[10px] font-normal lowercase">(mm/dd/yy)</span>
             </th>
             <th rowspan="3" class="w-16 bg-slate-100 text-slate-800">
-              Completed<br>8ANC?<br><span class="text-[9px] font-normal">(1-Yes, 0-No)</span>
+              Completed<br>8ANC?<br><span class="text-[9px] font-normal">(Complete/Incomplete)</span>
             </th>
             <?php if ($activeSheet === 'all'): ?>
               <th rowspan="3" class="min-w-[65px] bg-slate-100 text-slate-800">BMI<br>1st Tri</th>
@@ -663,77 +639,20 @@ require __DIR__ . '/../partials/header.php';
           </tr>
 
         <?php elseif ($activeSheet === '2'): ?>
-          <!-- ================= SHEET 2 HEADERS ================= -->
+          <!-- ================= SHEET 2: DELIVERY & POSTNATAL HEADERS ================= -->
           <tr>
             <th rowspan="2" class="w-8">No.</th>
             <th rowspan="2" class="min-w-[150px]">Full Name</th>
-            <th colspan="3" class="bg-slate-100 text-slate-800">Nutritional Assessment (BMI 1st Tri)</th>
-            <th rowspan="2" class="w-16">Remarks<br><span class="text-[8px] font-normal">A-Trans In<br>B-Trans Out</span></th>
-            <th colspan="5" class="bg-slate-100 text-slate-800">Date Tetanus Diphtheria (Td) Given (mm/dd/yy)</th>
-            <th rowspan="2" class="w-12 bg-slate-100 text-slate-800">FIM<br>Status<br>(&check;/X)</th>
-            <th rowspan="2" class="min-w-[65px] bg-slate-100 text-slate-800">Deworming<br>Tablet<br><span class="text-[8px] font-normal">1-Yes, 0-No</span></th>
-            <th colspan="6" class="bg-slate-100 text-slate-800">Iron Folic Acid (IFA) Supplementation (#: Tablets, d: Date)</th>
-          </tr>
-          <tr>
-            <th class="text-[9px] bg-slate-50">Low &lt;18.5</th>
-            <th class="text-[9px] bg-slate-50">Normal 18.5-22.9</th>
-            <th class="text-[9px] bg-slate-50">High &gt;23.5</th>
-            <th class="text-[9px] bg-slate-50">Td1 / TT1</th>
-            <th class="text-[9px] bg-slate-50">Td2 / TT2</th>
-            <th class="text-[9px] bg-slate-50">Td3 / TT3</th>
-            <th class="text-[9px] bg-slate-50">Td4 / TT4</th>
-            <th class="text-[9px] bg-slate-50">Td5 / TT5</th>
-            <th class="text-[9px] bg-slate-50">1st visit (1st tri)</th>
-            <th class="text-[9px] bg-slate-50">2nd visit (2nd tri)</th>
-            <th class="text-[9px] bg-slate-50">3rd visit (2nd tri)</th>
-            <th class="text-[9px] bg-slate-50">4th visit (3rd tri)</th>
-            <th class="text-[9px] bg-slate-50">5th visit (3rd tri)</th>
-            <th class="text-[9px] bg-slate-50">6th visit (3rd tri)</th>
-          </tr>
-
-        <?php elseif ($activeSheet === '3'): ?>
-          <!-- ================= SHEET 3 HEADERS ================= -->
-          <tr>
-            <th rowspan="2" class="w-8">No.</th>
-            <th rowspan="2" class="min-w-[150px]">Full Name</th>
-            <th colspan="6" class="bg-slate-100 text-slate-800">Multiple Micronutrient Supplementation (MMS)</th>
-            <th colspan="3" class="bg-slate-100 text-slate-800">High Risk: Calcium Carbonate (CC)</th>
-            <th colspan="3" class="bg-slate-100 text-slate-800">Laboratory Screenings (1-Positive/Reactive, 0-Negative)</th>
-            <th colspan="2" class="bg-slate-100 text-slate-800">Pregnancy Outcome</th>
-          </tr>
-          <tr>
-            <th class="text-[9px] bg-slate-50">1st (1st tri)</th>
-            <th class="text-[9px] bg-slate-50">2nd (2nd tri)</th>
-            <th class="text-[9px] bg-slate-50">3rd (2nd tri)</th>
-            <th class="text-[9px] bg-slate-50">4th (3rd tri)</th>
-            <th class="text-[9px] bg-slate-50">5th (3rd tri)</th>
-            <th class="text-[9px] bg-slate-50">6th (3rd tri)</th>
-            <th class="text-[9px] bg-slate-50">2nd (2nd tri)</th>
-            <th class="text-[9px] bg-slate-50">3rd (3rd tri)</th>
-            <th class="text-[9px] bg-slate-50">4th (3rd tri)</th>
-            <th class="text-[9px] bg-slate-50">Hepatitis B</th>
-            <th class="text-[9px] bg-slate-50">CBC/Hgb (Anemia)</th>
-            <th class="text-[9px] bg-slate-50">Gest. Diabetes</th>
-            <th class="text-[9px] bg-slate-50">Date Terminated</th>
-            <th class="text-[9px] bg-slate-50">Outcome (FT/PT/FD/AB)</th>
-          </tr>
-
-        <?php elseif ($activeSheet === '4'): ?>
-          <!-- ================= SHEET 4 HEADERS ================= -->
-          <tr>
-            <th rowspan="2" class="w-8">No.</th>
-            <th rowspan="2" class="min-w-[150px]">Full Name</th>
-            <th class="min-w-[70px] bg-slate-100 text-slate-800">Delivery Type<br><span class="text-[8px] font-normal">CS/VD/CVCD</span></th>
-            <th class="min-w-[65px] bg-slate-100 text-slate-800">Birth Weight<br><span class="text-[8px] font-normal">Grams &bull; A/B/C</span></th>
-            <th class="min-w-[100px] bg-slate-100 text-slate-800">Place of Delivery<br><span class="text-[8px] font-normal">Health Facility / Home</span></th>
-            <th class="min-w-[70px] bg-slate-100 text-slate-800">Birth Attendant<br><span class="text-[8px] font-normal">MD/RN/MW</span></th>
-            <th class="min-w-[80px] bg-slate-100 text-slate-800">Delivery Date &amp; Time</th>
+            <th rowspan="2" class="min-w-[70px] bg-slate-100 text-slate-800">Delivery Type<br><span class="text-[8px] font-normal">CS/VD/CVCD</span></th>
+            <th rowspan="2" class="min-w-[65px] bg-slate-100 text-slate-800">Birth Weight<br><span class="text-[8px] font-normal">Grams &bull; A/B/C</span></th>
+            <th rowspan="2" class="min-w-[100px] bg-slate-100 text-slate-800">Place of Delivery<br><span class="text-[8px] font-normal">Health Facility / Home</span></th>
+            <th rowspan="2" class="min-w-[70px] bg-slate-100 text-slate-800">Birth Attendant<br><span class="text-[8px] font-normal">MD/RN/MW</span></th>
+            <th rowspan="2" class="min-w-[80px] bg-slate-100 text-slate-800">Delivery Date &amp; Time</th>
             <th colspan="4" class="bg-slate-100 text-slate-800">Postnatal Care (4PNC) (mm/dd/yy)</th>
-            <th rowspan="2" class="w-16 bg-slate-100 text-slate-800">Completed<br>4PNC?</th>
+            <th rowspan="2" class="w-24 bg-slate-100 text-slate-800">Completed<br>4PNC?<br><span class="text-[8px] font-normal">(Complete/Incomplete)</span></th>
             <th colspan="3" class="bg-slate-100 text-slate-800">Postpartum Supplementation</th>
           </tr>
           <tr>
-            <th></th><th></th><th></th><th></th><th></th>
             <th class="text-[9px] bg-slate-50">Contact 1 (&lt;24h)</th>
             <th class="text-[9px] bg-slate-50">Contact 2 (Day 3)</th>
             <th class="text-[9px] bg-slate-50">Contact 3 (7-14d)</th>
@@ -791,8 +710,8 @@ require __DIR__ . '/../partials/header.php';
                 <td class="tcl-date-val"><?= $d['visits']['v8'] ? h($d['visits']['v8']) : '' ?></td>
 
                 <!-- Completed 8 ANC -->
-                <td class="font-semibold text-emerald-700 bg-emerald-50/50">
-                  <?= $d['completed_8anc'] ? '1' : '0' ?>
+                <td class="font-semibold <?= $d['completed_8anc'] ? 'text-emerald-700 bg-emerald-50/50' : 'text-slate-500 bg-slate-50' ?>">
+                  <?= $d['completed_8anc'] ? 'Complete' : 'Incomplete' ?>
                 </td>
 
                 <?php if ($activeSheet === 'all'): ?>
@@ -807,47 +726,10 @@ require __DIR__ . '/../partials/header.php';
                   <td class="tcl-date-val"><?= $d['postnatal']['c2'] ?? '' ?></td>
                   <td class="tcl-date-val"><?= $d['postnatal']['c3'] ?? '' ?></td>
                   <td class="tcl-date-val"><?= $d['postnatal']['c4'] ?? '' ?></td>
-                  <td class="font-semibold text-emerald-700"><?= $d['completed_4pnc'] ? '1' : '0' ?></td>
+                  <td class="font-semibold <?= $d['completed_4pnc'] ? 'text-emerald-700' : 'text-slate-500' ?>"><?= $d['completed_4pnc'] ? 'Complete' : 'Incomplete' ?></td>
                 <?php endif; ?>
 
               <?php elseif ($activeSheet === '2'): ?>
-                <td class="text-left font-bold text-slate-900 whitespace-nowrap"><?= h($fullName) ?></td>
-                <td><?= ($d['bmi'] && $d['bmi'] < 18.5) ? $d['bmi'] : '' ?></td>
-                <td><?= ($d['bmi'] && $d['bmi'] >= 18.5 && $d['bmi'] <= 22.9) ? $d['bmi'] : ($d['bmi'] ? '' : '&check;') ?></td>
-                <td><?= ($d['bmi'] && $d['bmi'] > 23.5) ? $d['bmi'] : '' ?></td>
-                <td class="text-slate-400">--</td>
-                <td class="tcl-date-val"><?= $d['td']['td1'] ?? '' ?></td>
-                <td class="tcl-date-val"><?= $d['td']['td2'] ?? '' ?></td>
-                <td class="tcl-date-val"><?= $d['td']['td3'] ?? '' ?></td>
-                <td class="tcl-date-val"><?= $d['td']['td4'] ?? '' ?></td>
-                <td class="tcl-date-val"><?= $d['td']['td5'] ?? '' ?></td>
-                <td class="font-bold text-teal-800"><?= $d['fim'] ? '&check;' : 'X' ?></td>
-                <td>1</td>
-                <td class="text-slate-600 font-mono text-[10px]">30 &bull; <?= $d['visits']['v1'] ?: $d['reg_date'] ?></td>
-                <td class="text-slate-600 font-mono text-[10px]"><?= $d['visits']['v2'] ? '30 &bull; ' . $d['visits']['v2'] : '' ?></td>
-                <td class="text-slate-600 font-mono text-[10px]"><?= $d['visits']['v3'] ? '30 &bull; ' . $d['visits']['v3'] : '' ?></td>
-                <td class="text-slate-600 font-mono text-[10px]"><?= $d['visits']['v4'] ? '30 &bull; ' . $d['visits']['v4'] : '' ?></td>
-                <td class="text-slate-600 font-mono text-[10px]"><?= $d['visits']['v5'] ? '30 &bull; ' . $d['visits']['v5'] : '' ?></td>
-                <td class="text-slate-600 font-mono text-[10px]"><?= $d['visits']['v8'] ? '30 &bull; ' . $d['visits']['v8'] : '' ?></td>
-
-              <?php elseif ($activeSheet === '3'): ?>
-                <td class="text-left font-bold text-slate-900 whitespace-nowrap"><?= h($fullName) ?></td>
-                <td class="text-slate-600 font-mono text-[10px]">30</td>
-                <td class="text-slate-600 font-mono text-[10px]">30</td>
-                <td class="text-slate-600 font-mono text-[10px]">30</td>
-                <td class="text-slate-600 font-mono text-[10px]">30</td>
-                <td class="text-slate-600 font-mono text-[10px]">30</td>
-                <td class="text-slate-600 font-mono text-[10px]">30</td>
-                <td class="text-slate-600 font-mono text-[10px]">40</td>
-                <td class="text-slate-600 font-mono text-[10px]">40</td>
-                <td class="text-slate-600 font-mono text-[10px]">40</td>
-                <td class="text-emerald-700 font-bold">0 (Non-reactive)</td>
-                <td class="text-emerald-700 font-bold">0 (w/o anemia)</td>
-                <td class="text-emerald-700 font-bold">0 (Negative)</td>
-                <td class="font-mono text-[10px]"><?= $pr['status'] === 'delivered' ? $d['edd'] : ($pr['status'] === 'terminated' ? 'Terminated' : '--') ?></td>
-                <td class="font-semibold text-slate-800"><?= $pr['status'] === 'delivered' ? 'FT (Full Term)' : ($pr['status'] === 'terminated' ? 'AB (Miscarriage)' : 'Ongoing') ?></td>
-
-              <?php elseif ($activeSheet === '4'): ?>
                 <td class="text-left font-bold text-slate-900 whitespace-nowrap"><?= h($fullName) ?></td>
                 <td class="font-semibold text-slate-700"><?= $pr['status'] === 'delivered' ? 'VD (Vaginal)' : '--' ?></td>
                 <td class="font-mono text-[10px]"><?= $pr['status'] === 'delivered' ? '3,100g (A)' : '--' ?></td>
@@ -858,7 +740,7 @@ require __DIR__ . '/../partials/header.php';
                 <td class="tcl-date-val"><?= $d['postnatal']['c2'] ?? '' ?></td>
                 <td class="tcl-date-val"><?= $d['postnatal']['c3'] ?? '' ?></td>
                 <td class="tcl-date-val"><?= $d['postnatal']['c4'] ?? '' ?></td>
-                <td class="font-bold text-emerald-800"><?= $d['completed_4pnc'] ? '1' : '0' ?></td>
+                <td class="font-bold <?= $d['completed_4pnc'] ? 'text-emerald-800' : 'text-slate-500' ?>"><?= $d['completed_4pnc'] ? 'Complete' : 'Incomplete' ?></td>
                 <td class="text-slate-600 font-mono text-[10px]"><?= $d['postnatal']['c1'] ? '30 tabs' : '' ?></td>
                 <td class="text-slate-600 font-mono text-[10px]"><?= $d['postnatal']['c2'] ? '30 tabs' : '' ?></td>
                 <td class="text-emerald-700 font-bold">&check;</td>

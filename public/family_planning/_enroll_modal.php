@@ -50,9 +50,10 @@ try {
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="sm:col-span-2">
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
-            <input type="search" id="modalPatientSearch" placeholder="Search by patient name or barangay..." class="mb-2 w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400" autocomplete="off">
-            <select name="patient_id" id="modalPatientSelect" required size="6" class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
+            <label for="modalPatientSelect" class="block text-xs font-semibold text-slate-700 mb-1">Select Patient <span class="text-rose-600">*</span></label>
+            <p class="mb-2 text-xs text-slate-500">Search and select a registered patient. Confirm the selected patient below.</p>
+            <input type="search" id="modalPatientSearch" placeholder="Search by patient name or barangay..." class="mb-2 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-200" autocomplete="off">
+            <select name="patient_id" id="modalPatientSelect" required size="6" aria-describedby="modalSelectedPatient" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200">
               <option value="">-- Choose Registered Patient --</option>
               <?php foreach ($modalPatients as $p): ?>
                 <?php 
@@ -64,6 +65,9 @@ try {
                 </option>
               <?php endforeach; ?>
             </select>
+            <div id="modalSelectedPatient" aria-live="polite" class="mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
+              No patient selected.
+            </div>
           </div>
 
           <div>
@@ -124,13 +128,6 @@ try {
             <input type="text" name="previous_method" placeholder="e.g., Pills, Condom, None" class="w-full border rounded-lg px-3 py-2 text-sm" />
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Source of Supplies</label>
-            <select name="source" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-              <option value="public">Public Health Center / RHU</option>
-              <option value="private">Private Clinic / Pharmacy / NGO</option>
-            </select>
-          </div>
         </div>
       </div>
 
@@ -192,7 +189,10 @@ function openEnrollModal(patientId) {
     document.body.classList.add('overflow-hidden');
     if (patientId) {
       const select = document.getElementById('modalPatientSelect');
-      if (select) select.value = patientId;
+      if (select) {
+        select.value = patientId;
+        select.dispatchEvent(new Event('change'));
+      }
     }
   }
 }
@@ -207,6 +207,23 @@ function closeEnrollModal() {
 
 const modalPatientSearch = document.getElementById('modalPatientSearch');
 const modalPatientSelect = document.getElementById('modalPatientSelect');
+const modalSelectedPatient = document.getElementById('modalSelectedPatient');
+function updateModalSelectedPatient() {
+  if (!modalPatientSelect || !modalSelectedPatient) return;
+  const option = modalPatientSelect.options[modalPatientSelect.selectedIndex];
+  if (!option || !option.value) {
+    modalSelectedPatient.textContent = 'No patient selected. Select a patient above to continue.';
+    modalSelectedPatient.className = 'mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-500';
+    return;
+  }
+
+  modalSelectedPatient.textContent = 'Selected patient: ' + option.textContent.trim();
+  modalSelectedPatient.className = 'mt-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-800';
+}
+if (modalPatientSelect) {
+  modalPatientSelect.addEventListener('change', updateModalSelectedPatient);
+  updateModalSelectedPatient();
+}
 if (modalPatientSearch && modalPatientSelect) {
   modalPatientSearch.addEventListener('input', function () {
     const term = this.value.trim().toLowerCase();

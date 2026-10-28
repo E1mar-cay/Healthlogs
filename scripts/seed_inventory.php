@@ -72,6 +72,18 @@ $medicines = [
     ['Clotrimazole', 'Clotrimazole', 'Cream', '1%', 'tube', 60],
     ['Povidone Iodine', 'Povidone Iodine', 'Solution', '10%', 'bottle', 80],
     ['Alcohol', 'Ethyl Alcohol', 'Solution', '70%', 'bottle', 100],
+
+    // Routine immunization vaccines
+    ['BCG', 'Bacillus Calmette-Guerin vaccine', 'Vaccine', 'Live attenuated', 'vial', 20],
+    ['Hepatitis B', 'Hepatitis B vaccine', 'Vaccine', 'Recombinant', 'vial', 20],
+    ['Pentavalent (DPT-HepB-Hib)', 'Diphtheria, pertussis, tetanus, hepatitis B, and Hib vaccine', 'Vaccine', 'Combined', 'vial', 30],
+    ['Oral Polio Vaccine', 'Poliovirus vaccine', 'Vaccine', 'Oral', 'vial', 30],
+    ['Inactivated Polio Vaccine', 'Poliovirus vaccine', 'Vaccine', 'Inactivated', 'vial', 20],
+    ['Pneumococcal Conjugate Vaccine', 'Pneumococcal conjugate vaccine', 'Vaccine', 'Conjugate', 'vial', 30],
+    ['Measles, Mumps, Rubella', 'Measles, mumps, and rubella vaccine', 'Vaccine', 'Live attenuated', 'vial', 20],
+    ['Measles-Rubella', 'Measles and rubella vaccine', 'Vaccine', 'Live attenuated', 'vial', 20],
+    ['Tetanus Diphtheria', 'Tetanus and diphtheria vaccine', 'Vaccine', 'Adsorbed', 'vial', 20],
+    ['Human Papillomavirus', 'Human papillomavirus vaccine', 'Vaccine', 'Recombinant', 'vial', 20],
 ];
 
 echo "Seeding medicines...\n";

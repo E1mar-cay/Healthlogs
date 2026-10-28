@@ -4,7 +4,12 @@ require __DIR__ . '/../../partials/bootstrap.php';
 require __DIR__ . '/../../partials/header.php';
 
 $q = trim($_GET['q'] ?? '');
-$statusFilter = $_GET['status'] ?? '';
+// Tab-based status: ongoing | delivered | miscarriage
+$activeTab = $_GET['tab'] ?? 'ongoing';
+if (!in_array($activeTab, ['ongoing', 'delivered', 'miscarriage'], true)) {
+    $activeTab = 'ongoing';
+}
+$statusFilter = $activeTab;
 $stageFilter = $_GET['stage'] ?? '';
 
 $where = '';
@@ -16,9 +21,11 @@ if ($q !== '') {
     $like = '%' . $q . '%';
     $params = [$like, $like, $like];
 }
-if (in_array($statusFilter, ['ongoing', 'delivered', 'terminated'], true)) {
+if ($activeTab === 'miscarriage') {
+    $clauses[] = "pr.status IN ('miscarriage', 'terminated')";
+} else {
     $clauses[] = "pr.status = ?";
-    $params[] = $statusFilter;
+    $params[] = $activeTab;
 }
 if ($stageFilter === 'sensitive') {
     $clauses[] = "pr.status = 'ongoing' AND TIMESTAMPDIFF(DAY, pr.lmp_date, CURDATE()) BETWEEN (24 * 7) AND (31 * 7)";
@@ -55,69 +62,119 @@ $sensitiveCount = (int)$pdo->query("
     WHERE status = 'ongoing' 
       AND TIMESTAMPDIFF(DAY, lmp_date, CURDATE()) BETWEEN (24 * 7) AND (31 * 7)
 ")->fetchColumn();
+
+// Tab counts
+$tabCounts = [];
+foreach (['ongoing' => "status = 'ongoing'", 'delivered' => "status = 'delivered'", 'miscarriage' => "status IN ('miscarriage','terminated')"] as $tab => $cond) {
+    $tabCounts[$tab] = (int)$pdo->query("SELECT COUNT(*) FROM pregnancies WHERE $cond")->fetchColumn();
+}
+$maternalSummary = [
+    'total' => array_sum($tabCounts),
+    'prenatal_visits' => (int)$pdo->query("SELECT COUNT(*) FROM prenatal_visits")->fetchColumn(),
+    'postnatal_visits' => (int)$pdo->query("SELECT COUNT(*) FROM postnatal_visits")->fetchColumn(),
+];
 ?>
 
 <?php display_flash_messages(); ?>
 
-<div class="bg-white p-6 rounded-xl shadow mb-6">
+<div class="bg-white p-5 rounded-xl border border-slate-200 mb-4">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500 font-medium">Maternal Registry</div>
-      <div class="text-2xl font-semibold text-slate-900">Pregnancy Management</div>
-      <p class="text-sm text-slate-500 mt-1">Monitor gestational progression and identify sensitive (6–7 months) and high-priority mothers.</p>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Maternal Health</div>
+      <div class="text-xl font-semibold text-slate-900 mt-0.5">Pregnancy Records</div>
+      <p class="text-sm text-slate-500 mt-1">Patient information, pregnancy status, and prenatal/postnatal visit records.</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <?php if ($sensitiveCount > 0): ?>
-        <a href="/HealthLogs/public/maternal/pregnancies/index.php?status=ongoing&stage=sensitive" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 hover:bg-rose-200 transition shadow-2xs">
-          <i class="fas fa-exclamation-circle text-rose-600 animate-pulse"></i>
+        <a href="/HealthLogs/public/maternal/pregnancies/index.php?tab=ongoing&stage=sensitive" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition">
           <span><?= $sensitiveCount ?> Sensitive (6–7 Mos)</span>
         </a>
       <?php endif; ?>
       <?php if (can_manage_clinical_records()): ?>
-        <button type="button" id="pregnancyModalOpenNew" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium shadow hover:bg-slate-800 transition">
-          <i class="fas fa-plus mr-1 text-xs"></i> New Pregnancy
+        <button type="button" id="pregnancyModalOpenNew" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition">
+          New Pregnancy
         </button>
       <?php else: ?>
-        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-          <i class="fas fa-eye mr-1.5 text-slate-400"></i> Monitoring Mode
+        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
+          Monitoring Mode
         </span>
       <?php endif; ?>
     </div>
   </div>
+
+  <!-- Tabs -->
+  <div class="flex items-center gap-1 mt-4 pt-4 border-t border-slate-100">
+    <?php
+    $tabs = [
+        'ongoing'    => ['label' => 'Ongoing'],
+        'delivered'  => ['label' => 'Delivered'],
+        'miscarriage'=> ['label' => 'Miscarriage'],
+    ];
+    foreach ($tabs as $tabKey => $tabMeta):
+        $isActive = ($activeTab === $tabKey);
+        $activeClass = $isActive
+            ? 'bg-slate-900 text-white border-slate-900'
+            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50';
+    ?>
+    <a href="/HealthLogs/public/maternal/pregnancies/index.php?tab=<?= $tabKey ?><?= $q !== '' ? '&q=' . urlencode($q) : '' ?>"
+       class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-xs font-medium transition <?= $activeClass ?>">
+      <?= $tabMeta['label'] ?>
+      <span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] <?= $isActive ? 'bg-white/20' : 'bg-slate-100 text-slate-600' ?>">
+        <?= $tabCounts[$tabKey] ?>
+      </span>
+    </a>
+    <?php endforeach; ?>
+  </div>
 </div>
 
-<form method="get" class="bg-white rounded-xl shadow p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-  <input name="q" value="<?= h($q) ?>" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Search patient name or barangay" />
-  <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-    <option value="">All statuses</option>
-    <option value="ongoing" <?= $statusFilter === 'ongoing' ? 'selected' : '' ?>>Ongoing</option>
-    <option value="delivered" <?= $statusFilter === 'delivered' ? 'selected' : '' ?>>Delivered</option>
-    <option value="terminated" <?= $statusFilter === 'terminated' ? 'selected' : '' ?>>Terminated</option>
-  </select>
-  <select name="stage" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
+    <div class="text-xs text-slate-500">Pregnancy Records</div>
+    <div class="text-2xl font-semibold text-slate-900 mt-1"><?= number_format($maternalSummary['total']) ?></div>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
+    <div class="text-xs text-slate-500">Prenatal Visits</div>
+    <div class="text-2xl font-semibold text-slate-900 mt-1"><?= number_format($maternalSummary['prenatal_visits']) ?></div>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
+    <div class="text-xs text-slate-500">Postnatal Visits</div>
+    <div class="text-2xl font-semibold text-slate-900 mt-1"><?= number_format($maternalSummary['postnatal_visits']) ?></div>
+  </div>
+</div>
+
+<!-- Search bar -->
+<form method="get" class="bg-white rounded-xl border border-slate-200 p-3 flex flex-col sm:flex-row gap-3 mb-4">
+  <input type="hidden" name="tab" value="<?= h($activeTab) ?>" />
+  <div class="relative flex-1">
+    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none"><i class="fas fa-search text-xs"></i></span>
+    <input name="q" value="<?= h($q) ?>" class="w-full pl-9 pr-3 border rounded-lg py-2 text-sm" placeholder="Search patient name or barangay" />
+  </div>
+  <?php if ($activeTab === 'ongoing'): ?>
+  <select name="stage" class="w-full sm:w-56 border rounded-lg px-3 py-2 text-sm bg-white">
     <option value="">All Gestational Stages</option>
-    <option value="sensitive" <?= $stageFilter === 'sensitive' ? 'selected' : '' ?>>⚠️ Sensitive (6–7 Months / 24–31 wks)</option>
-    <option value="late" <?= $stageFilter === 'late' ? 'selected' : '' ?>>Near Term (>31 wks / 8–9 mos)</option>
-    <option value="early" <?= $stageFilter === 'early' ? 'selected' : '' ?>>Early Pregnancy (<24 wks)</option>
+    <option value="sensitive" <?= $stageFilter === 'sensitive' ? 'selected' : '' ?>>Sensitive (6–7 Months)</option>
+    <option value="late" <?= $stageFilter === 'late' ? 'selected' : '' ?>>Near Term (&gt;31 wks)</option>
+    <option value="early" <?= $stageFilter === 'early' ? 'selected' : '' ?>>Early (&lt;24 wks)</option>
   </select>
+  <?php endif; ?>
   <div class="flex gap-2">
-    <button class="flex-1 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition" type="submit">Filter</button>
-    <a class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm text-center hover:bg-slate-50 transition" href="/HealthLogs/public/maternal/pregnancies/index.php">Clear</a>
+    <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition" type="submit">Search</button>
+    <a class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm text-center hover:bg-slate-50 transition" href="/HealthLogs/public/maternal/pregnancies/index.php?tab=<?= h($activeTab) ?>">Clear</a>
   </div>
 </form>
 
-<div class="mt-6 bg-white rounded-xl shadow overflow-hidden">
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
         <tr>
-          <th class="text-left px-4 py-3 font-semibold">Patient</th>
-          <th class="text-left px-4 py-3 font-semibold">Barangay</th>
-          <th class="text-left px-4 py-3 font-semibold">LMP Date</th>
-          <th class="text-left px-4 py-3 font-semibold">EDD Date</th>
-          <th class="text-left px-4 py-3 font-semibold">Gestational Progress</th>
-          <th class="text-left px-4 py-3 font-semibold">Status</th>
-          <th class="text-right px-4 py-3 font-semibold">Actions</th>
+          <th class="text-left px-4 py-3 font-medium">Patient</th>
+          <th class="text-left px-4 py-3 font-medium">Barangay</th>
+          <th class="text-left px-4 py-3 font-medium">LMP Date</th>
+          <th class="text-left px-4 py-3 font-medium">EDD Date</th>
+          <th class="text-left px-4 py-3 font-medium">Gestational Progress</th>
+          <th class="text-left px-4 py-3 font-medium">Status</th>
+          <th class="text-right px-4 py-3 font-medium">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -134,12 +191,7 @@ $sensitiveCount = (int)$pdo->query("
               $isSensitive = ($isOngoing && $weeks >= 24 && $weeks <= 31);
               $isNearTerm = ($isOngoing && $weeks > 31);
               
-              $rowClass = "hover:bg-slate-50/80 transition";
-              if ($isSensitive) {
-                  $rowClass = "bg-rose-50/70 hover:bg-rose-50 transition border-l-4 border-l-rose-500";
-              } elseif ($isNearTerm) {
-                  $rowClass = "bg-amber-50/40 hover:bg-amber-50 transition border-l-4 border-l-amber-400";
-              }
+              $rowClass = "hover:bg-slate-50 transition";
             ?>
             <tr class="<?= $rowClass ?>">
               <td class="px-4 py-3">
@@ -153,14 +205,12 @@ $sensitiveCount = (int)$pdo->query("
               <td class="px-4 py-3 text-slate-700 whitespace-nowrap font-medium"><?= h($r['edd_date']) ?></td>
               <td class="px-4 py-3 whitespace-nowrap">
                 <?php if ($isSensitive): ?>
-                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-900 border border-rose-300 shadow-2xs">
-                    <i class="fas fa-exclamation-triangle text-rose-600 animate-pulse"></i>
-                    <span><?= $weeks ?> wks (~<?= $months ?> mos) • <strong>6–7 Mos Sensitive</strong></span>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <?= $weeks ?> wks (~<?= $months ?> mos) · Sensitive
                   </span>
                 <?php elseif ($isNearTerm): ?>
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                    <i class="fas fa-clock text-amber-600"></i>
-                    <span><?= $weeks ?> wks (~<?= $months ?> mos) • 3rd Trimester</span>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <?= $weeks ?> wks (~<?= $months ?> mos) · 3rd Trimester
                   </span>
                 <?php elseif ($isOngoing): ?>
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
@@ -172,32 +222,41 @@ $sensitiveCount = (int)$pdo->query("
               </td>
               <td class="px-4 py-3 whitespace-nowrap">
                 <?php if ($r['status'] === 'ongoing'): ?>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Ongoing</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">Ongoing</span>
                 <?php elseif ($r['status'] === 'delivered'): ?>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Delivered</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">Delivered</span>
                 <?php else: ?>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">Terminated</span>
-                <?php endif; ?>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">Miscarriage</span>
+                <?php endif; // end status badge ?>
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-right text-xs">
+                <div class="inline-flex items-center gap-1.5">
+                  <a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium">
+                    View
+                  </a>
                 <?php if (can_manage_clinical_records()): ?>
-                  <div class="inline-flex items-center gap-2">
-                    <a href="/HealthLogs/public/maternal/prenatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="text-teal-700 hover:text-teal-900 font-semibold px-2 py-1 border border-teal-200 rounded hover:bg-teal-50" title="Record prenatal checkup">
-                      <i class="fas fa-stethoscope mr-1"></i>Visit
+                    <?php if ($r['status'] === 'ongoing'): ?>
+                    <a href="/HealthLogs/public/maternal/prenatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium" title="Record prenatal checkup">
+                      Prenatal Visit
                     </a>
-                    <button type="button" class="pregnancy-modal-edit text-blue-600 hover:text-blue-900 font-medium px-2 py-1 border border-blue-200 rounded hover:bg-blue-50" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php?id=<?= (int)$r['id'] ?>">
+                    <?php elseif ($r['status'] === 'delivered'): ?>
+                    <a href="/HealthLogs/public/maternal/postnatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium" title="Record postnatal checkup">
+                      Postnatal Visit
+                    </a>
+                    <?php endif; ?>
+                    <button type="button" class="pregnancy-modal-edit px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php?id=<?= (int)$r['id'] ?>">
                       Edit
                     </button>
                     <form method="post" action="/HealthLogs/public/maternal/pregnancies/delete.php" class="inline" data-confirm="Delete this record?" data-confirm-title="Delete pregnancy" data-confirm-cta="Yes, delete">
                       <input type="hidden" name="id" value="<?= (int)$r['id'] ?>" />
-                      <button class="text-red-600 hover:text-red-800 font-medium px-2 py-1 border border-red-200 rounded hover:bg-red-50">
+                      <button class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium">
                         Delete
                       </button>
                     </form>
-                  </div>
                 <?php else: ?>
-                  <span class="text-slate-400 font-normal">Read-Only</span>
+                  <span class="sr-only">Read only</span>
                 <?php endif; ?>
+                </div>
               </td>
             </tr>
           <?php endforeach; ?>

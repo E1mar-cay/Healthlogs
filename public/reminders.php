@@ -55,7 +55,7 @@ if (!empty($rows)) {
 
 <?php display_flash_messages(); ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
+<div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs mb-5">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500">Follow-up scheduling</div>
@@ -77,7 +77,7 @@ if (!empty($rows)) {
   </div>
 </div>
 
-<div class="bg-white rounded-xl shadow">
+<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between p-4 border-b border-slate-100">
     <div class="text-sm text-slate-500">
       <span id="remindersCount">0 reminders</span>
@@ -116,22 +116,22 @@ if (!empty($rows)) {
     </form>
   <?php endif; ?>
 
-  <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+  <div class="overflow-x-auto">
     <table id="remindersTable" class="min-w-full text-sm min-w-[650px]">
-    <thead class="bg-slate-50 text-slate-600">
+    <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
       <tr>
-        <th class="text-center px-3 py-2.5 w-10"><span class="sr-only">Select</span></th>
-        <th class="text-left px-4 py-2.5">Patient</th>
-        <th class="text-left px-4 py-2.5">Contact No</th>
-        <th class="text-left px-4 py-2.5">Type</th>
-        <th class="text-left px-4 py-2.5">Due Date</th>
-        <th class="text-left px-4 py-2.5">Status</th>
-        <th class="text-left px-4 py-2.5">Actions</th>
+        <th class="text-center px-3 py-3.5 w-10"><span class="sr-only">Select</span></th>
+        <th class="text-left px-4 py-3.5">Patient</th>
+        <th class="text-left px-4 py-3.5">Contact No</th>
+        <th class="text-left px-4 py-3.5">Type</th>
+        <th class="text-left px-4 py-3.5">Due Date</th>
+        <th class="text-left px-4 py-3.5">Status</th>
+        <th class="text-left px-4 py-3.5">Actions</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody class="divide-y divide-slate-100 text-xs">
       <?php if (empty($rows)): ?>
-        <tr data-empty><td class="px-4 py-4" colspan="7">No reminders found.</td></tr>
+        <tr data-empty><td class="px-4 py-8 text-center text-slate-500" colspan="7">No reminders found.</td></tr>
       <?php else: ?>
         <?php foreach ($rows as $r): ?>
           <?php
@@ -207,7 +207,7 @@ if (!empty($rows)) {
   <div id="remindersPagination" class="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100"></div>
 </div>
 
-<div class="mt-6 bg-white p-4 sm:p-5 rounded-xl shadow">
+<div class="mt-5 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-4">
     <div>
       <div class="text-sm text-slate-500 font-medium">Scheduler</div>

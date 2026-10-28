@@ -90,6 +90,7 @@ This directory contains seeder scripts to populate the HealthLogs database with 
 
 **Data Created:**
 - 38 common medicines used in Philippine BHUs
+- 10 vaccine inventory items matching the immunization vaccine catalog
 - 2-4 batches per medicine
 - Received transactions (stock in)
 - Dispensed transactions (60-90% of received stock)
@@ -107,6 +108,12 @@ This directory contains seeder scripts to populate the HealthLogs database with 
 - Gastrointestinal (Omeprazole, ORS, Loperamide)
 - TB Medications (Isoniazid, Rifampicin, Ethambutol, Pyrazinamide)
 - Topical/Others (Betamethasone, Clotrimazole, Povidone Iodine)
+- Vaccines (BCG, Hepatitis B, Pentavalent, OPV, IPV, PCV, MMR, MR, TD, HPV)
+
+Vaccine batches seeded here are synthetic development data. Available, unexpired
+vaccine batch numbers are offered in the immunization record forms; run
+`seed_immunization.php` before `seed_inventory.php` (or use `seed_all.php`) so
+the vaccine catalog exists.
 
 ---
 
@@ -171,9 +178,9 @@ php seed_users.php
 - **Postnatal Visits:** ~20-40 records
 - **TB Cases:** ~7-10 records
 - **TB Follow-ups:** ~50-100 records
-- **Medicines:** 38 records
-- **Medicine Batches:** ~100-150 records
-- **Medicine Transactions:** ~1000-1500 records
+- **Medicines:** 48 records
+- **Medicine Batches:** ~100-200 records
+- **Medicine Transactions:** ~600-3,300 records
 
 ### Execution Time
 - Full seeding takes approximately 10-30 seconds
@@ -182,6 +189,8 @@ php seed_users.php
 ### Idempotency
 - Seeders are NOT idempotent
 - Running multiple times will create duplicate data
+- Seeded inventory quantities, transactions, batch numbers, and expiry dates are
+  synthetic and must not be treated as operational stock
 - Clear database before re-running:
 
 ```sql

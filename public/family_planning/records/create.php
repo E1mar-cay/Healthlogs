@@ -98,11 +98,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require __DIR__ . '/../../partials/header.php';
 ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
+<div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 mb-5">
   <div class="flex items-center justify-between">
     <div>
       <a href="/HealthLogs/public/family_planning/records/index.php" class="text-xs text-slate-500 font-semibold hover:text-slate-800 hover:underline">&larr; Back to Client Registry</a>
-      <div class="text-2xl font-bold text-slate-900 mt-1">Enroll Family Planning Client</div>
+      <div class="text-2xl font-semibold text-slate-900 mt-1">Enroll Family Planning Client</div>
       <p class="text-sm text-slate-500 mt-1">Register a patient into the DOH Family Planning Program (Form 1 Profile).</p>
     </div>
   </div>
@@ -119,7 +119,7 @@ require __DIR__ . '/../../partials/header.php';
   </div>
 <?php endif; ?>
 
-<div class="bg-white rounded-xl shadow p-5 sm:p-7 max-w-3xl">
+<div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-7 max-w-3xl">
   <form method="POST" class="space-y-6">
     <!-- Client Identification -->
     <div>
@@ -128,8 +128,9 @@ require __DIR__ . '/../../partials/header.php';
       </h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="sm:col-span-2">
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Patient *</label>
-          <select name="patient_id" required data-searchable-select data-search-placeholder="Search patient name or barangay..." class="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-slate-400">
+          <label for="fpPatientSelect" class="block text-xs font-semibold text-slate-700 mb-1">Select Patient <span class="text-rose-600">*</span></label>
+          <p class="mb-2 text-xs text-slate-500">Search and select a registered patient. The selected patient will be shown below.</p>
+          <select name="patient_id" id="fpPatientSelect" required data-searchable-select data-search-placeholder="Search patient name or barangay..." aria-describedby="fpSelectedPatient" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200">
             <option value="">-- Choose Patient --</option>
             <?php foreach ($patients as $p): ?>
               <?php 
@@ -141,6 +142,9 @@ require __DIR__ . '/../../partials/header.php';
               </option>
             <?php endforeach; ?>
           </select>
+          <div id="fpSelectedPatient" aria-live="polite" class="mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
+            No patient selected.
+          </div>
         </div>
 
         <div>
@@ -201,13 +205,6 @@ require __DIR__ . '/../../partials/header.php';
           <input type="text" name="previous_method" placeholder="e.g., Pills, Condom, None" class="w-full border rounded-lg px-3 py-2 text-sm" />
         </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Source of Supplies</label>
-          <select name="source" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-            <option value="public">Public Health Center / RHU</option>
-            <option value="private">Private Clinic / Pharmacy / NGO</option>
-          </select>
-        </div>
       </div>
     </div>
 
@@ -253,5 +250,26 @@ require __DIR__ . '/../../partials/header.php';
     </div>
   </form>
 </div>
+<script>
+(function () {
+  var select = document.getElementById('fpPatientSelect');
+  var summary = document.getElementById('fpSelectedPatient');
+  if (!select || !summary) return;
 
+  function updateSelectedPatient() {
+    var option = select.options[select.selectedIndex];
+    if (!option || !option.value) {
+      summary.textContent = 'No patient selected. Select a patient above to continue.';
+      summary.className = 'mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-500';
+      return;
+    }
+
+    summary.textContent = 'Selected patient: ' + option.textContent.trim();
+    summary.className = 'mt-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-800';
+  }
+
+  select.addEventListener('change', updateSelectedPatient);
+  updateSelectedPatient();
+})();
+</script>
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

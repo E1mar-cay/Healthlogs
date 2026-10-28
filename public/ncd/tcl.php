@@ -325,8 +325,8 @@ require __DIR__ . '/../partials/header.php';
       <p class="text-xs text-slate-500 mt-0.5">Official Department of Health (DOH) standard master register tracking Hypertension, Diabetes, CVD, Asthma, and lifestyle risk factors.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/ncd.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
-        <i class="fas fa-arrow-left"></i> NCD Hub
+      <a href="/HealthLogs/public/ncd/records/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
+        <i class="fas fa-arrow-left"></i> Patient Registry
       </a>
       <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition">
         <i class="fas fa-file-csv text-emerald-600"></i> Export CSV

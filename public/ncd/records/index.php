@@ -74,54 +74,56 @@ $paginator = paginate($totalRecords, 10);
 $dataStmt = $pdo->prepare($dataQuery . $where . " ORDER BY r.created_at DESC " . $paginator->getLimitSql());
 $dataStmt->execute($params);
 $clients = $dataStmt->fetchAll();
+$dashboardStats = $pdo->query("
+    SELECT
+        COUNT(*) AS total_clients,
+        SUM(diagnosis_type IN ('hypertension', 'hypertension_diabetes')) AS hypertension_count,
+        SUM(diagnosis_type IN ('diabetes', 'hypertension_diabetes')) AS diabetes_count,
+        SUM(philpen_risk_level IN ('high', 'very_high')) AS high_risk_count
+    FROM ncd_records
+    WHERE status IN ('active', 'controlled', 'uncontrolled')
+")->fetch(PDO::FETCH_ASSOC);
 
 function ncd_format_diag_badge(?string $d): string {
+    $class = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200';
     $map = [
-        'hypertension' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-800">Hypertension</span>',
-        'diabetes' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-teal-100 text-teal-800">Diabetes</span>',
-        'hypertension_diabetes' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">HPN &amp; Diabetes</span>',
-        'cardiovascular' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800">CVD / CAD</span>',
-        'asthma_copd' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">Asthma/COPD</span>',
-        'chronic_kidney' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-cyan-100 text-cyan-800">Chronic Kidney</span>',
-        'cancer' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800">Cancer</span>',
-        'other' => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800">Other NCD</span>',
+        'hypertension' => 'Hypertension',
+        'diabetes' => 'Diabetes',
+        'hypertension_diabetes' => 'HPN &amp; Diabetes',
+        'cardiovascular' => 'CVD / CAD',
+        'asthma_copd' => 'Asthma/COPD',
+        'chronic_kidney' => 'Chronic Kidney',
+        'cancer' => 'Cancer',
+        'other' => 'Other NCD',
     ];
-    return $map[$d] ?? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800">' . htmlspecialchars((string)$d) . '</span>';
+    return '<span class="' . $class . '">' . ($map[$d] ?? htmlspecialchars((string)$d)) . '</span>';
 }
 
 function ncd_risk_badge(?string $r): string {
-    switch ($r) {
-        case 'very_high':
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">&ge;30% (Very High)</span>';
-        case 'high':
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">20-30% (High)</span>';
-        case 'moderate':
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">10-20% (Mod)</span>';
-        default:
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">&lt;10% (Low)</span>';
-    }
+    $label = match ($r) {
+        'very_high' => '&ge;30% (Very High)',
+        'high' => '20-30% (High)',
+        'moderate' => '10-20% (Mod)',
+        default => '&lt;10% (Low)',
+    };
+    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white text-slate-600 border border-slate-300">' . $label . '</span>';
 }
 ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
+<div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 mb-5">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500 font-semibold">
-        <a href="/HealthLogs/public/ncd.php" class="text-slate-500 hover:text-slate-800 hover:underline">&larr; Back to NCD Dashboard</a>
-      </div>
-      <div class="text-2xl font-bold text-slate-900 mt-1">NCD Patient Registry</div>
-      <p class="text-sm text-slate-500 mt-1">Directory of all registered hypertensive, diabetic, and chronic lifestyle disease patients in Barangay Tangcul.</p>
+      <div class="text-sm text-slate-500">Non-Communicable Disease Program</div>
+      <div class="text-2xl font-semibold text-slate-900 mt-1">Patient Registry</div>
+      <p class="text-sm text-slate-500 mt-1">Manage registered patients and review their diagnoses, risk, and latest visits.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/ncd/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
-        <i class="fas fa-table-list mr-1.5 text-xs"></i> View TCL-NCD
+      <a href="/HealthLogs/public/ncd/visits/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition">
+        <i class="fas fa-heart-pulse mr-1.5 text-xs"></i> Visits &amp; Vitals
       </a>
       <?php if (can_manage_clinical_records()): ?>
-        <a href="/HealthLogs/public/ncd/records/create.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
-          <i class="fas fa-file-medical mr-1.5 text-xs"></i> Full Enrollment Form
-        </a>
-        <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow transition">
-          <i class="fas fa-user-plus mr-1.5 text-xs"></i> Quick Enroll
+        <button type="button" onclick="openEnrollModal()" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold transition">
+          <i class="fas fa-user-plus mr-1.5 text-xs"></i> Enroll Patient
         </button>
       <?php else: ?>
         <span class="inline-flex items-center px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
@@ -134,7 +136,26 @@ function ncd_risk_badge(?string $r): string {
 
 <?php display_flash_messages(); ?>
 
-<div class="bg-white rounded-xl shadow p-4 sm:p-6">
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+  <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="text-xs text-slate-500">Registered Patients</div>
+    <div class="mt-1 text-2xl font-semibold text-slate-900"><?= number_format((int)$dashboardStats['total_clients']) ?></div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="text-xs text-slate-500">Hypertension</div>
+    <div class="mt-1 text-2xl font-semibold text-slate-900"><?= number_format((int)$dashboardStats['hypertension_count']) ?></div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="text-xs text-slate-500">Diabetes</div>
+    <div class="mt-1 text-2xl font-semibold text-slate-900"><?= number_format((int)$dashboardStats['diabetes_count']) ?></div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="text-xs text-slate-500">High Risk</div>
+    <div class="mt-1 text-2xl font-semibold text-slate-900"><?= number_format((int)$dashboardStats['high_risk_count']) ?></div>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
   <!-- Search and Filter Bar -->
   <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
     <div class="lg:col-span-2">
@@ -217,7 +238,7 @@ function ncd_risk_badge(?string $r): string {
           <?php foreach ($clients as $row): ?>
             <tr class="hover:bg-slate-50/80 transition">
               <td class="px-4 py-3.5 font-mono text-xs font-semibold text-slate-800 whitespace-nowrap">
-                <a href="/HealthLogs/public/ncd/visits/index.php?record_id=<?= (int)$row['id'] ?>" class="text-teal-700 hover:underline">
+                <a href="/HealthLogs/public/ncd/visits/index.php?record_id=<?= (int)$row['id'] ?>" class="text-slate-700 hover:text-slate-900 hover:underline">
                   <?= h($row['ncd_code']) ?>
                 </a>
                 <div class="text-[10px] text-slate-400 font-sans mt-0.5">
@@ -263,7 +284,7 @@ function ncd_risk_badge(?string $r): string {
                     BP: <strong><?= $row['last_bp_sys'] ?>/<?= $row['last_bp_dia'] ?></strong>
                   </div>
                   <?php if ($row['last_bs_mgdl']): ?>
-                    <div class="text-[11px] text-teal-700">BS: <?= number_format($row['last_bs_mgdl'], 1) ?> mg/dL</div>
+                    <div class="text-[11px] text-slate-600">BS: <?= number_format($row['last_bs_mgdl'], 1) ?> mg/dL</div>
                   <?php endif; ?>
                   <div class="text-[10px] text-slate-400"><?= date('M d, Y', strtotime($row['last_visit_date'])) ?></div>
                 <?php else: ?>
@@ -273,13 +294,7 @@ function ncd_risk_badge(?string $r): string {
 
               <td class="px-4 py-3.5 whitespace-nowrap">
                 <?php
-                  $statusClasses = [
-                      'active' => 'bg-emerald-100 text-emerald-800',
-                      'controlled' => 'bg-teal-100 text-teal-800',
-                      'uncontrolled' => 'bg-rose-100 text-rose-800',
-                      'inactive' => 'bg-slate-100 text-slate-600',
-                  ];
-                  $stClass = $statusClasses[$row['status']] ?? 'bg-slate-100 text-slate-700';
+                  $stClass = 'bg-slate-100 text-slate-700 border border-slate-200';
                 ?>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <?= $stClass ?>">
                   <?= ucfirst($row['status']) ?>
@@ -289,8 +304,8 @@ function ncd_risk_badge(?string $r): string {
 
               <td class="px-4 py-3.5 text-right whitespace-nowrap">
                 <div class="inline-flex items-center gap-1.5">
-                  <a href="/HealthLogs/public/ncd/visits/index.php?record_id=<?= (int)$row['id'] ?>" class="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 text-xs font-semibold transition" title="<?= can_manage_clinical_records() ? 'Log Vitals & Checkup' : 'View Checkup History' ?>">
-                    <i class="fas fa-heart-pulse mr-1"></i> <?= can_manage_clinical_records() ? 'Log Checkup' : 'Visits' ?>
+                  <a href="/HealthLogs/public/ncd/visits/index.php?record_id=<?= (int)$row['id'] ?>" class="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold transition" title="<?= can_manage_clinical_records() ? 'Log Vitals & Checkup' : 'View Checkup History' ?>">
+                    <?= can_manage_clinical_records() ? 'Log Checkup' : 'Visits' ?>
                   </a>
                   <?php if (can_manage_clinical_records()): ?>
                     <a href="/HealthLogs/public/ncd/records/edit.php?id=<?= (int)$row['id'] ?>" class="inline-flex items-center p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition" title="Edit Profile">

@@ -14,6 +14,7 @@ $weight = $_POST['weight_kg'] ?? null;
 $notes = $_POST['notes'] ?? null;
 $next_appointment_date = trim($_POST['next_appointment_date'] ?? '');
 $next_appointment_time = trim($_POST['next_appointment_time'] ?? '');
+$returnPregnancyId = (int)($_POST['return_pregnancy_id'] ?? 0);
 
 try {
     if ($id) {
@@ -43,6 +44,23 @@ try {
                 $insertReminder = $pdo->prepare("INSERT INTO reminders (patient_id, reminder_type, due_date, message, status) VALUES (?, 'prenatal', ?, ?, 'pending')");
                 $insertReminder->execute([$patient['patient_id'], $next_appointment_date, $message]);
             }
+
+            // Sync directly into patient_appointments so it is managed in Appointments
+            $aptCheck = $pdo->prepare("SELECT id FROM patient_appointments WHERE patient_id = ? AND service_id = 2 AND appointment_date = ?");
+            $aptCheck->execute([$patient['patient_id'], $next_appointment_date]);
+            if (!$aptCheck->fetchColumn()) {
+                $year = date('Y');
+                $count = (int)$pdo->query("SELECT COUNT(*) FROM patient_appointments WHERE appointment_code LIKE 'APT-{$year}-%'")->fetchColumn();
+                $aptCode = sprintf('APT-%s-%04d', $year, $count + 1);
+                $aptTime = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $next_appointment_time) ? $next_appointment_time . ':00' : '09:00:00';
+                $aptReason = "Maternal & Prenatal Health Check-up (Follow-up)";
+                $insertApt = $pdo->prepare("
+                    INSERT INTO patient_appointments
+                    (appointment_code, patient_id, service_id, appointment_date, appointment_time, status, reason, assigned_personnel, created_by)
+                    VALUES (?, ?, 2, ?, ?, 'scheduled', ?, 'Midwife Corazon Rivera, RM', ?)
+                ");
+                $insertApt->execute([$aptCode, $patient['patient_id'], $next_appointment_date, $aptTime, $aptReason, $_SESSION['user_id'] ?? null]);
+            }
         }
     }
     unset($_SESSION['old_input']);
@@ -50,10 +68,16 @@ try {
     error_log("Prenatal save error: " . $e->getMessage());
     $_SESSION['error_message'] = 'An error occurred while saving the prenatal visit. Please try again.';
     $_SESSION['old_input'] = $_POST;
+    $formPath = $isEmbed ? '/HealthLogs/public/maternal/prenatal/form_embed.php' : '/HealthLogs/public/maternal/prenatal/form.php';
     $redirectUrl = $isEdit
-        ? ($isEmbed ? "/HealthLogs/public/maternal/prenatal/form_embed.php?id=$id" : "/HealthLogs/public/maternal/prenatal/form.php?id=$id")
-        : ($isEmbed ? "/HealthLogs/public/maternal/prenatal/form_embed.php" : "/HealthLogs/public/maternal/prenatal/form.php");
+        ? $formPath . "?id=$id"
+        : $formPath . ($returnPregnancyId === $pregnancy_id && $returnPregnancyId > 0 ? "?pregnancy_id=$returnPregnancyId" : '');
     header("Location: $redirectUrl");
+    exit;
+}
+
+if ($returnPregnancyId > 0 && $returnPregnancyId === $pregnancy_id) {
+    header("Location: /HealthLogs/public/maternal/pregnancies/view.php?id=$returnPregnancyId");
     exit;
 }
 

@@ -43,7 +43,7 @@ $whereSql = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
 
 // If print mode is requested, fetch ALL matching patients without pagination limit
 if ($isPrintMode) {
-    $stmt = $pdo->prepare("SELECT * FROM patients $whereSql ORDER BY id DESC");
+    $stmt = $pdo->prepare("SELECT * FROM patients $whereSql ORDER BY id ASC");
     $stmt->execute($params);
     $allPatients = $stmt->fetchAll();
 
@@ -314,22 +314,22 @@ require __DIR__ . '/../partials/header.php';
 
 <?php display_flash_messages(); ?>
 
-<div class="bg-white p-6 rounded shadow">
+<div class="bg-white p-6 rounded-xl border border-slate-200">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-sm text-slate-500 font-medium">Barangay Rural Health Unit</div>
-      <div class="text-2xl font-bold text-slate-900">Patient Records & Master Health Registry</div>
+      <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide">Barangay Rural Health Unit</div>
+      <h1 class="text-2xl font-bold text-slate-900 mt-1">Patient Records &amp; Master Health Registry</h1>
       <p class="text-sm text-slate-500 mt-1">Comprehensive patient records, classifications (babies, pregnant mothers, seniors, PWD), and health history for Barangay Tangcul.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/appointments/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition shadow-xs">
+      <a href="/HealthLogs/public/appointments/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-200 transition">
         <i class="fas fa-calendar-check text-xs"></i> Appointments
       </a>
-      <a target="_blank" href="/HealthLogs/public/patients/index.php?<?= h(http_build_query(array_merge($_GET, ['print' => '1']))) ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-medium border border-slate-300 transition shadow-xs">
-        <i class="fas fa-print text-xs text-teal-700"></i> Print All Records
+      <a target="_blank" href="/HealthLogs/public/patients/index.php?<?= h(http_build_query(array_merge($_GET, ['print' => '1']))) ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium border border-slate-200 transition">
+        <i class="fas fa-print text-xs text-slate-500"></i> Print All Records
       </a>
       <?php if (can_manage_clinical_records()): ?>
-        <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition text-sm font-semibold">
+        <button type="button" id="patientModalOpenNew" data-embed-url="/HealthLogs/public/patients/form_embed.php" class="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition text-sm font-semibold">
           <i class="fas fa-user-plus mr-1"></i> New Patient
         </button>
       <?php endif; ?>
@@ -337,38 +337,38 @@ require __DIR__ . '/../partials/header.php';
   </div>
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
-  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
     <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Registry</div>
     <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($stats['total']) ?></div>
     <div class="text-xs text-slate-500 mt-0.5"><?= number_format($stats['active']) ?> currently active</div>
   </div>
-  <div class="bg-white p-4 rounded-xl border border-pink-200 bg-pink-50/30 shadow-xs">
-    <div class="text-[11px] font-bold uppercase tracking-wider text-pink-700">Babies & Under-5</div>
-    <div class="text-2xl font-bold text-pink-900 mt-1"><?= number_format($stats['pediatrics']) ?></div>
-    <div class="text-xs text-pink-700 mt-0.5">EPI & Nutrition priority</div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Babies &amp; Under-5</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($stats['pediatrics']) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5">EPI &amp; Nutrition priority</div>
   </div>
-  <div class="bg-white p-4 rounded-xl border border-rose-200 bg-rose-50/30 shadow-xs">
-    <div class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Pregnant Mothers</div>
-    <div class="text-2xl font-bold text-rose-900 mt-1"><?= number_format($stats['pregnant']) ?></div>
-    <div class="text-xs text-rose-700 mt-0.5">Maternal care program</div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pregnant Mothers</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($stats['pregnant']) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5">Maternal care program</div>
   </div>
-  <div class="bg-white p-4 rounded-xl border border-purple-200 bg-purple-50/30 shadow-xs">
-    <div class="text-[11px] font-bold uppercase tracking-wider text-purple-700">Senior Citizens</div>
-    <div class="text-2xl font-bold text-purple-900 mt-1"><?= number_format($stats['seniors']) ?></div>
-    <div class="text-xs text-purple-700 mt-0.5">60+ years (RA 9994)</div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Senior Citizens</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($stats['seniors']) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5">60+ years (RA 9994)</div>
   </div>
-  <div class="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 shadow-xs col-span-2 md:col-span-1">
-    <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">PWD & 4Ps Priority</div>
-    <div class="text-2xl font-bold text-emerald-900 mt-1"><?= number_format($stats['priority_groups']) ?></div>
-    <div class="text-xs text-emerald-700 mt-0.5">Assisted households</div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 col-span-2 md:col-span-1">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">PWD &amp; 4Ps Priority</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1"><?= number_format($stats['priority_groups']) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5">Assisted households</div>
   </div>
 </div>
 
-<form method="get" class="mt-6 bg-white rounded-xl shadow-xs border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
-  <input name="q" value="<?= h($q) ?>" class="w-full border rounded-lg px-3 py-2 text-sm md:col-span-2" placeholder="Search patient name, purok, contact..." />
+<form method="get" class="mt-5 bg-white rounded-xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+  <input name="q" value="<?= h($q) ?>" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm md:col-span-2 focus:border-slate-400 focus:ring-2 focus:ring-slate-100" placeholder="Search patient name, purok, contact..." />
   
-  <select name="classification" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+  <select name="classification" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-100">
     <option value="">All Classifications</option>
     <option value="infant" <?= $classificationFilter === 'infant' ? 'selected' : '' ?>>Babies / Infants (0-11m)</option>
     <option value="under_five" <?= $classificationFilter === 'under_five' ? 'selected' : '' ?>>Under-5 Children (1-4y)</option>
@@ -382,14 +382,14 @@ require __DIR__ . '/../partials/header.php';
     <option value="4ps" <?= $classificationFilter === '4ps' ? 'selected' : '' ?>>4Ps / Indigent Priority</option>
   </select>
 
-  <select name="purok" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+  <select name="purok" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-100">
     <option value="">All Puroks</option>
     <?php for ($i = 1; $i <= 7; $i++): $pVal = "Purok $i"; ?>
       <option value="<?= $pVal ?>" <?= $purokFilter === $pVal ? 'selected' : '' ?>><?= $pVal ?></option>
     <?php endfor; ?>
   </select>
 
-  <select name="status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+  <select name="status" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-100">
     <option value="">All statuses</option>
     <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Active</option>
     <option value="inactive" <?= $statusFilter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
@@ -397,15 +397,15 @@ require __DIR__ . '/../partials/header.php';
   </select>
 
   <div class="flex gap-2">
-    <button class="w-full bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition" type="submit">Filter</button>
-    <a class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition" href="/HealthLogs/public/patients/index.php">Reset</a>
+    <button class="w-full bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-700 transition" type="submit">Apply filters</button>
+    <a class="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition" href="/HealthLogs/public/patients/index.php">Clear</a>
   </div>
 </form>
 
-<div class="mt-6 bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+<div class="mt-5 bg-white rounded-xl border border-slate-200 overflow-hidden">
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
-      <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs font-semibold uppercase tracking-wide">
         <tr>
           <th class="text-left px-4 py-3">Patient Name</th>
           <th class="text-left px-4 py-3">Classification & Age</th>
@@ -423,16 +423,11 @@ require __DIR__ . '/../partials/header.php';
           <?php foreach ($patients as $p): ?>
             <?php
               $exactAge = PatientClassifier::formatAge($p['birth_date']);
-              $statusColors = [
-                'active' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                'inactive' => 'bg-amber-100 text-amber-800 border-amber-200',
-                'deceased' => 'bg-slate-100 text-slate-700 border-slate-200'
-              ];
-              $statusColor = $statusColors[$p['status']] ?? 'bg-slate-100 text-slate-800';
+              $statusColor = 'bg-slate-100 text-slate-700 border-slate-200';
             ?>
-            <tr class="hover:bg-slate-50/80 transition">
+            <tr class="hover:bg-slate-50 transition">
               <td class="px-4 py-3">
-                <a href="/HealthLogs/public/patients/view.php?id=<?= (int)$p['id'] ?>" class="font-bold text-slate-900 hover:text-teal-700 transition">
+                <a href="/HealthLogs/public/patients/view.php?id=<?= (int)$p['id'] ?>" class="font-semibold text-slate-900 hover:underline underline-offset-2 transition">
                   <?= h($p['last_name'] . ', ' . $p['first_name'] . ($p['middle_name'] ? ' ' . $p['middle_name'] : '')) ?>
                 </a>
                 <div class="text-[11px] text-slate-400 font-mono">ID: #<?= (int)$p['id'] ?><?= !empty($p['philhealth_no']) ? ' • PH: ' . h($p['philhealth_no']) : '' ?></div>
@@ -441,10 +436,10 @@ require __DIR__ . '/../partials/header.php';
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <?= PatientClassifier::renderBadge($p['classification'] ?? 'adult', $p['birth_date']) ?>
                   <?php if (!empty($p['is_4ps'])): ?>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">4Ps</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">4Ps</span>
                   <?php endif; ?>
                   <?php if (!empty($p['is_pwd'])): ?>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">PWD</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">PWD</span>
                   <?php endif; ?>
                 </div>
               </td>
@@ -463,14 +458,14 @@ require __DIR__ . '/../partials/header.php';
                 </span>
               </td>
               <td class="px-4 py-3 text-right whitespace-nowrap">
-                <a href="/HealthLogs/public/patients/view.php?id=<?= (int)$p['id'] ?>" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 font-semibold text-xs border border-teal-200 mr-2 transition">
+                <a href="/HealthLogs/public/patients/view.php?id=<?= (int)$p['id'] ?>" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-slate-700 hover:bg-slate-50 font-semibold text-xs border border-slate-200 mr-2 transition">
                   <i class="fas fa-file-medical text-[11px]"></i> View Chart
                 </a>
                 <?php if (can_manage_clinical_records()): ?>
-                  <button type="button" class="patient-modal-edit text-blue-600 hover:text-blue-800 font-medium text-xs mr-2" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$p['id'] ?>">Edit</button>
+                  <button type="button" class="patient-modal-edit text-slate-600 hover:text-slate-900 font-medium text-xs mr-2" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$p['id'] ?>">Edit</button>
                   <form method="post" action="/HealthLogs/public/patients/delete.php" class="inline" data-confirm="Delete this patient and all related records?" data-confirm-title="Delete patient">
                     <input type="hidden" name="id" value="<?= (int)$p['id'] ?>" />
-                    <button class="text-rose-600 hover:text-rose-800 font-medium text-xs">Delete</button>
+                    <button class="text-slate-500 hover:text-slate-900 font-medium text-xs">Delete</button>
                   </form>
                 <?php endif; ?>
               </td>

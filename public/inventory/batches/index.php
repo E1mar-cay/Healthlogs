@@ -108,61 +108,53 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!-- Expiry Monitoring Notice Banners -->
 <?php if ($kpiStats['expired_stock'] > 0): ?>
-  <div class="mb-4 bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3 text-rose-800">
-    <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+  <div class="mb-3 bg-slate-50 border border-slate-200 rounded p-3 flex items-start gap-3">
+    <div class="text-slate-500 mt-0.5 shrink-0">
       <i class="fas fa-ban text-sm"></i>
     </div>
     <div class="flex-1 min-w-0">
-      <div class="font-bold text-sm">Expired Medicine Batches Detected</div>
-      <p class="text-xs text-rose-700 mt-0.5">
-        There are <strong><?= number_format($kpiStats['expired']) ?> expired batches</strong> holding <strong><?= number_format($kpiStats['expired_stock']) ?> units</strong> of medicine.
-        Expired medicines are strictly <strong>prevented from being issued/dispensed</strong> and <strong>excluded from forecasting calculations</strong>.
-      </p>
+      <div class="text-sm font-semibold text-slate-700"><?= number_format($kpiStats['expired']) ?> expired batches</div>
+      <p class="text-xs text-slate-600 mt-0.5"><?= number_format($kpiStats['expired_stock']) ?> units blocked from issuance</p>
     </div>
-    <a href="?expiry_status=expired" class="px-3 py-1.5 rounded-xl bg-rose-600 text-white hover:bg-rose-700 text-xs font-semibold transition shrink-0">
-      View Expired
+    <a href="?expiry_status=expired" class="px-2.5 py-1 rounded border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-medium transition shrink-0">
+      View
     </a>
   </div>
 <?php endif; ?>
 
 <?php if ($kpiStats['near_expiry'] > 0): ?>
-  <div class="mb-5 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-amber-800">
-    <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
-      <i class="fas fa-clock text-sm"></i>
+  <div class="mb-3 bg-slate-50 border border-slate-200 rounded p-3 flex items-start gap-3">
+    <div class="text-slate-500 mt-0.5 shrink-0">
+      <i class="fas fa-hourglass-end text-sm"></i>
     </div>
     <div class="flex-1 min-w-0">
-      <div class="font-bold text-sm">Near Expiry Warning (Approaching within 60 Days)</div>
-      <p class="text-xs text-amber-700 mt-0.5">
-        <strong><?= number_format($kpiStats['near_expiry']) ?> batches</strong> (<?= number_format($kpiStats['near_expiry_stock']) ?> units on hand) are nearing expiration.
-        Prioritize dispensing these batches following the First-Expired, First-Out (FEFO) guideline.
-      </p>
+      <div class="text-sm font-semibold text-slate-700"><?= number_format($kpiStats['near_expiry']) ?> batches expiring soon</div>
+      <p class="text-xs text-slate-600 mt-0.5"><?= number_format($kpiStats['near_expiry_stock']) ?> units within 60 days</p>
     </div>
-    <a href="?expiry_status=near_expiry" class="px-3 py-1.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold transition shrink-0">
-      View Near Expiry
+    <a href="?expiry_status=near_expiry" class="px-2.5 py-1 rounded border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-medium transition shrink-0">
+      View
     </a>
   </div>
 <?php endif; ?>
 
 <!-- Top Header -->
-<div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs mb-5">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div class="bg-white p-6 rounded shadow">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-      <div class="text-xs font-semibold text-teal-600 uppercase tracking-widest">
-        <i class="fas fa-hourglass-half mr-1"></i> Automated Batch Expiration Monitoring
-      </div>
-      <div class="text-xl font-bold text-slate-900 mt-0.5">Medicine Batches</div>
-      <p class="text-xs text-slate-500 mt-0.5">Classifying batch lifecycles as Valid, Near Expiry, or Expired with issuance controls.</p>
+      <div class="text-sm text-slate-500">Batch Lifecycle Management</div>
+      <div class="text-2xl font-semibold">Medicine Batches</div>
+      <p class="text-sm text-slate-500 mt-1">Monitor batch numbers, expiry dates, and quarantine status for expired stock.</p>
     </div>
     <div class="flex items-center gap-2">
-      <a href="/HealthLogs/public/inventory/audit_trail.php" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
-        <i class="fas fa-clipboard-check mr-1.5 text-teal-600"></i> Audit Trail
+      <a href="/HealthLogs/public/inventory/audit_trail.php" class="inline-flex items-center gap-2 px-3.5 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+        <i class="fas fa-clipboard-check"></i> Audit Trail
       </a>
       <?php if (can_manage_clinical_records()): ?>
-        <button type="button" id="batchModalOpenNew" data-embed-url="/HealthLogs/public/inventory/batches/form_embed.php" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-xs">
+        <button type="button" id="batchModalOpenNew" data-embed-url="/HealthLogs/public/inventory/batches/form_embed.php" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded text-xs font-semibold transition shadow-xs">
           <i class="fas fa-plus mr-1"></i> New Batch
         </button>
       <?php else: ?>
-        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+        <span class="inline-flex items-center px-3 py-1.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
           <i class="fas fa-eye mr-1.5 text-slate-400"></i> Monitoring Mode
         </span>
       <?php endif; ?>
@@ -171,71 +163,71 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
   <!-- KPI Pills -->
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-100 text-xs">
-    <a href="/HealthLogs/public/inventory/batches/index.php" class="p-3 rounded-xl border <?= empty($expiryFilter) ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' ?>">
+    <a href="/HealthLogs/public/inventory/batches/index.php" class="p-3 rounded border <?= empty($expiryFilter) ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' ?>">
       <div class="font-bold text-lg leading-tight"><?= number_format($kpiStats['total']) ?></div>
       <div class="text-[11px] <?= empty($expiryFilter) ? 'text-slate-300' : 'text-slate-500' ?>">Total Batches</div>
     </a>
-    <a href="?expiry_status=valid" class="p-3 rounded-xl border <?= $expiryFilter === 'valid' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-100 text-emerald-800' ?>">
+    <a href="?expiry_status=valid" class="p-3 rounded border <?= $expiryFilter === 'valid' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' ?>">
       <div class="font-bold text-lg leading-tight"><?= number_format($kpiStats['valid']) ?></div>
-      <div class="text-[11px] <?= $expiryFilter === 'valid' ? 'text-emerald-100' : 'text-emerald-600' ?>">Valid (>60d)</div>
+      <div class="text-[11px] <?= $expiryFilter === 'valid' ? 'text-slate-300' : 'text-slate-500' ?>">Valid (>60d)</div>
     </a>
-    <a href="?expiry_status=near_expiry" class="p-3 rounded-xl border <?= $expiryFilter === 'near_expiry' ? 'bg-amber-600 text-white border-amber-600' : 'bg-amber-50/60 border-amber-200 hover:bg-amber-100 text-amber-800' ?>">
+    <a href="?expiry_status=near_expiry" class="p-3 rounded border <?= $expiryFilter === 'near_expiry' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' ?>">
       <div class="font-bold text-lg leading-tight"><?= number_format($kpiStats['near_expiry']) ?></div>
-      <div class="text-[11px] <?= $expiryFilter === 'near_expiry' ? 'text-amber-100' : 'text-amber-600' ?>">Near Expiry (≤60d)</div>
+      <div class="text-[11px] <?= $expiryFilter === 'near_expiry' ? 'text-slate-300' : 'text-slate-500' ?>">Near Expiry (≤60d)</div>
     </a>
-    <a href="?expiry_status=expired" class="p-3 rounded-xl border <?= $expiryFilter === 'expired' ? 'bg-rose-600 text-white border-rose-600' : 'bg-rose-50/60 border-rose-200 hover:bg-rose-100 text-rose-800' ?>">
+    <a href="?expiry_status=expired" class="p-3 rounded border <?= $expiryFilter === 'expired' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' ?>">
       <div class="font-bold text-lg leading-tight"><?= number_format($kpiStats['expired']) ?></div>
-      <div class="text-[11px] <?= $expiryFilter === 'expired' ? 'text-rose-100' : 'text-rose-600' ?>">Expired (Barred)</div>
+      <div class="text-[11px] <?= $expiryFilter === 'expired' ? 'text-slate-300' : 'text-slate-500' ?>">Expired (Barred)</div>
     </a>
   </div>
 </div>
 
 <!-- Filters -->
-<form method="get" class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col md:flex-row gap-3 mb-5">
+<form method="get" class="bg-white rounded shadow p-4 flex flex-col md:flex-row gap-3 mt-6">
   <div class="relative flex-1">
     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
       <i class="fas fa-search text-xs"></i>
     </span>
-    <input name="q" value="<?= h($q) ?>" class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm" placeholder="Search medicine name or batch number" />
+    <input name="q" value="<?= h($q) ?>" class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded text-sm" placeholder="Search medicine name or batch number" />
   </div>
 
-  <select name="expiry_status" class="w-full md:w-52 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">
+  <select name="expiry_status" class="w-full md:w-52 border border-slate-200 rounded px-3 py-2 text-sm bg-white">
     <option value="">All Expiry Statuses</option>
     <option value="valid" <?= $expiryFilter === 'valid' ? 'selected' : '' ?>>Valid Only</option>
     <option value="near_expiry" <?= $expiryFilter === 'near_expiry' ? 'selected' : '' ?>>Near Expiry (≤ 60 days)</option>
     <option value="expired" <?= $expiryFilter === 'expired' ? 'selected' : '' ?>>Expired (Disallowed)</option>
   </select>
 
-  <select name="availability" class="w-full md:w-44 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">
+  <select name="availability" class="w-full md:w-44 border border-slate-200 rounded px-3 py-2 text-sm bg-white">
     <option value="">All stock levels</option>
     <option value="in_stock" <?= $availabilityFilter === 'in_stock' ? 'selected' : '' ?>>In Stock</option>
     <option value="empty" <?= $availabilityFilter === 'empty' ? 'selected' : '' ?>>Depleted (0)</option>
   </select>
 
   <div class="flex gap-2">
-    <button class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-800 transition" type="submit">
+    <button class="bg-slate-900 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-slate-800 transition" type="submit">
       Filter
     </button>
-    <a class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold transition" href="/HealthLogs/public/inventory/batches/index.php">
+    <a class="px-4 py-2 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold transition" href="/HealthLogs/public/inventory/batches/index.php">
       Clear
     </a>
   </div>
 </form>
 
 <!-- Table -->
-<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden mb-5">
+<div class="bg-white rounded shadow overflow-hidden mt-6">
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm text-left border-collapse">
       <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
         <tr>
-          <th class="py-3.5 px-4">Medicine</th>
-          <th class="py-3.5 px-4">Batch No</th>
-          <th class="py-3.5 px-4">Expiry Date</th>
-          <th class="py-3.5 px-4">Classification</th>
-          <th class="py-3.5 px-4">Received</th>
-          <th class="py-3.5 px-4">On Hand</th>
-          <th class="py-3.5 px-4">Issuance Status</th>
-          <th class="py-3.5 px-4 text-right">Actions</th>
+          <th class="py-3 px-4">Medicine</th>
+          <th class="py-3 px-4">Batch No</th>
+          <th class="py-3 px-4">Expiry Date</th>
+          <th class="py-3 px-4">Classification</th>
+          <th class="py-3 px-4">Received</th>
+          <th class="py-3 px-4">On Hand</th>
+          <th class="py-3 px-4">Issuance Status</th>
+          <th class="py-3 px-4 text-right">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 text-xs">
@@ -252,7 +244,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
               $classification = ActivityLogger::classifyExpiry($b['expiry_date']);
               $onHand = (int)$b['on_hand'];
             ?>
-            <tr class="hover:bg-slate-50/60 transition">
+            <tr class="hover:bg-slate-50 transition">
               <!-- Medicine Name -->
               <td class="px-4 py-3 font-semibold text-slate-900">
                 <?= h($b['medicine_name']) ?>
@@ -273,17 +265,17 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <!-- Classification Badge -->
               <td class="px-4 py-3 whitespace-nowrap">
                 <?php if ($classification['key'] === 'expired'): ?>
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
                     <i class="fas fa-times-circle text-[10px]"></i>
                     <span>Expired (<?= abs($days) ?>d ago)</span>
                   </span>
                 <?php elseif ($classification['key'] === 'near_expiry'): ?>
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                     <i class="fas fa-exclamation-triangle text-[10px]"></i>
                     <span>Near Expiry (<?= $days ?>d left)</span>
                   </span>
                 <?php else: ?>
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                     <i class="fas fa-check-circle text-[10px]"></i>
                     <span>Valid (<?= $days ?>d left)</span>
                   </span>
@@ -305,13 +297,13 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <td class="px-4 py-3 whitespace-nowrap">
                 <?php if ($classification['is_expired']): ?>
                   <span class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200" title="Expired stock is blocked from issuance">
-                    <i class="fas fa-lock text-[10px]"></i> Barred from Issuance
+                    <i class="fas fa-lock text-[10px]"></i> Barred
                   </span>
                 <?php elseif ($onHand <= 0): ?>
                   <span class="text-slate-400 text-xs">Depleted</span>
                 <?php else: ?>
-                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    <i class="fas fa-unlock text-[10px]"></i> Available to Issue
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                    <i class="fas fa-unlock text-[10px]"></i> Available
                   </span>
                 <?php endif; ?>
               </td>
@@ -319,10 +311,18 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <!-- Actions -->
               <td class="px-4 py-3 text-right whitespace-nowrap">
                 <?php if (can_manage_clinical_records()): ?>
-                  <button type="button" class="batch-modal-edit px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold mr-1" data-embed-url="/HealthLogs/public/inventory/batches/form_embed.php?id=<?= (int)$b['id'] ?>">Edit</button>
+                  <?php if ($classification['is_expired'] && $onHand > 0): ?>
+                    <form method="post" action="/HealthLogs/public/inventory/batches/write_off_expired.php" class="inline" data-confirm="Safely write off and remove expired units from physical stock?" data-confirm-title="Write Off Expired Stock" data-confirm-cta="Yes, write off">
+                      <input type="hidden" name="batch_id" value="<?= (int)$b['id'] ?>" />
+                      <button type="submit" class="px-2 py-1 rounded bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold mr-1" title="Quarantine and write off expired stock">
+                        <i class="fas fa-trash-can mr-1 text-[10px]"></i> Write Off
+                      </button>
+                    </form>
+                  <?php endif; ?>
+                  <button type="button" class="batch-modal-edit px-2 py-1 rounded border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold mr-1" data-embed-url="/HealthLogs/public/inventory/batches/form_embed.php?id=<?= (int)$b['id'] ?>">Edit</button>
                   <form method="post" action="/HealthLogs/public/inventory/batches/delete.php" class="inline" data-confirm="Delete this batch? All opening transactions will be removed." data-confirm-title="Delete batch" data-confirm-cta="Yes, delete">
                     <input type="hidden" name="id" value="<?= (int)$b['id'] ?>" />
-                    <button class="px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold">Delete</button>
+                    <button class="px-2 py-1 rounded border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold">Delete</button>
                   </form>
                 <?php else: ?>
                   <span class="text-xs text-slate-400">Read-Only</span>

@@ -22,15 +22,25 @@ if ($id) {
     $presetDoseNo = (int)$rec['dose_no'];
 }
 
-// Fetch all active patients, prioritizing children (0-5 years)
-$patients = $pdo->query("
+// New immunization records are limited to active babies under 12 months.
+$babyPatientFilter = "TIMESTAMPDIFF(MONTH, birth_date, CURDATE()) < 12 AND birth_date <= CURDATE()";
+$patientParams = [];
+if ($rec) {
+    $babyPatientFilter = "($babyPatientFilter OR id = ?)";
+    $patientParams[] = (int)$rec['patient_id'];
+}
+
+$patientStmt = $pdo->prepare("
     SELECT id, first_name, middle_name, last_name, suffix, sex, birth_date, barangay,
            TIMESTAMPDIFF(MONTH, birth_date, CURDATE()) AS age_months,
            DATEDIFF(CURDATE(), birth_date) AS age_days
     FROM patients 
     WHERE status = 'active'
-    ORDER BY (birth_date >= DATE_SUB(CURDATE(), INTERVAL 5 YEAR)) DESC, last_name ASC, first_name ASC
-")->fetchAll(PDO::FETCH_ASSOC);
+      AND ($babyPatientFilter)
+    ORDER BY last_name ASC, first_name ASC
+");
+$patientStmt->execute($patientParams);
+$patients = $patientStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $patientsById = [];
 foreach ($patients as $p) {
@@ -59,7 +69,7 @@ foreach ($patients as $p) {
         'age_months' => $ageMonths,
         'age_days' => $ageDays,
         'age_text' => $ageText,
-        'is_child' => ($ageMonths <= 60),
+        'is_baby' => ($ageMonths < 12),
     ];
 }
 
@@ -75,6 +85,30 @@ foreach ($vaccines as $v) {
         'min_age' => (float)$v['recommended_min_age_months'],
         'max_age' => (float)$v['recommended_max_age_months'],
     ];
+}
+
+$lotsByVaccine = [];
+$lotsStmt = $pdo->query("
+    SELECT DISTINCT vaccine_id, lot_no
+    FROM immunization_records
+    WHERE lot_no IS NOT NULL AND lot_no <> ''
+    UNION
+    SELECT v.id AS vaccine_id, mb.batch_no AS lot_no
+    FROM vaccines v
+    JOIN medicines m ON m.name = v.name AND m.formulation = 'Vaccine'
+    JOIN medicine_batches mb ON mb.medicine_id = m.id
+    JOIN (
+        SELECT batch_id
+        FROM medicine_transactions
+        WHERE batch_id IS NOT NULL
+        GROUP BY batch_id
+        HAVING SUM(quantity) > 0
+    ) available ON available.batch_id = mb.id
+    WHERE mb.expiry_date >= CURDATE()
+    ORDER BY lot_no ASC
+");
+while ($lot = $lotsStmt->fetch(PDO::FETCH_ASSOC)) {
+    $lotsByVaccine[(int)$lot['vaccine_id']][] = $lot['lot_no'];
 }
 
 // Fetch existing immunization records grouped by patient
@@ -100,12 +134,14 @@ while ($r = $recordsStmt->fetch(PDO::FETCH_ASSOC)) {
     ];
 }
 
-$selectedPatientId = $presetPatientId ?: (int)old('patient_id', $rec['patient_id'] ?? 0);
+$selectedPatientId = $rec
+    ? (int)$rec['patient_id']
+    : ($presetPatientId ?: (int)old('patient_id', 0));
 if (!$selectedPatientId && !empty($patients)) {
     $selectedPatientId = (int)$patients[0]['id'];
 }
 $selectedVaccineId = $presetVaccineId ?: (int)old('vaccine_id', $rec['vaccine_id'] ?? 1);
-$selectedDoseNo = $presetDoseNo ?: (int)old('dose_no', $rec['dose_no'] ?? 1);
+$selectedDoseNo = $presetDoseNo ?: (int)old('dose_no', $rec['dose_no'] ?? 0);
 $adminDate = old('administered_on', $rec['administered_on'] ?? date('Y-m-d'));
 $adminTime = old('administered_time', !empty($rec['administered_at']) ? date('H:i', strtotime($rec['administered_at'])) : date('H:i'));
 
@@ -158,35 +194,41 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
       <?php if ($returnTo): ?><input type="hidden" name="return_to" value="<?= h($returnTo) ?>"><?php endif; ?>
       <?php if ($rec): ?><input type="hidden" name="id" value="<?= (int)$rec['id'] ?>" /><?php endif; ?>
 
-      <!-- 1. Patient Selection with Age Badge -->
+      <!-- 1. Patient -->
       <div>
+        <?php if ($rec): ?>
+          <?php $patientInfo = $patientsById[$selectedPatientId] ?? null; ?>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Patient</label>
+          <div class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-slate-50 text-slate-800">
+            <?= $patientInfo ? h("{$patientInfo['name']} • {$patientInfo['age_text']} • Born: {$patientInfo['birth_date_formatted']} • {$patientInfo['barangay']}") : 'Patient information unavailable' ?>
+          </div>
+          <input type="hidden" name="patient_id" id="patientSelect" value="<?= $selectedPatientId ?>">
+        <?php else: ?>
         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-          Select Infant / Child Patient <span class="text-rose-500">*</span>
+          Select Baby (0-11 months) <span class="text-rose-500">*</span>
         </label>
-        <select name="patient_id" id="patientSelect" required data-searchable-select data-search-placeholder="Search child by name, birthdate, or purok..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white">
+        <select name="patient_id" id="patientSelect" required data-searchable-select data-search-placeholder="Search baby by name, birthdate, or purok..." class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white">
+          <?php if (empty($patients)): ?>
+            <option value="" selected disabled>No active babies under 12 months found</option>
+          <?php endif; ?>
           <?php foreach ($patients as $p): ?>
             <?php 
               $pInfo = $patientsById[$p['id']];
-              $tag = $pInfo['is_child'] ? '👶 [Child ' . $pInfo['age_text'] . ']' : '[Adult]';
-              $label = "{$tag} {$pInfo['name']} • Born: {$pInfo['birth_date_formatted']} • {$pInfo['barangay']}";
+              $label = "{$pInfo['name']} • {$pInfo['age_text']} • Born: {$pInfo['birth_date_formatted']} • {$pInfo['barangay']}";
               $sel = ($p['id'] == $selectedPatientId) ? 'selected' : '';
             ?>
             <option value="<?= (int)$p['id'] ?>" <?= $sel ?>><?= h($label) ?></option>
           <?php endforeach; ?>
         </select>
+        <?php endif; ?>
       </div>
 
       <!-- Child Immunization History Banner (Dynamically Updated) -->
       <div id="childProfileCard" class="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
-          <div class="flex items-center gap-2">
-            <span class="w-8 h-8 rounded-full bg-teal-100 text-teal-700 font-bold flex items-center justify-center text-xs">
-              <i class="fas fa-baby"></i>
-            </span>
-            <div>
-              <div class="font-bold text-sm text-slate-900" id="childCardName">--</div>
-              <div class="text-xs text-slate-500" id="childCardMeta">--</div>
-            </div>
+          <div>
+            <div class="font-bold text-sm text-slate-900" id="childCardName">--</div>
+            <div class="text-xs text-slate-500" id="childCardMeta">--</div>
           </div>
           <div id="childCardBadge" class="self-start sm:self-auto"></div>
         </div>
@@ -247,9 +289,14 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
 
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-            Lot / Batch Number
+            Select Existing Lot / Batch
           </label>
-          <input name="lot_no" type="text" placeholder="e.g. VAC-2026-09A" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-teal-500 bg-white" value="<?= h(old('lot_no', $rec['lot_no'] ?? '')) ?>" />
+          <select id="lotNumberSelect" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+            <option value="">Choose a previously recorded batch</option>
+          </select>
+          <label for="lotNumberInput" class="block text-xs font-semibold text-slate-600 mt-2 mb-1">Or enter a new lot / batch number</label>
+          <input name="lot_no" id="lotNumberInput" type="text" placeholder="Enter lot / batch number" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-teal-500 bg-white" value="<?= h(old('lot_no', $rec['lot_no'] ?? '')) ?>" />
+          <p id="lotNumberHelp" class="text-xs text-slate-500 mt-1">Choose a saved batch above or enter the batch number printed on the vaccine vial.</p>
         </div>
       </div>
 
@@ -293,6 +340,7 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
     const patientsData = <?= json_encode($patientsById) ?>;
     const vaccinesData = <?= json_encode($vaccinesById) ?>;
     const existingRecords = <?= json_encode($recordsByPatient) ?>;
+    const lotsByVaccine = <?= json_encode($lotsByVaccine) ?>;
     let initialDoseNo = <?= json_encode($selectedDoseNo) ?>;
 
     const patientSelect = document.getElementById('patientSelect');
@@ -305,6 +353,31 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
     const vaccineScheduleHint = document.getElementById('vaccineScheduleHint');
     const doseStatusHint = document.getElementById('doseStatusHint');
     const tclTargetText = document.getElementById('tclTargetText');
+    const lotNumberSelect = document.getElementById('lotNumberSelect');
+    const lotNumberInput = document.getElementById('lotNumberInput');
+    const lotNumberHelp = document.getElementById('lotNumberHelp');
+
+    function updateLotOptions() {
+      if (!lotNumberSelect) return;
+      const currentLot = lotNumberInput.value.trim();
+      lotNumberSelect.replaceChildren();
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Choose a previously recorded batch';
+      lotNumberSelect.appendChild(placeholder);
+
+      const lots = lotsByVaccine[vaccineSelect.value] || [];
+      lots.forEach(lotNumber => {
+        const option = document.createElement('option');
+        option.value = lotNumber;
+        option.textContent = lotNumber;
+        lotNumberSelect.appendChild(option);
+      });
+      lotNumberSelect.value = lots.includes(currentLot) ? currentLot : '';
+      lotNumberHelp.textContent = lots.length
+        ? 'Select a saved batch or enter a new number from the vaccine vial.'
+        : 'No batch numbers have been recorded for this vaccine yet. Enter the number printed on the vaccine vial.';
+    }
 
     function updateChildProfile() {
       const patientId = patientSelect.value;
@@ -314,10 +387,10 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
       childCardName.textContent = patient.name;
       childCardMeta.textContent = `Date of Birth: ${patient.birth_date_formatted} • Age: ${patient.age_text} • Sex: ${patient.sex} • ${patient.barangay}`;
       
-      if (patient.is_child) {
-        childCardBadge.innerHTML = `<span class="dose-badge bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="fas fa-check-circle"></i> Eligible Child (0-5 yrs)</span>`;
+      if (patient.is_baby) {
+        childCardBadge.innerHTML = `<span class="dose-badge bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="fas fa-check-circle"></i> Baby (0-11 months)</span>`;
       } else {
-        childCardBadge.innerHTML = `<span class="dose-badge bg-amber-100 text-amber-800 border border-amber-300"><i class="fas fa-user"></i> Non-pediatric record</span>`;
+        childCardBadge.innerHTML = `<span class="dose-badge bg-slate-100 text-slate-700 border border-slate-300">Existing record</span>`;
       }
 
       const recs = existingRecords[patientId] || [];
@@ -409,10 +482,17 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
     }
 
     patientSelect.addEventListener('change', updateChildProfile);
-    vaccineSelect.addEventListener('change', updateDoseOptions);
+    vaccineSelect.addEventListener('change', function () {
+      updateDoseOptions();
+      updateLotOptions();
+    });
+    lotNumberSelect.addEventListener('change', function () {
+      if (lotNumberSelect.value) lotNumberInput.value = lotNumberSelect.value;
+    });
     doseSelect.addEventListener('change', updateTclPreview);
 
     // Initial load
+    updateLotOptions();
     updateChildProfile();
   </script>
 </body>

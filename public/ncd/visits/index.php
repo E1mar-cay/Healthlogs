@@ -179,79 +179,76 @@ require __DIR__ . '/../../partials/header.php';
 ?>
 
 <!-- Header Banner -->
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
+<div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 mb-5">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
       <div class="text-sm text-slate-500 font-semibold">
-        <a href="/HealthLogs/public/ncd.php" class="text-slate-500 hover:text-slate-800 hover:underline">&larr; Back to NCD Dashboard</a>
+        <a href="/HealthLogs/public/ncd/records/index.php" class="text-slate-500 hover:text-slate-800 hover:underline">&larr; Back to Patient Registry</a>
       </div>
       <div class="text-2xl font-bold text-slate-900 mt-1">NCD Consultations &amp; Vital Signs Log</div>
       <p class="text-sm text-slate-500 mt-1">Record clinical checkups, BP measurements, blood sugar (FBS), maintenance refills, and scheduled follow-ups.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <?php if ($recordId > 0): ?>
-        <a href="/HealthLogs/public/ncd/visits/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+        <a href="/HealthLogs/public/ncd/visits/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
           <i class="fas fa-list mr-1.5 text-xs"></i> View All Patients
         </a>
       <?php endif; ?>
-      <a href="/HealthLogs/public/ncd/records/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+      <a href="/HealthLogs/public/ncd/records/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
         <i class="fas fa-users mr-1.5 text-xs"></i> Client Registry
-      </a>
-      <a href="/HealthLogs/public/ncd/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
-        <i class="fas fa-table-list mr-1.5 text-xs"></i> TCL-NCD Report
       </a>
     </div>
   </div>
 </div>
 
 <?php if ($successMsg): ?>
-  <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 text-sm mb-6 flex items-center gap-2 shadow-xs">
-    <i class="fas fa-circle-check text-emerald-600 text-base"></i>
+  <div class="rounded-xl border border-slate-200 bg-white p-4 text-slate-700 text-sm mb-5 flex items-center gap-2">
+    <i class="fas fa-circle-check text-slate-500 text-base"></i>
     <span><?= h($successMsg) ?></span>
   </div>
 <?php endif; ?>
 
 <?php if ($errorMsg): ?>
-  <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 text-sm mb-6 flex items-center gap-2 shadow-xs">
-    <i class="fas fa-circle-exclamation text-rose-600 text-base"></i>
+  <div class="rounded-xl border border-slate-300 bg-slate-50 p-4 text-slate-800 text-sm mb-5 flex items-center gap-2">
+    <i class="fas fa-circle-exclamation text-slate-600 text-base"></i>
     <span><?= h($errorMsg) ?></span>
   </div>
 <?php endif; ?>
 
 <!-- Selected Patient Profile Banner (if filtered by record_id) -->
 <?php if ($selectedClient): ?>
-  <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-lg mb-6">
+  <div class="bg-white rounded-xl p-5 sm:p-6 text-slate-900 border border-slate-200 mb-5">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
-          <span class="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-mono font-bold">
+          <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-mono font-semibold">
             <?= h($selectedClient['ncd_code']) ?>
           </span>
-          <span class="text-xs uppercase tracking-wider text-slate-300 font-semibold">
+          <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">
             Status: <?= ucfirst($selectedClient['status']) ?>
           </span>
         </div>
-        <h2 class="text-xl sm:text-2xl font-bold mt-1 text-white">
+        <h2 class="text-xl sm:text-2xl font-semibold mt-1 text-slate-900">
           <?= h($selectedClient['last_name'] . ', ' . $selectedClient['first_name'] . ' ' . $selectedClient['middle_name']) ?>
         </h2>
-        <div class="text-sm text-slate-300 mt-1 flex flex-wrap items-center gap-3">
-          <span><i class="fas fa-cake-candles text-slate-400 mr-1"></i><?= $selectedClient['age'] ?> yrs old (<?= ucfirst($selectedClient['sex']) ?>)</span>
-          <span><i class="fas fa-location-dot text-slate-400 mr-1"></i>Brgy. <?= h($selectedClient['barangay']) ?></span>
+        <div class="text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-3">
+          <span><?= $selectedClient['age'] ?> yrs old (<?= ucfirst($selectedClient['sex']) ?>)</span>
+          <span>Brgy. <?= h($selectedClient['barangay']) ?></span>
           <?php if (!empty($selectedClient['contact_no'])): ?>
-            <span><i class="fas fa-phone text-slate-400 mr-1"></i><?= h($selectedClient['contact_no']) ?></span>
+            <span><?= h($selectedClient['contact_no']) ?></span>
           <?php endif; ?>
         </div>
       </div>
 
-      <div class="flex sm:flex-col items-start sm:items-end justify-between border-t sm:border-t-0 border-slate-700/60 pt-3 sm:pt-0 gap-2">
-        <div class="text-xs text-slate-300">
-          Diagnosis: <strong class="text-teal-300"><?= ncd_format_diag_name($selectedClient['diagnosis_type']) ?></strong>
+      <div class="flex sm:flex-col items-start sm:items-end justify-between border-t sm:border-t-0 border-slate-200 pt-3 sm:pt-0 gap-2">
+        <div class="text-xs text-slate-500">
+          Diagnosis: <strong class="text-slate-800"><?= ncd_format_diag_name($selectedClient['diagnosis_type']) ?></strong>
         </div>
-        <div class="text-xs text-slate-300">
-          PhilPEN Risk: <strong class="text-amber-300"><?= ucfirst($selectedClient['philpen_risk_level']) ?> Risk</strong>
+        <div class="text-xs text-slate-500">
+          PhilPEN Risk: <strong class="text-slate-800"><?= ucfirst($selectedClient['philpen_risk_level']) ?> Risk</strong>
         </div>
-        <div class="text-xs text-slate-300 max-w-xs text-right truncate" title="<?= h($selectedClient['maintenance_meds']) ?>">
-          Meds: <span class="text-slate-200"><?= h($selectedClient['maintenance_meds'] ?: 'None') ?></span>
+        <div class="text-xs text-slate-500 max-w-xs text-right truncate" title="<?= h($selectedClient['maintenance_meds']) ?>">
+          Meds: <span class="text-slate-800"><?= h($selectedClient['maintenance_meds'] ?: 'None') ?></span>
         </div>
       </div>
     </div>
@@ -260,11 +257,8 @@ require __DIR__ . '/../../partials/header.php';
 
 <?php if (can_manage_clinical_records()): ?>
 <!-- 1. FULL WIDTH FORM ON TOP: Log Checkup & Vitals -->
-<div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5 sm:p-7 mb-8">
-  <div class="flex items-center gap-3 pb-4 mb-6 border-b border-slate-200">
-    <span class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-base shadow-xs">
-      <i class="fas fa-notes-medical"></i>
-    </span>
+<div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 mb-6">
+  <div class="flex items-center gap-3 pb-4 mb-5 border-b border-slate-200">
     <div>
       <h3 class="text-lg font-bold text-slate-900">Log Checkup &amp; Clinical Vitals</h3>
       <p class="text-xs text-slate-500">Record clinical measurements, BP, blood sugar (FBS/RBS), maintenance refills, and next appointment schedule.</p>
@@ -276,8 +270,8 @@ require __DIR__ . '/../../partials/header.php';
 
     <!-- Group 1: Patient Selection & Clinical Vitals -->
     <div>
-      <h4 class="text-xs uppercase font-bold text-slate-700 tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-1.5">
-        <i class="fas fa-heart-pulse text-indigo-600"></i> 1. Patient &amp; Clinical Measurements
+      <h4 class="text-xs uppercase font-semibold text-slate-700 tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-1.5">
+        1. Patient &amp; Clinical Measurements
       </h4>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <?php if ($selectedClient): ?>
@@ -342,17 +336,14 @@ require __DIR__ . '/../../partials/header.php';
         </div>
 
         <!-- Live PhilPEN CVD Risk Preview -->
-        <div class="p-2.5 rounded-xl border bg-slate-50 border-slate-200 flex items-center justify-between" id="visitRiskBanner">
+        <div class="p-2.5 rounded-lg border bg-white border-slate-200 flex items-center justify-between" id="visitRiskBanner">
           <div class="flex items-center gap-2">
-            <div class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-              <i class="fas fa-heart-pulse"></i>
-            </div>
             <div>
               <div class="text-[10px] uppercase font-bold text-slate-400">Assessed PhilPEN CVD Risk</div>
               <div class="text-[11px] font-semibold text-slate-800" id="visitRiskSummary">Enter BP &amp; Blood Sugar to calculate risk</div>
             </div>
           </div>
-          <span id="visitRiskBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-lg border bg-slate-100 text-slate-700 border-slate-200 shrink-0">
+          <span id="visitRiskBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-lg border bg-slate-50 text-slate-700 border-slate-200 shrink-0">
             &lt;10% Risk
           </span>
         </div>
@@ -390,8 +381,8 @@ require __DIR__ . '/../../partials/header.php';
 
     <!-- Group 2: Prescriptions, Adherence & Clinical Notes -->
     <div>
-      <h4 class="text-xs uppercase font-bold text-slate-700 tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-1.5">
-        <i class="fas fa-pills text-teal-600"></i> 2. Medications Dispensed &amp; Clinical Management
+      <h4 class="text-xs uppercase font-semibold text-slate-700 tracking-wider mb-3 flex items-center gap-2 border-b border-slate-100 pb-1.5">
+        2. Medications Dispensed &amp; Clinical Management
       </h4>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="lg:col-span-2">
@@ -440,7 +431,7 @@ require __DIR__ . '/../../partials/header.php';
       </div>
 
       <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-        <button type="submit" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-6 py-2.5 rounded-lg shadow transition inline-flex items-center justify-center gap-2">
+        <button type="submit" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-700 text-white font-semibold text-xs px-6 py-2.5 rounded-lg transition inline-flex items-center justify-center gap-2">
           <i class="fas fa-check"></i> Save Consultation Record
         </button>
       </div>
@@ -448,9 +439,9 @@ require __DIR__ . '/../../partials/header.php';
   </form>
 </div>
 <?php else: ?>
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-8 flex items-center justify-between">
+  <div class="bg-white rounded-xl border border-slate-200 p-5 mb-6 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+      <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
         <i class="fas fa-eye text-base"></i>
       </div>
       <div>
@@ -463,7 +454,7 @@ require __DIR__ . '/../../partials/header.php';
 <?php endif; ?>
 
 <!-- 2. FULL WIDTH HISTORY SECTION BELOW: Consultation History & All Recent Logs -->
-<div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5 sm:p-7">
+<div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 mb-5">
     <div>
       <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -491,7 +482,7 @@ require __DIR__ . '/../../partials/header.php';
             <div>
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-bold text-slate-900 text-sm sm:text-base"><?= h($v['last_name'] . ', ' . $v['first_name']) ?></span>
-                <span class="font-mono text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-semibold">
+                <span class="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
                   <?= h($v['ncd_code']) ?>
                 </span>
                 <span class="text-xs text-slate-600 font-medium">
@@ -507,26 +498,33 @@ require __DIR__ . '/../../partials/header.php';
                   &bull; Recorded by: <span class="text-slate-700"><?= h($v['recorded_by_name']) ?></span>
                 <?php endif; ?>
               </div>
+              <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+                <span>BP: <strong><?= $v['bp_systolic'] && $v['bp_diastolic'] ? (int)$v['bp_systolic'] . '/' . (int)$v['bp_diastolic'] . ' mmHg' : '—' ?></strong></span>
+                <span>Blood sugar: <strong><?= $v['blood_sugar_mgdl'] ? number_format((float)$v['blood_sugar_mgdl'], 1) . ' mg/dL' : '—' ?></strong></span>
+                <?php if (!empty($v['medications_dispensed'])): ?>
+                  <span>Medication: <strong><?= h($v['medications_dispensed']) ?></strong></span>
+                <?php endif; ?>
+              </div>
             </div>
 
             <div class="flex items-center gap-2 self-start">
-              <?php if ($v['treatment_adherence'] === 'good'): ?>
-                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">Adherence: Good</span>
-              <?php elseif ($v['treatment_adherence'] === 'fair'): ?>
-                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">Adherence: Fair</span>
-              <?php else: ?>
-                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">Adherence: Poor</span>
-              <?php endif; ?>
+              <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                Adherence: <?= h(ucfirst($v['treatment_adherence'] ?: 'Not recorded')) ?>
+              </span>
+              <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100" aria-expanded="false" aria-controls="visitDetails<?= (int)$v['id'] ?>" onclick="toggleVisitDetails(this)">
+                View details
+              </button>
             </div>
           </div>
 
+          <div id="visitDetails<?= (int)$v['id'] ?>" hidden>
           <!-- Vitals Metric Grid -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3.5 pt-3 border-t border-slate-200 text-xs">
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
               <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Blood Pressure</div>
               <div class="font-extrabold text-sm sm:text-base mt-1">
                 <?php if ($v['bp_systolic'] && $v['bp_diastolic']): ?>
-                  <span class="<?= ($v['bp_systolic'] >= 140 || $v['bp_diastolic'] >= 90) ? 'text-rose-600' : 'text-emerald-700' ?>">
+                  <span class="text-slate-900">
                     <?= $v['bp_systolic'] ?>/<?= $v['bp_diastolic'] ?> <span class="text-xs font-normal text-slate-400">mmHg</span>
                   </span>
                 <?php else: ?>
@@ -535,11 +533,11 @@ require __DIR__ . '/../../partials/header.php';
               </div>
             </div>
 
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
               <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Blood Sugar</div>
               <div class="font-extrabold text-sm sm:text-base mt-1">
                 <?php if ($v['blood_sugar_mgdl']): ?>
-                  <span class="<?= $v['blood_sugar_mgdl'] >= 126 ? 'text-amber-600' : 'text-teal-700' ?>">
+                  <span class="text-slate-900">
                     <?= number_format($v['blood_sugar_mgdl'], 1) ?> <span class="text-xs font-normal text-slate-400">mg/dL (<?= strtoupper($v['blood_sugar_type']) ?>)</span>
                   </span>
                 <?php else: ?>
@@ -548,18 +546,18 @@ require __DIR__ . '/../../partials/header.php';
               </div>
             </div>
 
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
               <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Weight &amp; BMI</div>
               <div class="font-extrabold text-sm sm:text-base text-slate-900 mt-1">
                 <?php if ($v['weight_kg']): ?>
-                  <?= $v['weight_kg'] ?> <span class="text-xs font-normal text-slate-400">kg</span> <?= $v['bmi'] ? '<span class="text-xs font-semibold text-indigo-600 ml-1">(' . $v['bmi'] . ' BMI)</span>' : '' ?>
+                  <?= $v['weight_kg'] ?> <span class="text-xs font-normal text-slate-400">kg</span> <?= $v['bmi'] ? '<span class="text-xs font-medium text-slate-600 ml-1">(' . $v['bmi'] . ' BMI)</span>' : '' ?>
                 <?php else: ?>
                   <span class="text-slate-300 font-normal italic">—</span>
                 <?php endif; ?>
               </div>
             </div>
 
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
               <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Waist Circumference</div>
               <div class="font-extrabold text-sm sm:text-base text-slate-900 mt-1">
                 <?= $v['waist_cm'] ? $v['waist_cm'] . ' <span class="text-xs font-normal text-slate-400">cm</span>' : '<span class="text-slate-300 font-normal italic">—</span>' ?>
@@ -572,19 +570,19 @@ require __DIR__ . '/../../partials/header.php';
             <div class="space-y-1.5 text-xs bg-white p-3 rounded-xl border border-slate-200 text-slate-700 mt-2">
               <?php if (!empty($v['medications_dispensed'])): ?>
                 <div>
-                  <strong class="text-slate-900"><i class="fas fa-pills text-teal-600 mr-1.5"></i> Dispensed / Refilled:</strong> <?= h($v['medications_dispensed']) ?>
+                  <strong class="text-slate-900">Dispensed / Refilled:</strong> <?= h($v['medications_dispensed']) ?><?php if ((int)$v['quantity_dispensed'] > 0): ?> (<?= (int)$v['quantity_dispensed'] ?>)<?php endif; ?>
                 </div>
               <?php endif; ?>
 
               <?php if (!empty($v['findings_complaints'])): ?>
                 <div>
-                  <strong class="text-slate-900"><i class="fas fa-notes-medical text-indigo-600 mr-1.5"></i> Symptoms &amp; Findings:</strong> <?= h($v['findings_complaints']) ?>
+                  <strong class="text-slate-900">Symptoms &amp; Findings:</strong> <?= h($v['findings_complaints']) ?>
                 </div>
               <?php endif; ?>
 
               <?php if (!empty($v['management_plan'])): ?>
                 <div>
-                  <strong class="text-slate-900"><i class="fas fa-clipboard-list text-slate-600 mr-1.5"></i> Management Plan:</strong> <?= h($v['management_plan']) ?>
+                  <strong class="text-slate-900">Management Plan:</strong> <?= h($v['management_plan']) ?>
                 </div>
               <?php endif; ?>
             </div>
@@ -595,15 +593,16 @@ require __DIR__ . '/../../partials/header.php';
             <?php $isOverdue = ($v['next_appointment_date'] < date('Y-m-d')); ?>
             <div class="mt-3 text-xs flex items-center justify-between text-slate-500 pt-2 border-t border-slate-200/60">
               <span>
-                Next Scheduled Follow-up: <strong class="<?= $isOverdue ? 'text-rose-600' : 'text-slate-800' ?>"><?= date('F d, Y', strtotime($v['next_appointment_date'])) ?></strong>
+                Next Scheduled Follow-up: <strong class="text-slate-800"><?= date('F d, Y', strtotime($v['next_appointment_date'])) ?></strong>
               </span>
               <?php if ($isOverdue): ?>
-                <span class="text-rose-600 font-bold text-[11px] bg-rose-50 px-2 py-0.5 rounded border border-rose-200"><i class="fas fa-circle-exclamation mr-1"></i> Overdue</span>
+                <span class="text-slate-700 font-semibold text-[11px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Overdue</span>
               <?php else: ?>
-                <span class="text-teal-700 font-semibold text-[11px] bg-teal-50 px-2 py-0.5 rounded border border-teal-200"><i class="fas fa-calendar-check mr-1"></i> Scheduled</span>
+                <span class="text-slate-600 font-medium text-[11px] bg-slate-50 px-2 py-0.5 rounded border border-slate-200">Scheduled</span>
               <?php endif; ?>
             </div>
           <?php endif; ?>
+          </div>
         </div>
       <?php endforeach; ?>
     </div>
@@ -616,6 +615,16 @@ require __DIR__ . '/../../partials/header.php';
 </div>
 
 <script>
+function toggleVisitDetails(button) {
+  const details = document.getElementById(button.getAttribute('aria-controls'));
+  if (!details) return;
+
+  const isExpanded = button.getAttribute('aria-expanded') === 'true';
+  button.setAttribute('aria-expanded', String(!isExpanded));
+  button.textContent = isExpanded ? 'View details' : 'Hide details';
+  details.hidden = isExpanded;
+}
+
 function calcBMI() {
   const w = parseFloat(document.getElementById('vWeight').value);
   const h = parseFloat(document.getElementById('vHeight').value);
@@ -661,37 +670,32 @@ function calcVisitPhilpenRisk() {
   const isElevatedBp = (sysVal >= 130 || diaVal >= 85);
 
   let pillText = '<10% Risk';
-  let badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
   let summaryText = 'Normal range (<10% 10-year CVD risk)';
 
   if (isCrisisBp || (isStage2Bp && isDiabetic) || (isStage1Bp && isSevereBs)) {
     pillText = '≥30% Risk (Very High)';
-    badgeColor = 'bg-rose-100 text-rose-800 border-rose-200';
     summaryText = isCrisisBp 
       ? 'Severe High BP (≥180/110 mmHg) indicates ≥30% CVD risk' 
       : 'Stage 2 BP with Diabetes indicates ≥30% CVD risk';
   } else if (isStage2Bp || (isStage1Bp && isDiabetic) || isSevereBs) {
     pillText = '20% to <30% Risk (High)';
-    badgeColor = 'bg-orange-100 text-orange-800 border-orange-200';
     summaryText = isStage2Bp 
       ? 'Stage 2 HTN (≥160/100 mmHg) indicates 20% to <30% CVD risk' 
       : 'Hypertension with Diabetes indicates 20% to <30% CVD risk';
   } else if (isStage1Bp || isDiabetic || (isElevatedBp && bsVal >= 100)) {
     pillText = '10% to <20% Risk (Moderate)';
-    badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
     summaryText = isStage1Bp 
       ? 'Stage 1 HTN (≥140/90 mmHg) indicates 10% to <20% CVD risk' 
       : 'Elevated Blood Sugar/Pre-hypertension (10% to <20% risk)';
   } else {
     pillText = '<10% Risk (Low)';
-    badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
     summaryText = (sysVal > 0 || bsVal > 0) 
       ? 'Measured vitals indicate <10% (Low) 10-year CVD risk' 
       : 'Enter BP & Blood Sugar to assess risk';
   }
 
   bannerSummary.textContent = summaryText;
-  bannerBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-lg border shrink-0 ' + badgeColor;
+  bannerBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-lg border bg-slate-50 text-slate-700 border-slate-200 shrink-0';
   bannerBadge.textContent = pillText;
 }
 

@@ -8,17 +8,39 @@ class ArimaService
     public static function loadSeries(PDO $pdo, string $seriesKey, int $days = 180): array
     {
         if ($seriesKey === 'visits_total') {
-            $sql = "SELECT DATE(visit_datetime) AS day_key, COUNT(*) AS value
-                    FROM visits
-                    WHERE visit_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(visit_datetime)), CURDATE()) FROM visits), INTERVAL ? DAY)
-                    GROUP BY DATE(visit_datetime)
+            $sql = "SELECT DATE(v_date) AS day_key, COUNT(*) AS value
+                    FROM (
+                        SELECT visit_datetime AS v_date FROM visits
+                        UNION ALL
+                        SELECT visit_datetime AS v_date FROM prenatal_visits
+                        UNION ALL
+                        SELECT visit_datetime AS v_date FROM postnatal_visits
+                        UNION ALL
+                        SELECT CAST(administered_on AS DATETIME) AS v_date FROM immunization_records
+                        UNION ALL
+                        SELECT CAST(visit_date AS DATETIME) AS v_date FROM fp_visits
+                        UNION ALL
+                        SELECT CAST(visit_date AS DATETIME) AS v_date FROM ncd_visits
+                    ) all_v
+                    WHERE v_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                    GROUP BY DATE(v_date)
                     ORDER BY day_key ASC";
             $params = [$days];
+        } elseif (str_starts_with($seriesKey, 'med_')) {
+            $medId = (int)substr($seriesKey, 4);
+            $sql = "SELECT DATE(transaction_datetime) AS day_key, COALESCE(SUM(ABS(quantity)), 0) AS value
+                    FROM medicine_transactions
+                    WHERE transaction_type = 'dispensed'
+                      AND medicine_id = ?
+                      AND transaction_datetime >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                    GROUP BY DATE(transaction_datetime)
+                    ORDER BY day_key ASC";
+            $params = [$medId, $days];
         } elseif ($seriesKey === 'medicine_total') {
             $sql = "SELECT DATE(transaction_datetime) AS day_key, COALESCE(SUM(ABS(quantity)), 0) AS value
                     FROM medicine_transactions
                     WHERE transaction_type = 'dispensed'
-                      AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed'), INTERVAL ? DAY)
+                      AND transaction_datetime >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
                     GROUP BY DATE(transaction_datetime)
                     ORDER BY day_key ASC";
             $params = [$days];
@@ -26,9 +48,9 @@ class ArimaService
             $sql = "SELECT series_date AS day_key, value
                     FROM timeseries_daily
                     WHERE series_key = ?
-                      AND series_date >= DATE_SUB((SELECT COALESCE(MAX(series_date), CURDATE()) FROM timeseries_daily WHERE series_key = ?), INTERVAL ? DAY)
+                      AND series_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
                     ORDER BY day_key ASC";
-            $params = [$seriesKey, $seriesKey, $days];
+            $params = [$seriesKey, $days];
         }
 
         $stmt = $pdo->prepare($sql);

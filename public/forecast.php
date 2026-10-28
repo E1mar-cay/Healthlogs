@@ -99,6 +99,12 @@ $metrics = $result['metrics'] ?? ($summary ? [
 ] : null);
 $unitLabel = $seriesUnits[$seriesKey] ?? 'items';
 $forecastGenerated = $_SERVER['REQUEST_METHOD'] === 'POST' && $result !== null;
+$forecastMonthStart = new DateTimeImmutable('first day of next month');
+$forecastMonthLabels = [
+    $forecastMonthStart->format('F'),
+    $forecastMonthStart->modify('+1 month')->format('F'),
+    $forecastMonthStart->modify('+2 months')->format('F'),
+];
 
 // ==========================================
 // 1. MEDICINE DEMAND FORECASTING (NEXT 3 MONTHS)
@@ -288,9 +294,12 @@ try {
         'm1' => $matForecastM1,
         'm2' => $matForecastM2,
         'm3' => $matForecastM3,
+        'm1_label' => $forecastMonthLabels[0],
+        'm2_label' => $forecastMonthLabels[1],
+        'm3_label' => $forecastMonthLabels[2],
         'total_3m' => $matForecastM1 + $matForecastM2 + $matForecastM3,
         'trend_pct' => $matGrowth,
-        'trend_label' => ($matGrowth >= 0 ? '+' : '') . $matGrowth . '% projected surge in Month 2 & 3',
+        'trend_label' => ($matGrowth >= 0 ? '+' : '') . $matGrowth . '% projected surge in ' . $forecastMonthLabels[1] . ' & ' . $forecastMonthLabels[2],
         'insight' => 'Expect higher maternal consultations over the next 2 months as active pregnancies enter 2nd/3rd trimesters. Prepare prenatal vitamins, Ferrous Sulfate, and ensure BHW prenatal visit coverage.',
     ];
 
@@ -314,6 +323,9 @@ try {
         'm1' => $immForecastM1,
         'm2' => $immForecastM2,
         'm3' => $immForecastM3,
+        'm1_label' => $forecastMonthLabels[0],
+        'm2_label' => $forecastMonthLabels[1],
+        'm3_label' => $forecastMonthLabels[2],
         'total_3m' => $immForecastM1 + $immForecastM2 + $immForecastM3,
         'trend_pct' => 8,
         'trend_label' => 'Steady demand (+8% infant cohort expansion)',
@@ -338,6 +350,9 @@ try {
         'm1' => $fpForecastM1,
         'm2' => $fpForecastM2,
         'm3' => $fpForecastM3,
+        'm1_label' => $forecastMonthLabels[0],
+        'm2_label' => $forecastMonthLabels[1],
+        'm3_label' => $forecastMonthLabels[2],
         'total_3m' => $fpForecastM1 + $fpForecastM2 + $fpForecastM3,
         'trend_pct' => 12,
         'trend_label' => '+12% expected increase in monthly refill visits',
@@ -362,6 +377,9 @@ try {
         'm1' => $genForecastM1,
         'm2' => $genForecastM2,
         'm3' => $genForecastM3,
+        'm1_label' => $forecastMonthLabels[0],
+        'm2_label' => $forecastMonthLabels[1],
+        'm3_label' => $forecastMonthLabels[2],
         'total_3m' => $genForecastM1 + $genForecastM2 + $genForecastM3,
         'trend_pct' => 12,
         'trend_label' => '+12% projected demand for maintenance & acute care',
@@ -634,7 +652,7 @@ if ($summary) {
   <!-- Multi-Month Chart: Top In-Demand Medicines -->
   <div class="mt-6 bg-slate-50/60 p-4 rounded-xl border border-slate-200">
     <div class="flex items-center justify-between mb-2">
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Top Medicines Projected Demand Progression (Month 1 vs Month 2 vs Month 3)</div>
+      <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Top Medicines Projected Demand by Month (<?= h(implode(' · ', $forecastMonthLabels)) ?>)</div>
       <span class="text-[11px] text-slate-400">Unit: Dispensed Quantity</span>
     </div>
     <div class="h-64 sm:h-72">
@@ -661,9 +679,9 @@ if ($summary) {
           <tr class="border-b bg-slate-100 text-slate-600 uppercase font-semibold">
             <th class="py-3 px-3">Medicine Name</th>
             <th class="py-3 px-3 text-right">Current Stock</th>
-            <th class="py-3 px-3 text-right">Month 1 (+30d)</th>
-            <th class="py-3 px-3 text-right">Month 2 (+60d)</th>
-            <th class="py-3 px-3 text-right">Month 3 (+90d)</th>
+            <th class="py-3 px-3 text-right"><?= h($forecastMonthLabels[0]) ?> (+30d)</th>
+            <th class="py-3 px-3 text-right"><?= h($forecastMonthLabels[1]) ?> (+60d)</th>
+            <th class="py-3 px-3 text-right"><?= h($forecastMonthLabels[2]) ?> (+90d)</th>
             <th class="py-3 px-3 text-right font-bold text-slate-900">Total 3M Demand</th>
             <th class="py-3 px-3 text-center">Stock Status</th>
             <th class="py-3 px-3 text-right font-bold text-teal-800">Suggested Reorder</th>
@@ -763,17 +781,17 @@ if ($summary) {
           <!-- Monthly Progression -->
           <div class="grid grid-cols-3 gap-2 mt-4 bg-white p-3 rounded-lg border border-slate-200 text-center">
             <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Month 1 (+30d)</div>
+              <div class="text-[10px] uppercase font-bold text-slate-400"><?= h($cat['m1_label'] ?? $forecastMonthLabels[0]) ?></div>
               <div class="text-xl font-extrabold text-slate-800 mt-1"><?= number_format($cat['m1']) ?></div>
               <div class="text-[10px] text-slate-500">visits</div>
             </div>
             <div class="border-x border-slate-100">
-              <div class="text-[10px] uppercase font-bold text-slate-400">Month 2 (+60d)</div>
+              <div class="text-[10px] uppercase font-bold text-slate-400"><?= h($cat['m2_label'] ?? $forecastMonthLabels[1]) ?></div>
               <div class="text-xl font-extrabold text-teal-700 mt-1"><?= number_format($cat['m2']) ?></div>
               <div class="text-[10px] text-slate-500">visits</div>
             </div>
             <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Month 3 (+90d)</div>
+              <div class="text-[10px] uppercase font-bold text-slate-400"><?= h($cat['m3_label'] ?? $forecastMonthLabels[2]) ?></div>
               <div class="text-xl font-extrabold text-blue-700 mt-1"><?= number_format($cat['m3']) ?></div>
               <div class="text-[10px] text-slate-500">visits</div>
             </div>
@@ -802,7 +820,7 @@ if ($summary) {
   <!-- Category Comparison Chart -->
   <div class="mt-6 bg-slate-50/60 p-4 rounded-xl border border-slate-200">
     <div class="flex items-center justify-between mb-2">
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Health Program Visit Comparison (Month 1 vs Month 2 vs Month 3)</div>
+      <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Health Program Visit Comparison (<?= h(implode(' · ', $forecastMonthLabels)) ?>)</div>
       <span class="text-[11px] text-slate-400">Unit: Expected Consultations / Visits</span>
     </div>
     <div class="h-64 sm:h-72">
@@ -1976,7 +1994,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
         labels: medLabels,
         datasets: [
           {
-            label: 'Month 1 (+30d)',
+            label: <?= json_encode($forecastMonthLabels[0] . ' (+30d)') ?>,
             data: topDemandMeds.map(m => m.forecast_m1),
             backgroundColor: 'rgba(56, 189, 248, 0.85)',
             borderColor: '#0284c7',
@@ -1984,7 +2002,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderRadius: 4
           },
           {
-            label: 'Month 2 (+60d)',
+            label: <?= json_encode($forecastMonthLabels[1] . ' (+60d)') ?>,
             data: topDemandMeds.map(m => m.forecast_m2),
             backgroundColor: 'rgba(14, 165, 233, 0.85)',
             borderColor: '#0369a1',
@@ -1992,7 +2010,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderRadius: 4
           },
           {
-            label: 'Month 3 (+90d)',
+            label: <?= json_encode($forecastMonthLabels[2] . ' (+90d)') ?>,
             data: topDemandMeds.map(m => m.forecast_m3),
             backgroundColor: 'rgba(2, 132, 199, 0.85)',
             borderColor: '#075985',
@@ -2113,7 +2131,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
         labels: catLabels,
         datasets: [
           {
-            label: 'Month 1 (+30d)',
+            label: <?= json_encode($forecastMonthLabels[0] . ' (+30d)') ?>,
             data: catKeys.map(k => categoryForecastData[k].m1),
             backgroundColor: 'rgba(251, 113, 133, 0.85)',
             borderColor: '#e11d48',
@@ -2121,7 +2139,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderRadius: 4
           },
           {
-            label: 'Month 2 (+60d)',
+            label: <?= json_encode($forecastMonthLabels[1] . ' (+60d)') ?>,
             data: catKeys.map(k => categoryForecastData[k].m2),
             backgroundColor: 'rgba(244, 63, 94, 0.85)',
             borderColor: '#be123c',
@@ -2129,7 +2147,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderRadius: 4
           },
           {
-            label: 'Month 3 (+90d)',
+            label: <?= json_encode($forecastMonthLabels[2] . ' (+90d)') ?>,
             data: catKeys.map(k => categoryForecastData[k].m3),
             backgroundColor: 'rgba(225, 29, 72, 0.85)',
             borderColor: '#9f1239',

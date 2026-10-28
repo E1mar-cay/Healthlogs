@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Official Patient Clinical Chart - <?= h($fullName) ?> - HealthLogs</title>
+  <title>Patient Summary - <?= h($fullName) ?> - HealthLogs</title>
   <link rel="icon" type="image/jpeg" href="/HealthLogs/public/assets/images/logo.jpeg">
   <style>
     @page {
@@ -150,14 +150,14 @@
       <div class="rep-title">Republic of the Philippines • Province of Isabela</div>
       <div class="agency-title">City Health Office • City of Ilagan</div>
       <div class="hub-title">Barangay Tangcul Rural Health Center</div>
-      <div class="sys-title">HealthLogs Certified Clinical Patient Summary Record</div>
+      <div class="sys-title">HealthLogs Patient Summary</div>
     </div>
     <div style="width: 55px;"></div>
   </div>
 
   <div class="doc-meta-box">
     <div>
-      <div class="doc-title">Master Patient Clinical Chart</div>
+      <div class="doc-title">Patient Summary</div>
       <div style="color: #64748b; font-size: 10px; margin-top: 2px;">Patient ID: <strong>#<?= (int)$patient['id'] ?></strong> • PhilHealth: <strong><?= h($patient['philhealth_no'] ?: 'None') ?></strong></div>
     </div>
     <div style="text-align: right;">
@@ -199,56 +199,27 @@
     </div>
   </div>
 
-  <!-- Medical History -->
-  <div class="section-title">II. Allergies & Chronic Conditions</div>
-  <div class="grid-2">
-    <div>
-      <div style="font-weight: 700; color: #dc2626; font-size: 10px; margin-bottom: 2px;">Documented Allergies:</div>
-      <?php if (empty($allergies)): ?>
-        <div style="color: #64748b; font-style: italic;">No known allergies documented.</div>
-      <?php else: ?>
-        <ul style="margin: 0; padding-left: 15px;">
-          <?php foreach ($allergies as $a): ?>
-            <li><strong><?= h($a['allergen']) ?></strong> - <?= h($a['reaction']) ?> (Noted: <?= date('M d, Y', strtotime($a['noted_on'])) ?>)</li>
-          <?php endforeach; ?>
-        </ul>
-      <?php endif; ?>
-    </div>
-    <div>
-      <div style="font-weight: 700; color: #0f766e; font-size: 10px; margin-bottom: 2px;">Diagnosed Conditions:</div>
-      <?php if (empty($conditions)): ?>
-        <div style="color: #64748b; font-style: italic;">No chronic conditions documented.</div>
-      <?php else: ?>
-        <ul style="margin: 0; padding-left: 15px;">
-          <?php foreach ($conditions as $c): ?>
-            <li><strong><?= h($c['condition_name']) ?></strong> (<?= ucfirst(h($c['status'])) ?>) - <?= h($c['notes']) ?></li>
-          <?php endforeach; ?>
-        </ul>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <!-- Consultations & Services Rendered -->
-  <div class="section-title">III. Recent Consultations & Services Rendered</div>
+  <!-- Service Records -->
+  <div class="section-title">II. Service Records</div>
   <table>
     <thead>
       <tr>
         <th>Date</th>
-        <th>Service / Encounter Type</th>
-        <th>Clinical Findings & Management Notes</th>
-        <th>Healthcare Provider</th>
+        <th>Service</th>
+        <th>Details</th>
+        <th>Recorded By</th>
       </tr>
     </thead>
     <tbody>
-      <?php if (empty($allEncounters)): ?>
-        <tr><td colspan="4" style="text-align: center; color: #64748b; padding: 8px;">No consultation records logged.</td></tr>
+      <?php if (empty($serviceRecords)): ?>
+        <tr><td colspan="4" style="text-align: center; color: #64748b; padding: 8px;">No service records found.</td></tr>
       <?php else: ?>
-        <?php foreach (array_slice($allEncounters, 0, 10) as $enc): ?>
+        <?php foreach ($serviceRecords as $enc): ?>
           <tr>
             <td style="white-space: nowrap; font-weight: 600;"><?= date('M d, Y', strtotime($enc['date'])) ?></td>
             <td style="font-weight: 700; color: #0f766e;"><?= h($enc['type']) ?>: <?= h($enc['title']) ?></td>
-            <td><?= h($enc['details']) ?></td>
-            <td style="white-space: nowrap;"><?= h($enc['staff']) ?></td>
+            <td><?= h($enc['details'] ?: '—') ?></td>
+            <td style="white-space: nowrap;"><?= h($enc['staff'] ?: '—') ?></td>
           </tr>
         <?php endforeach; ?>
       <?php endif; ?>
@@ -256,7 +227,7 @@
   </table>
 
   <!-- Immunizations -->
-  <div class="section-title">IV. Immunization Administration Record</div>
+  <div class="section-title">III. Immunization Records</div>
   <table>
     <thead>
       <tr>

@@ -33,9 +33,15 @@ try {
          FROM (
              SELECT m.id
              FROM medicines m
-             LEFT JOIN medicine_transactions mt ON mt.medicine_id = m.id
+             LEFT JOIN (
+                 SELECT mb.medicine_id, SUM(mt.quantity) AS valid_stock
+                 FROM medicine_batches mb
+                 JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                 WHERE mb.expiry_date >= CURDATE()
+                 GROUP BY mb.medicine_id
+             ) stk ON stk.medicine_id = m.id
              GROUP BY m.id, m.reorder_level
-             HAVING COALESCE(SUM(mt.quantity), 0) <= COALESCE(m.reorder_level, 0)
+             HAVING COALESCE(MAX(stk.valid_stock), 0) <= COALESCE(m.reorder_level, 0)
          ) low_stock"
     )->fetchColumn();
 
@@ -62,7 +68,7 @@ try {
 }
 ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl shadow mb-6">
+<div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 mb-5">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
     <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
@@ -77,22 +83,22 @@ try {
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-400">Patients</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['total_patients'])) ?></div>
     <div class="text-sm text-slate-500">Total registered</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-400">Visits</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['monthly_visits'])) ?></div>
     <div class="text-sm text-slate-500">This month</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-400">NCD Clients</div>
-    <div class="text-2xl font-semibold mt-1 text-indigo-600"><?= h(number_format($adminStats['ncd_clients'])) ?></div>
+    <div class="text-2xl font-semibold mt-1 text-slate-900"><?= h(number_format($adminStats['ncd_clients'])) ?></div>
     <div class="text-sm text-slate-500">HPN, Diabetes &amp; CKD</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-400">Low Stock</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['low_stock_items'])) ?></div>
     <div class="text-sm text-slate-500">Items below reorder</div>
@@ -100,17 +106,17 @@ try {
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-400">Accounts</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['active_users'])) ?></div>
     <div class="text-sm text-slate-500">Active user accounts</div>
   </div>
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-xs uppercase tracking-widest text-slate-400">Reminders</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['pending_reminders'])) ?></div>
     <div class="text-sm text-slate-500">Pending and due now</div>
   </div>
-  <div class="bg-white p-5 rounded shadow sm:col-span-2 xl:col-span-1">
+  <div class="bg-white p-5 rounded-xl border border-slate-200 sm:col-span-2 xl:col-span-1">
     <div class="text-xs uppercase tracking-widest text-slate-400">Maternal</div>
     <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['ongoing_pregnancies'])) ?></div>
     <div class="text-sm text-slate-500">Ongoing pregnancies</div>
@@ -118,127 +124,88 @@ try {
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-  <div class="bg-white p-5 rounded shadow xl:col-span-2">
+  <div class="bg-white p-5 rounded-xl border border-slate-200 xl:col-span-2">
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm text-slate-500">Program Performance</div>
-        <div class="text-lg font-semibold">Visits & Outreach</div>
+        <div class="text-sm text-slate-500">Quick Links</div>
+        <div class="text-lg font-semibold">Program Modules</div>
       </div>
-      <a class="text-blue-700 text-sm font-medium" href="/HealthLogs/public/forecast.php">View Forecast &rarr;</a>
+      <a class="text-slate-600 hover:text-slate-900 text-sm font-medium" href="/HealthLogs/public/forecast.php">View Forecast &rarr;</a>
     </div>
-    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">Immunization</div>
-        <div class="text-xl font-semibold mt-1">On Track</div>
-        <p class="text-slate-500 text-xs mt-1">Child vaccine coverage active.</p>
-      </div>
-      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">Maternal Health</div>
-        <div class="text-xl font-semibold mt-1">Stable</div>
-        <p class="text-slate-500 text-xs mt-1">Prenatal checkups consistent.</p>
-      </div>
-      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">NCD / PhilPEN</div>
-        <div class="text-xl font-semibold mt-1 text-indigo-700"><?= number_format($adminStats['ncd_clients']) ?> Active</div>
+    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <a href="/HealthLogs/public/immunization/records/index.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
+        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Immunization</div>
+        <div class="text-sm font-semibold text-slate-800 mt-1">Child Vaccines</div>
+        <p class="text-slate-500 text-xs mt-1">Schedules, records &amp; coverage.</p>
+      </a>
+      <a href="/HealthLogs/public/maternal.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
+        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Maternal Health</div>
+        <div class="text-sm font-semibold text-slate-800 mt-1"><?= number_format($adminStats['ongoing_pregnancies']) ?> Ongoing</div>
+        <p class="text-slate-500 text-xs mt-1">Prenatal &amp; postnatal care.</p>
+      </a>
+      <a href="/HealthLogs/public/ncd/records/index.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
+        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">NCD / PhilPEN</div>
+        <div class="text-sm font-semibold text-slate-800 mt-1"><?= number_format($adminStats['ncd_clients']) ?> Active</div>
         <p class="text-slate-500 text-xs mt-1">HPN &amp; Diabetes monitoring.</p>
-      </div>
-      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">Medicine Demand</div>
-        <div class="text-xl font-semibold mt-1">Rising</div>
-        <p class="text-slate-500 text-xs mt-1">Expect higher demand next month.</p>
-      </div>
-      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div class="text-xs uppercase tracking-widest text-slate-400">Roles</div>
-        <div class="text-xl font-semibold mt-1">2 Active</div>
-        <p class="text-slate-500 text-xs mt-1">Admin and Health Worker access levels.</p>
-      </div>
+      </a>
+      <a href="/HealthLogs/public/inventory.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
+        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Medicine Inventory</div>
+        <div class="text-sm font-semibold text-slate-800 mt-1"><?= $adminStats['low_stock_items'] > 0 ? $adminStats['low_stock_items'] . ' Low Stock' : 'Stocked' ?></div>
+        <p class="text-slate-500 text-xs mt-1">Batches, expiry &amp; dispensing.</p>
+      </a>
+      <a href="/HealthLogs/public/family_planning.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
+        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Family Planning</div>
+        <div class="text-sm font-semibold text-slate-800 mt-1">FP Clients</div>
+        <p class="text-slate-500 text-xs mt-1">Contraceptive users &amp; refills.</p>
+      </a>
+      <a href="/HealthLogs/public/reports.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
+        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Reports</div>
+        <div class="text-sm font-semibold text-slate-800 mt-1">TCL &amp; Analytics</div>
+        <p class="text-slate-500 text-xs mt-1">Program registers &amp; exports.</p>
+      </a>
     </div>
   </div>
 
-  <div class="bg-white p-5 rounded shadow">
+  <div class="bg-white p-5 rounded-xl border border-slate-200">
     <div class="text-sm text-slate-500">Quick Actions</div>
     <div class="text-lg font-semibold">Administrator Tools</div>
     <div class="mt-4 space-y-2">
-      <a class="block px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors" href="/HealthLogs/public/users.php">
+      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/users.php">
         <i class="fas fa-users mr-2"></i>Manage Users
       </a>
-      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors" href="/HealthLogs/public/inventory.php">
+      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/inventory.php">
         <i class="fas fa-pills mr-2"></i>Review Inventory
       </a>
-      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors" href="/HealthLogs/public/reminders.php">
+      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/reminders.php">
         <i class="fas fa-bell mr-2"></i>Review Reminders
       </a>
-      <a class="block px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors" href="/HealthLogs/public/forecast.php">
+      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/forecast.php">
         <i class="fas fa-chart-line mr-2"></i>Run Forecast
       </a>
     </div>
   </div>
 </div>
 
-<div class="bg-white p-4 sm:p-5 rounded-xl shadow mt-6">
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <div class="text-sm text-slate-500">Reports</div>
-      <div class="text-lg font-semibold text-slate-900">Administrative Summary</div>
-      <p class="text-sm text-slate-500 mt-1">Official printable overview of primary healthcare operations, program metrics, and clinical trends.</p>
-    </div>
-    <button class="w-full sm:w-auto inline-flex items-center justify-center bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow hover:bg-slate-800 transition" onclick="printDashboardReport()">
-      <i class="fas fa-print mr-2"></i>Print Report
-    </button>
-  </div>
-
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-      <div class="text-xs uppercase tracking-widest text-slate-400">Coverage</div>
-      <div class="text-xl font-semibold mt-1 text-slate-900">Immunization</div>
-      <p class="text-slate-500 text-sm mt-1">Monitor completion rates and missed schedules.</p>
-    </div>
-    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-      <div class="text-xs uppercase tracking-widest text-slate-400">Care</div>
-      <div class="text-xl font-semibold mt-1 text-slate-900">Maternal Health</div>
-      <p class="text-slate-500 text-sm mt-1">Track prenatal and postnatal visit consistency.</p>
-    </div>
-    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-      <div class="text-xs uppercase tracking-widest text-slate-400">Inventory</div>
-      <div class="text-xl font-semibold mt-1 text-slate-900">Stock Health</div>
-      <p class="text-slate-500 text-sm mt-1">Identify low-stock and expiring medicines.</p>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-      <div class="text-xs uppercase tracking-widest text-slate-400">Outreach</div>
-      <div class="text-xl font-semibold mt-1 text-slate-900">Reminders</div>
-      <p class="text-slate-500 text-sm mt-1">Upcoming tasks and overdue follow-ups.</p>
-    </div>
-    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-      <div class="text-xs uppercase tracking-widest text-slate-400">Forecast</div>
-      <div class="text-xl font-semibold mt-1 text-slate-900">Next 30 Days</div>
-      <p class="text-slate-500 text-sm mt-1">Projected demand for planning resources.</p>
-    </div>
-  </div>
-</div>
-
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-  <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
+  <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200">
     <div class="text-sm text-slate-500">Alerts</div>
     <div class="text-lg font-semibold text-slate-900">Needs Attention</div>
     <ul class="mt-3 text-sm text-slate-600 space-y-2">
-      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><?= h((string)$adminStats['low_stock_items']) ?> medicine items below reorder level.</li>
-      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><?= h((string)$adminStats['pending_reminders']) ?> pending reminders due for dispatch.</li>
-      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span><?= h((string)$adminStats['ongoing_pregnancies']) ?> active maternal health ongoing pregnancies.</li>
+      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span><?= h((string)$adminStats['low_stock_items']) ?> medicine items below reorder level.</li>
+      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span><?= h((string)$adminStats['pending_reminders']) ?> pending reminders due for dispatch.</li>
+      <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span><?= h((string)$adminStats['ongoing_pregnancies']) ?> active maternal health ongoing pregnancies.</li>
     </ul>
   </div>
-  <div class="bg-white p-4 sm:p-5 rounded-xl shadow">
+  <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200">
     <div class="text-sm text-slate-500">Forecast Snapshot</div>
     <div class="text-lg font-semibold text-slate-900">Patient Visits</div>
     <p class="mt-1 text-sm text-slate-500" id="adminForecastIntro">Loading forecast summary...</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div class="rounded-lg border border-slate-200 bg-white p-4">
         <div class="text-xs uppercase tracking-widest text-slate-400">Average / Day</div>
         <div class="mt-1 text-xl font-semibold text-slate-900" id="adminForecastAverage">--</div>
       </div>
-      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div class="rounded-lg border border-slate-200 bg-white p-4">
         <div class="text-xs uppercase tracking-widest text-slate-400">Peak Day</div>
         <div class="mt-1 text-xl font-semibold text-slate-900" id="adminForecastPeak">--</div>
       </div>
@@ -246,7 +213,7 @@ try {
     <div class="mt-4 relative min-h-[160px]">
       <canvas id="adminForecastChart" height="120"></canvas>
     </div>
-    <a class="inline-flex items-center mt-4 text-sm font-medium text-blue-700 hover:text-blue-900" href="/HealthLogs/public/forecast.php">
+    <a class="inline-flex items-center mt-4 text-sm font-medium text-slate-600 hover:text-slate-900" href="/HealthLogs/public/forecast.php">
       Open full forecast <i class="fas fa-arrow-right ml-1.5 text-xs"></i>
     </a>
   </div>
