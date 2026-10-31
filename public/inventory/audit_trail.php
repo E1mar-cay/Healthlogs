@@ -544,11 +544,6 @@ require __DIR__ . '/../../public/partials/header.php';
           </table>
         </div>
 
-        <!-- Raw JSON -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Raw Payload</label>
-          <pre class="bg-slate-950 text-emerald-400 p-3.5 rounded-xl text-xs font-mono overflow-x-auto max-h-44" id="invRawJson"></pre>
-        </div>
       </div>
 
       <!-- Modal Footer -->
@@ -600,7 +595,6 @@ require __DIR__ . '/../../public/partials/header.php';
       table.appendChild(tr);
     }
 
-    document.getElementById('invRawJson').textContent = JSON.stringify(parsed, null, 2);
     modal.classList.remove('hidden');
   }
 
