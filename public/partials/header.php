@@ -22,6 +22,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
   <script src="/HealthLogs/public/assets/js/card-icons.js" defer></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
     :root {
       --bg-1: #eef2ff;
@@ -33,6 +34,8 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       --card: rgba(255, 255, 255, 0.92);
       --line: rgba(15, 23, 42, 0.08);
       --shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+      --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+      --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
     }
 
     html,
@@ -40,16 +43,50 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       height: 100%;
       padding: 0;
       margin: 0;
+      font-size: 14px;
     }
 
     body.app-body {
-      font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+      font-family: var(--font-body);
+      font-size: clamp(13px, 0.8vw, 15px);
+      line-height: 1.5;
+      letter-spacing: 0.01em;
       color: var(--ink);
       background:
         radial-gradient(1200px 600px at 10% -10%, var(--bg-1), transparent 60%),
         radial-gradient(1000px 500px at 100% 0%, var(--bg-2), transparent 55%),
         #f8fafc;
       margin: 0;
+    }
+
+    .app-content,
+    .app-content p,
+    .app-content li,
+    .app-content span,
+    .app-content div,
+    .app-content td,
+    .app-content th,
+    .app-content label,
+    .app-content small,
+    .app-content button,
+    .app-content input,
+    .app-content select,
+    .app-content textarea {
+      font-family: var(--font-body);
+      font-size: clamp(13px, 0.75vw, 14px);
+      line-height: 1.5;
+    }
+
+    .app-content h1,
+    .app-content h2,
+    .app-content h3,
+    .app-content h4,
+    .app-content h5,
+    .app-content h6,
+    .app-brand,
+    .app-title {
+      font-family: var(--font-display);
+      letter-spacing: -0.02em;
     }
 
     .app-shell {
@@ -175,7 +212,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
     }
 
     .app-brand {
-      font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+      font-family: var(--font-display);
       letter-spacing: 0.02em;
     }
 
@@ -197,7 +234,12 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       padding: 9px 12px;
       border-radius: 12px;
       color: #cbd5f5;
+      font-size: clamp(12.5px, 0.8vw, 14px);
       transition: all .15s ease;
+    }
+
+    .nav-text {
+      font-size: clamp(12.5px, 0.8vw, 14px);
     }
 
     .nav-link:hover {
@@ -261,7 +303,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
     }
 
     .app-content th {
-      font-size: 11px;
+      font-size: clamp(11px, 0.68vw, 12px);
       text-transform: uppercase;
       letter-spacing: 0.12em;
       color: var(--muted);
@@ -269,6 +311,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
 
     .app-content td {
       color: #0f172a;
+      font-size: clamp(12.5px, 0.72vw, 14px);
     }
 
     .app-content input,
@@ -277,6 +320,15 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       background: rgba(248, 250, 252, 0.9);
       border: 1px solid var(--line);
       border-radius: 12px;
+      font-size: clamp(12.5px, 0.75vw, 14px);
+      padding: 0.65rem 0.8rem;
+    }
+
+    .app-content button,
+    .app-content .btn,
+    .app-content a.btn {
+      font-size: clamp(12.5px, 0.75vw, 14px);
+      line-height: 1.4;
     }
 
     .app-content input:focus,
