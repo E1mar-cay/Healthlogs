@@ -124,7 +124,7 @@ if ($export) {
     $records = $stmt->fetchAll();
 } else {
     // 15 records per page
-    $tclPaginator = paginate($totalRecords, 15);
+    $tclPaginator = paginate($totalRecords, 20);
     $stmt = $pdo->prepare($sql . " " . $tclPaginator->getLimitSql());
     $stmt->execute($params);
     $records = $stmt->fetchAll();

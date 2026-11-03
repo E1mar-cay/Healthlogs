@@ -22,7 +22,7 @@ if ($q !== '' || $doseFilter !== '') {
 }
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM vaccines $where");
 $countStmt->execute($params);
-$paginator = paginate((int)$countStmt->fetchColumn(), 15);
+$paginator = paginate((int)$countStmt->fetchColumn(), 20);
 $stmt = $pdo->prepare("SELECT * FROM vaccines $where ORDER BY id DESC " . $paginator->getLimitSql());
 $stmt->execute($params);
 $rows = $stmt->fetchAll();

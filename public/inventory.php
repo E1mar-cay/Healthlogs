@@ -265,7 +265,7 @@ try {
         </button>
       </div>
       <select id="catalogPerPage" class="border border-slate-300 rounded px-2 py-1 text-xs bg-white text-slate-700">
-        <option value="15" selected>15</option>
+        <option value="20" selected>20</option>
         <option value="30">30</option>
         <option value="50">50</option>
         <option value="all">All</option>
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentCategory = 'all';
   let currentSearch = '';
   let currentPage = 1;
-  let itemsPerPage = 15;
+  let itemsPerPage = 20;
 
   function filterAndPaginate() {
     let matchingRows = [];

@@ -27,7 +27,7 @@ $countStmt = $pdo->prepare("SELECT COUNT(*) FROM (
     $where GROUP BY m.id$havingSql
 ) fm");
 $countStmt->execute($params);
-$paginator = paginate((int)$countStmt->fetchColumn(), 15);
+$paginator = paginate((int)$countStmt->fetchColumn(), 20);
 
 $stmt = $pdo->prepare("SELECT m.*,
     COALESCE(MAX(stk.valid_stock), 0) AS valid_stock,

@@ -88,7 +88,7 @@ $countStmt = $pdo->prepare("SELECT COUNT(*) FROM (
 $countStmt->execute($params);
 $totalBatches = (int)$countStmt->fetchColumn();
 
-$paginator = paginate($totalBatches, 15);
+$paginator = paginate($totalBatches, 20);
 
 $querySql = "SELECT b.*, m.name AS medicine_name, m.unit,
                     COALESCE(SUM(t.quantity), 0) AS on_hand,

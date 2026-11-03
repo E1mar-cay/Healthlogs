@@ -141,8 +141,8 @@ $vCountStmt = $pdo->prepare($vCountQuery . $vWhere);
 $vCountStmt->execute($vParams);
 $totalVisitsCount = (int)$vCountStmt->fetchColumn();
 
-// Paginator (10 visits per page)
-$visitPaginator = paginate($totalVisitsCount, 10);
+// Paginator (20 visits per page)
+$visitPaginator = paginate($totalVisitsCount, 20);
 
 $visitQuery .= $vWhere . " ORDER BY v.visit_date DESC, v.id DESC " . $visitPaginator->getLimitSql();
 $vStmt = $pdo->prepare($visitQuery);

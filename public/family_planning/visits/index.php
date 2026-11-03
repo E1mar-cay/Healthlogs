@@ -114,14 +114,20 @@ $visitQuery = "
     JOIN patients p ON p.id = r.patient_id
     LEFT JOIN users u ON u.id = v.recorded_by
 ";
+$visitCountQuery = "SELECT COUNT(*) FROM fp_visits v";
 $vParams = [];
 
 if ($recordId > 0) {
     $visitQuery .= " WHERE v.fp_record_id = :record_id";
+    $visitCountQuery .= " WHERE v.fp_record_id = :record_id";
     $vParams['record_id'] = $recordId;
 }
 
-$visitQuery .= " ORDER BY v.visit_date DESC, v.id DESC LIMIT 100";
+$visitCountStmt = $pdo->prepare($visitCountQuery);
+$visitCountStmt->execute($vParams);
+$visitPaginator = paginate((int)$visitCountStmt->fetchColumn(), 20);
+
+$visitQuery .= " ORDER BY v.visit_date DESC, v.id DESC " . $visitPaginator->getLimitSql();
 $vStmt = $pdo->prepare($visitQuery);
 $vStmt->execute($vParams);
 $visits = $vStmt->fetchAll();
@@ -334,7 +340,7 @@ require __DIR__ . '/../../partials/header.php';
     <h3 class="text-base font-bold text-slate-900">
       <?= $selectedClient ? 'Consultations for ' . h($selectedClient['first_name'] . ' ' . $selectedClient['last_name']) : 'Recent Consultations Log (All Clients)' ?>
     </h3>
-    <span class="text-xs text-slate-500 font-medium"><?= count($visits) ?> visit record(s)</span>
+    <span class="text-xs text-slate-500 font-medium"><?= number_format($visitPaginator->getTotalRecords()) ?> visit record(s)</span>
   </div>
 
   <?php if (empty($visits)): ?>
@@ -406,5 +412,7 @@ require __DIR__ . '/../../partials/header.php';
     </div>
   <?php endif; ?>
 </div>
+
+<?= $visitPaginator->render() ?>
 
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

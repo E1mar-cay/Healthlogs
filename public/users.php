@@ -11,9 +11,8 @@ require __DIR__ . '/partials/header.php';
 
 // Get search and pagination parameters
 $search = $_GET['search'] ?? '';
-$page = (int)($_GET['page'] ?? 1);
+$page = max(1, (int)($_GET['page'] ?? 1));
 $limit = 20;
-$offset = ($page - 1) * $limit;
 
 // Build search query
 $searchWhere = '';
@@ -28,7 +27,9 @@ if ($search) {
 $countSql = "SELECT COUNT(*) as total FROM users u $searchWhere";
 $countStmt = $pdo->prepare($countSql);
 $countStmt->execute($searchParams);
-$totalRecords = $countStmt->fetch()['total'];
+$totalRecords = (int)$countStmt->fetch()['total'];
+$paginator = paginate($totalRecords, $limit, $page);
+$offset = $paginator->getOffset();
 
 // Get users with pagination
 $sql = "SELECT u.*, r.name as role_name 
@@ -46,9 +47,7 @@ $users = $stmt->fetchAll();
 $rolesStmt = $pdo->query("SELECT * FROM roles WHERE name <> 'superadmin' ORDER BY name");
 $roles = $rolesStmt->fetchAll();
 
-// Calculate pagination
-$totalPages = ceil($totalRecords / $limit);
-$paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
+$totalPages = $paginator->getTotalPages();
 ?>
 
 <div class="flex flex-col gap-6">
@@ -237,7 +236,7 @@ $paginator = new Paginator($page, $totalPages, $totalRecords, $limit);
         <!-- Pagination -->
         <?php if ($totalPages > 1): ?>
             <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-                <?= $paginator->render('/HealthLogs/public/users.php', ['search' => $search]) ?>
+                <?= $paginator->render() ?>
             </div>
         <?php endif; ?>
     </div>

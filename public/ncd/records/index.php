@@ -68,8 +68,8 @@ $countStmt = $pdo->prepare($countQuery . $where);
 $countStmt->execute($params);
 $totalRecords = (int)$countStmt->fetchColumn();
 
-// Create paginator (10 records per page)
-$paginator = paginate($totalRecords, 10);
+// Create paginator (20 records per page)
+$paginator = paginate($totalRecords, 20);
 
 $dataStmt = $pdo->prepare($dataQuery . $where . " ORDER BY r.created_at DESC " . $paginator->getLimitSql());
 $dataStmt->execute($params);

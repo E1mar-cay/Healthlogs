@@ -42,7 +42,7 @@ $summary = $pdo->query("
 
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM immunization_records r JOIN patients p ON p.id = r.patient_id JOIN vaccines v ON v.id = r.vaccine_id $where");
 $countStmt->execute($params);
-$paginator = paginate((int)$countStmt->fetchColumn(), 15);
+$paginator = paginate((int)$countStmt->fetchColumn(), 20);
 
 $stmt = $pdo->prepare("SELECT r.*, p.first_name, p.last_name, p.sex, p.birth_date, p.barangay,
         v.doses_required,

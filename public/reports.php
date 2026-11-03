@@ -1682,7 +1682,7 @@ require __DIR__ . '/partials/header.php';
     const pageInfo = document.getElementById(options.infoId);
     if (!tableBody || !searchInput || !prevBtn || !nextBtn || !pageInfo) return;
 
-    const pageSize = 10;
+    const pageSize = 20;
     let page = 1;
     const allRows = Array.from(tableBody.querySelectorAll('tr'));
     const hasDataRows = allRows.some((row) => row.children.length > 1);

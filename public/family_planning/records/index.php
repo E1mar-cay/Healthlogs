@@ -20,10 +20,18 @@ $query = "
     JOIN patients p ON p.id = r.patient_id
     WHERE 1=1
 ";
+$countQuery = "
+    SELECT COUNT(*)
+    FROM fp_records r
+    JOIN patients p ON p.id = r.patient_id
+    WHERE 1=1
+";
 $params = [];
 
 if ($search !== '') {
-  $query .= " AND (r.client_code LIKE :client_code_search OR p.first_name LIKE :first_name_search OR p.last_name LIKE :last_name_search OR r.partner_name LIKE :partner_name_search)";
+  $filter = " AND (r.client_code LIKE :client_code_search OR p.first_name LIKE :first_name_search OR p.last_name LIKE :last_name_search OR r.partner_name LIKE :partner_name_search)";
+  $query .= $filter;
+  $countQuery .= $filter;
   $searchValue = "%{$search}%";
   $params['client_code_search'] = $searchValue;
   $params['first_name_search'] = $searchValue;
@@ -33,20 +41,28 @@ if ($search !== '') {
 
 if ($methodFilter !== '') {
     $query .= " AND r.method_accepted = :method";
+    $countQuery .= " AND r.method_accepted = :method";
     $params['method'] = $methodFilter;
 }
 
 if ($statusFilter !== 'all') {
     $query .= " AND r.status = :status";
+    $countQuery .= " AND r.status = :status";
     $params['status'] = $statusFilter;
 }
 
 if ($barangayFilter !== '') {
     $query .= " AND p.barangay = :barangay";
+    $countQuery .= " AND p.barangay = :barangay";
     $params['barangay'] = $barangayFilter;
 }
 
-$query .= " ORDER BY r.created_at DESC";
+$countStmt = $pdo->prepare($countQuery);
+$countStmt->execute($params);
+$totalClients = (int)$countStmt->fetchColumn();
+$paginator = paginate($totalClients, 20);
+
+$query .= " ORDER BY r.created_at DESC " . $paginator->getLimitSql();
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
@@ -151,7 +167,7 @@ function fp_format_method(?string $m): string {
   </form>
 
   <div class="text-xs text-slate-500 mb-3 font-medium">
-    Showing <strong><?= count($clients) ?></strong> client record(s)
+    Showing <strong><?= count($clients) ?></strong> of <strong><?= number_format($totalClients) ?></strong> client record(s)
   </div>
 
   <?php if (empty($clients)): ?>
@@ -232,6 +248,8 @@ function fp_format_method(?string $m): string {
     </div>
   <?php endif; ?>
 </div>
+
+<?= $paginator->render() ?>
 
 <?php require __DIR__ . '/../_enroll_modal.php'; ?>
 <?php require __DIR__ . '/../../partials/footer.php'; ?>

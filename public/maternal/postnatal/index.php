@@ -15,7 +15,7 @@ if ($q !== '' || $periodFilter !== '') {
 }
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM postnatal_visits v JOIN pregnancies pr ON pr.id = v.pregnancy_id JOIN patients p ON p.id = pr.patient_id $where");
 $countStmt->execute($params);
-$paginator = paginate((int)$countStmt->fetchColumn(), 15);
+$paginator = paginate((int)$countStmt->fetchColumn(), 20);
 $stmt = $pdo->prepare("SELECT v.*, p.first_name, p.last_name FROM postnatal_visits v JOIN pregnancies pr ON pr.id = v.pregnancy_id JOIN patients p ON p.id = pr.patient_id $where ORDER BY v.visit_datetime DESC " . $paginator->getLimitSql());
 $stmt->execute($params);
 $rows = $stmt->fetchAll();

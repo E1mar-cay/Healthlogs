@@ -20,7 +20,7 @@ $where = !empty($clauses) ? "WHERE " . implode(' AND ', $clauses) : '';
 
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM medicine_transactions t JOIN medicines m ON m.id = t.medicine_id $where");
 $countStmt->execute($params);
-$paginator = paginate((int)$countStmt->fetchColumn(), 15);
+$paginator = paginate((int)$countStmt->fetchColumn(), 20);
 
 $stmt = $pdo->prepare("SELECT t.*, m.name AS medicine_name, m.unit,
     b.batch_no, b.expiry_date

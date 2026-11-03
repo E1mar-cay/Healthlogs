@@ -312,7 +312,7 @@ if (!empty($rows)) {
 
     const rows = Array.from(table.querySelectorAll('tbody tr[data-row="1"]'));
     const emptyRow = table.querySelector('tbody tr[data-empty]');
-    const rowsPerPage = 10;
+    const rowsPerPage = 20;
     let currentPage = 1;
 
     function getFilteredRows() {

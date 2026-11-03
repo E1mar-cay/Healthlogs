@@ -137,7 +137,7 @@ $countStmt = $pdo->prepare("
 $countStmt->execute($params);
 $totalAppointments = (int)$countStmt->fetchColumn();
 
-$paginator = paginate($totalAppointments, 15);
+$paginator = paginate($totalAppointments, 20);
 
 $querySql = "
     SELECT a.*, hs.service_name, hs.service_code, hs.category AS service_category,

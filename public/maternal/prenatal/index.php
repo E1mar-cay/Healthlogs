@@ -34,7 +34,7 @@ if (!empty($clauses)) {
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM prenatal_visits v JOIN pregnancies pr ON pr.id = v.pregnancy_id JOIN patients p ON p.id = pr.patient_id $where");
 $countStmt->execute($params);
 $totalCount = (int)$countStmt->fetchColumn();
-$paginator = paginate($totalCount, 15);
+$paginator = paginate($totalCount, 20);
 
 $stmt = $pdo->prepare("
     SELECT v.*, p.first_name, p.last_name, p.contact_no, p.barangay,

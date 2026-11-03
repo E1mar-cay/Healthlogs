@@ -2060,7 +2060,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
   const medFilterBtns = document.querySelectorAll('.med-filter-btn');
   const medRows = Array.from(document.querySelectorAll('.med-row'));
   const medPagination = document.getElementById('medicineForecastPagination');
-  const medicineRowsPerPage = 10;
+  const medicineRowsPerPage = 20;
   let medicineCurrentPage = 1;
   let medicineFilter = 'all';
 
@@ -2358,7 +2358,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
   const logRows = Array.from(document.querySelectorAll('.log-row'));
   const noFilteredLogsRow = document.getElementById('noFilteredLogsRow');
   const modelLogsPagination = document.getElementById('modelLogsPagination');
-  const modelLogsPerPage = 10;
+  const modelLogsPerPage = 20;
   let modelLogsCurrentPage = 1;
   let modelLogsFilter = 'success';
 
