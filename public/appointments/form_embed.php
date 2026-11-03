@@ -50,6 +50,7 @@ foreach ($services as $s) {
   <meta charset="utf-8">
   <title>Schedule Appointment - HealthLogs</title>
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
 </head>
 <body class="bg-slate-50 p-4 font-sans text-slate-900">
@@ -247,5 +248,6 @@ foreach ($services as $s) {
     filterPatients();
   })();
   </script>
+  <script src="/HealthLogs/public/assets/js/card-icons.js"></script>
 </body>
 </html>

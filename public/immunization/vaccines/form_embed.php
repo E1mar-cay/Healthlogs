@@ -24,6 +24,7 @@ $title = $rec ? 'Edit Vaccine' : 'New Vaccine';
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
   <script src="/HealthLogs/public/assets/js/sweetalert2.all.min.js"></script>
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
 </head>
 <body class="bg-slate-50 p-4 text-slate-900">
   <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm max-w-3xl mx-auto">
@@ -61,5 +62,6 @@ $title = $rec ? 'Edit Vaccine' : 'New Vaccine';
       </div>
     </form>
   </div>
+  <script src="/HealthLogs/public/assets/js/card-icons.js"></script>
 </body>
 </html>

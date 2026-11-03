@@ -19,6 +19,8 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <script src="/HealthLogs/public/assets/js/chart.umd.min.js"></script>
   <script src="/HealthLogs/public/assets/js/sweetalert2.all.min.js"></script>
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
+  <script src="/HealthLogs/public/assets/js/card-icons.js" defer></script>
   <style>
 
     :root {

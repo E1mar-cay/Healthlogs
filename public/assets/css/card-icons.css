@@ -1,0 +1,22 @@
+.healthlogs-card {
+  position: relative;
+}
+
+.healthlogs-card-icon {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.625rem;
+  background: #ecfeff;
+  color: #0f766e;
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+
+.healthlogs-card-icon i {
+  line-height: 1;
+}

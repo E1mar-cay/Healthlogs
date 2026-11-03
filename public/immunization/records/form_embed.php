@@ -157,6 +157,7 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
   <script src="/HealthLogs/public/assets/js/sweetalert2.all.min.js"></script>
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
   <style>
     .dose-badge {
       display: inline-flex;
@@ -495,5 +496,6 @@ $title = $rec ? 'Edit Immunization Record' : 'Log Administered Vaccine Dose';
     updateLotOptions();
     updateChildProfile();
   </script>
+  <script src="/HealthLogs/public/assets/js/card-icons.js"></script>
 </body>
 </html>

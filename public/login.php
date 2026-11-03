@@ -35,6 +35,7 @@ $recaptchaSiteKey = Recaptcha::siteKey();
   <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoaded&render=explicit" async defer></script>
   <?php endif; ?>
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
   <style>
     
     :root {
@@ -467,5 +468,6 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       }
     })();
   </script>
+  <script src="/HealthLogs/public/assets/js/card-icons.js"></script>
 </body>
 </html>

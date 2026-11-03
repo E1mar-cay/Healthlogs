@@ -6,6 +6,7 @@
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
   <script src="/HealthLogs/public/assets/js/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
 </head>
 <body class="bg-slate-100 text-slate-900">
   <div class="min-h-screen flex">
@@ -37,5 +38,6 @@
       </section>
     </main>
   </div>
+  <script src="/HealthLogs/public/assets/js/card-icons.js"></script>
 </body>
 </html>
