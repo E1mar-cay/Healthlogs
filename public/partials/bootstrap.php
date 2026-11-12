@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../app/Core/FlashHelper.php';
 require_once __DIR__ . '/../../app/Core/Paginator.php';
 require_once __DIR__ . '/../../app/Core/ActivityLogger.php';
 require_once __DIR__ . '/../../app/Core/PatientClassifier.php';
+require_once __DIR__ . '/../../app/Core/ClinicalWorkflow.php';
 ActivityLogger::init($pdo);
 
 require_once __DIR__ . '/../../app/Core/SessionManager.php';
@@ -98,6 +99,7 @@ if (!function_exists('rbac_enforce')) {
             '/HealthLogs/public/patients/form.php' => ['admin', 'health_worker'],
             '/HealthLogs/public/patients/form_embed.php' => ['admin', 'health_worker'],
             '/HealthLogs/public/patients/save.php' => ['admin', 'health_worker'],
+            '/HealthLogs/public/patients/save_consultation.php' => ['admin', 'health_worker'],
             '/HealthLogs/public/patients/delete.php' => ['admin', 'health_worker'],
 
             '/HealthLogs/public/immunization/records/form.php' => ['admin', 'health_worker'],

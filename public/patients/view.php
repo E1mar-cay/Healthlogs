@@ -111,6 +111,36 @@ $aptStmt = $pdo->prepare("
 $aptStmt->execute([$id]);
 $appointments = $aptStmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Diagnosed Conditions & Allergies
+$condStmt = $pdo->prepare("
+    SELECT * FROM patient_conditions
+    WHERE patient_id = ?
+    ORDER BY diagnosed_on DESC, id DESC
+");
+$condStmt->execute([$id]);
+$patientConditions = $condStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$allergyStmt = $pdo->prepare("
+    SELECT * FROM patient_allergies
+    WHERE patient_id = ?
+    ORDER BY noted_on DESC, id DESC
+");
+$allergyStmt->execute([$id]);
+$patientAllergies = $allergyStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Active Medicines with FEFO Stock for Walk-In Consultation Dispensing
+$medsStmt = $pdo->query("
+    SELECT m.id, m.name, m.unit,
+           COALESCE(SUM(mt.quantity), 0) AS stock
+    FROM medicines m
+    JOIN medicine_batches mb ON mb.medicine_id = m.id AND mb.expiry_date >= CURDATE()
+    JOIN medicine_transactions mt ON mt.batch_id = mb.id
+    GROUP BY m.id, m.name, m.unit
+    HAVING stock > 0
+    ORDER BY m.name ASC
+");
+$availableMedicines = $medsStmt ? $medsStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
 // Handle print view
 if ($isPrintMode) {
     include __DIR__ . '/_print_chart.php';
@@ -133,12 +163,15 @@ require __DIR__ . '/../partials/header.php';
   </div>
   <div class="flex flex-wrap items-center gap-2">
     <a target="_blank" href="/HealthLogs/public/patients/view.php?id=<?= (int)$patient['id'] ?>&print=1" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
-      Print Patient Summary
+      <i class="fas fa-print text-slate-500"></i> Print Patient Summary
     </a>
-    <a href="/HealthLogs/public/appointments/index.php?patient_id=<?= (int)$patient['id'] ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition">
-      Schedule Appointment
+    <a href="/HealthLogs/public/appointments/index.php?patient_id=<?= (int)$patient['id'] ?>" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+      <i class="fas fa-calendar-plus text-teal-600"></i> Schedule Appointment
     </a>
     <?php if (can_manage_clinical_records()): ?>
+      <button type="button" id="consultationModalOpen" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition shadow-xs">
+        <i class="fas fa-stethoscope"></i> + Record Consultation / Diagnosis
+      </button>
       <button type="button" class="patient-modal-edit inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition" data-embed-url="/HealthLogs/public/patients/form_embed.php?id=<?= (int)$patient['id'] ?>">
         Edit Profile
       </button>
@@ -222,6 +255,63 @@ require __DIR__ . '/../partials/header.php';
     <div><dt class="text-slate-500">PWD</dt><dd class="font-medium text-slate-900 mt-0.5"><?= !empty($patient['is_pwd']) ? 'Yes' : 'No' ?></dd></div>
     <div><dt class="text-slate-500">Registered</dt><dd class="font-medium text-slate-900 mt-0.5"><?= date('M d, Y', strtotime($patient['created_at'])) ?></dd></div>
   </dl>
+
+  <div class="mt-5 pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+    <div>
+      <div class="font-semibold text-slate-800 mb-2 flex items-center justify-between">
+        <span><i class="fas fa-notes-medical text-teal-600 mr-1"></i> Diagnoses &amp; Medical Conditions (<?= count($patientConditions) ?>)</span>
+      </div>
+      <?php if (empty($patientConditions)): ?>
+        <p class="text-slate-400 italic">No diagnosed medical conditions on file.</p>
+      <?php else: ?>
+        <div class="space-y-1.5">
+          <?php foreach ($patientConditions as $cond): ?>
+            <div class="flex items-start justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200/80">
+              <div>
+                <span class="font-semibold text-slate-900"><?= h($cond['condition_name']) ?></span>
+                <?php if (!empty($cond['notes'])): ?>
+                  <span class="block text-[11px] text-slate-500 mt-0.5"><?= h($cond['notes']) ?></span>
+                <?php endif; ?>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase border <?= $cond['status'] === 'chronic' ? 'bg-amber-50 text-amber-800 border-amber-200' : ($cond['status'] === 'resolved' ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-teal-50 text-teal-800 border-teal-200') ?>">
+                  <?= h($cond['status']) ?>
+                </span>
+                <?php if (!empty($cond['diagnosed_on'])): ?>
+                  <span class="block text-[10px] text-slate-400 mt-0.5"><?= date('M d, Y', strtotime($cond['diagnosed_on'])) ?></span>
+                <?php endif; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </div>
+
+    <div>
+      <div class="font-semibold text-slate-800 mb-2 flex items-center justify-between">
+        <span><i class="fas fa-triangle-exclamation text-amber-600 mr-1"></i> Known Allergies (<?= count($patientAllergies) ?>)</span>
+      </div>
+      <?php if (empty($patientAllergies)): ?>
+        <p class="text-slate-400 italic">No known drug or food allergies recorded.</p>
+      <?php else: ?>
+        <div class="space-y-1.5">
+          <?php foreach ($patientAllergies as $allergy): ?>
+            <div class="flex items-start justify-between gap-2 p-2 rounded-lg bg-amber-50/50 border border-amber-200/80">
+              <div>
+                <span class="font-semibold text-slate-900"><?= h($allergy['allergen']) ?></span>
+                <?php if (!empty($allergy['reaction'])): ?>
+                  <span class="block text-[11px] text-slate-600 mt-0.5">Reaction: <?= h($allergy['reaction']) ?></span>
+                <?php endif; ?>
+              </div>
+              <?php if (!empty($allergy['noted_on'])): ?>
+                <span class="text-[10px] text-slate-400 shrink-0"><?= date('M d, Y', strtotime($allergy['noted_on'])) ?></span>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </div>
+  </div>
 </div>
 
 <?php
@@ -478,6 +568,138 @@ require __DIR__ . '/../partials/header.php';
   </div>
 </div>
 
+<!-- MODAL: RECORD WALK-IN CONSULTATION / DIAGNOSIS / ALLERGY -->
+<?php if (can_manage_clinical_records()): ?>
+<div id="consultationModal" class="fixed inset-0 z-[100] hidden print:hidden" aria-modal="true" role="dialog">
+  <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" id="consultationModalBackdrop"></div>
+  <div class="relative z-10 mx-auto mt-6 sm:mt-10 max-w-2xl px-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Record Clinical Consultation &amp; Diagnosis</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Patient: <strong><?= h($fullName) ?></strong> (#<?= (int)$patient['id'] ?>)</p>
+        </div>
+        <button type="button" id="consultationModalClose" class="text-slate-400 hover:text-slate-600 p-1"><i class="fas fa-times"></i></button>
+      </div>
+
+      <form method="post" action="/HealthLogs/public/patients/save_consultation.php" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+        <input type="hidden" name="patient_id" value="<?= (int)$patient['id'] ?>" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 uppercase mb-1">Visit Date &amp; Time</label>
+            <input type="datetime-local" name="visit_datetime" value="<?= date('Y-m-d\TH:i') ?>" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 uppercase mb-1">Consultation Type</label>
+            <select name="visit_type" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">
+              <option value="general">General Walk-In Consultation</option>
+              <option value="ncd">NCD / Chronic Check-up</option>
+              <option value="prenatal">Prenatal Check-up</option>
+              <option value="postnatal">Postnatal Check-up</option>
+              <option value="family_planning">Family Planning Counseling</option>
+              <option value="immunization">Immunization Assessment</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 uppercase mb-1">Chief Complaint / Consultation Reason</label>
+          <input type="text" name="reason" placeholder="e.g. Acute Upper Respiratory Infection, BP monitoring, Wound dressing..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 uppercase mb-1">Clinical Findings, Vitals &amp; Management Notes</label>
+          <textarea name="notes" rows="2" placeholder="e.g. BP 120/80, Temp 37.8°C. Advised oral hydration and rest..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"></textarea>
+        </div>
+
+        <!-- Optional Diagnosis / Medical Condition -->
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+          <div class="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+            <i class="fas fa-notes-medical text-teal-600 mr-1"></i> Add Diagnosed Condition (Optional — Updates Morbidity &amp; Seasonal Reports)
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block font-medium text-slate-600 mb-1">Disease / Condition Name</label>
+              <input type="text" name="condition_name" list="commonConditionsList" placeholder="e.g. Hypertension, Asthma, Acute Gastroenteritis..." class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+              <datalist id="commonConditionsList">
+                <option value="Hypertension"></option>
+                <option value="Diabetes Type 2"></option>
+                <option value="Asthma"></option>
+                <option value="Allergic Rhinitis"></option>
+                <option value="Arthritis"></option>
+                <option value="Migraine"></option>
+                <option value="Acute Upper Respiratory Infection"></option>
+                <option value="Acute Gastroenteritis"></option>
+                <option value="Urinary Tract Infection"></option>
+              </datalist>
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-1">Condition Status</label>
+              <select name="condition_status" class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white">
+                <option value="active">Active</option>
+                <option value="chronic">Chronic</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Allergy -->
+        <div class="p-3.5 rounded-xl bg-amber-50/40 border border-amber-200/80 space-y-2">
+          <div class="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+            <i class="fas fa-triangle-exclamation text-amber-600 mr-1"></i> Record New Allergy (Optional)
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-medium text-slate-600 mb-1">Allergen (Drug / Food)</label>
+              <input type="text" name="allergen" placeholder="e.g. Penicillin, Ibuprofen, Seafood..." class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+            </div>
+            <div>
+              <label class="block font-medium text-slate-600 mb-1">Reaction</label>
+              <input type="text" name="reaction" placeholder="e.g. Urticaria / rashes, mild angioedema..." class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Pharmacy Dispensing (FEFO) & Follow-up Date (Stacked cleanly) -->
+        <div class="space-y-3 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="sm:col-span-3 min-w-0">
+              <label class="block font-semibold text-slate-700 uppercase mb-1">Dispense Medicine from Pharmacy (FEFO)</label>
+              <select name="dispense_medicine_id" class="w-full min-w-0 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white truncate">
+                <option value="0">— No medicine dispensed —</option>
+                <?php foreach ($availableMedicines as $med): ?>
+                  <option value="<?= (int)$med['id'] ?>">
+                    <?= h($med['name']) ?> (<?= (int)$med['stock'] ?> <?= h($med['unit'] ?: 'units') ?> avail)
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="min-w-0">
+              <label class="block font-semibold text-slate-700 uppercase mb-1">Quantity</label>
+              <input type="number" name="dispense_quantity" min="0" max="500" value="0" placeholder="Qty" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" title="Quantity to dispense" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 uppercase mb-1">Follow-up Appointment Date (Optional)</label>
+            <input type="date" name="next_visit_date" min="<?= date('Y-m-d') ?>" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white" />
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" id="consultationModalCancel" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition">
+            <i class="fas fa-check mr-1"></i> Save Clinical Record
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <script>
 (function () {
   var modal = document.getElementById('patientFormModal');
@@ -509,5 +731,25 @@ require __DIR__ . '/../partials/header.php';
 
   if (backdrop) backdrop.addEventListener('click', closeModal);
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+  var consultModal = document.getElementById('consultationModal');
+  var consultOpen = document.getElementById('consultationModalOpen');
+  var consultClose = document.getElementById('consultationModalClose');
+  var consultCancel = document.getElementById('consultationModalCancel');
+  var consultBackdrop = document.getElementById('consultationModalBackdrop');
+
+  function closeConsultModal() {
+    if (!consultModal) return;
+    consultModal.classList.add('hidden');
+  }
+
+  if (consultOpen && consultModal) {
+    consultOpen.addEventListener('click', function () {
+      consultModal.classList.remove('hidden');
+    });
+  }
+  if (consultClose) consultClose.addEventListener('click', closeConsultModal);
+  if (consultCancel) consultCancel.addEventListener('click', closeConsultModal);
+  if (consultBackdrop) consultBackdrop.addEventListener('click', closeConsultModal);
 })();
 </script>

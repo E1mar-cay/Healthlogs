@@ -35,8 +35,6 @@ $csvOutput = function (string $filename, array $headers, array $rows): void {
     exit;
 };
 
-$consultationForecast = [];
-$admissionForecast = [];
 $seasonalDiseaseRows = [];
 $seasonalTopMonths = [];
 $seasonalDatasets = [];
@@ -52,74 +50,7 @@ $maleCounts = [];
 $femaleCounts = [];
 $barangayOptions = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
 
-// 1. Weekly Visits & Forecasting (Dynamic with Filters)
-try {
-    $weeklyWhere = ["1=1"];
-    $weeklyParams = [];
-    if ($fromDate !== '') {
-        $weeklyWhere[] = "DATE(v.visit_datetime) >= ?";
-        $weeklyParams[] = $fromDate;
-    } else {
-        $weeklyWhere[] = "v.visit_datetime >= DATE_SUB(CURDATE(), INTERVAL 140 DAY)";
-    }
-    if ($toDate !== '') {
-        $weeklyWhere[] = "DATE(v.visit_datetime) <= ?";
-        $weeklyParams[] = $toDate;
-    }
-    if ($barangayFilter !== '') {
-        $weeklyWhere[] = "p.barangay = ?";
-        $weeklyParams[] = $barangayFilter;
-    }
-    if (in_array($sexFilter, $validSex, true)) {
-        $weeklyWhere[] = "p.sex = ?";
-        $weeklyParams[] = $sexFilter;
-    }
-    if (in_array($ageGroupFilter, $validAgeGroups, true)) {
-        $weeklyWhere[] = $buildAgeWhere('p.birth_date') . " = ?";
-        $weeklyParams[] = $ageGroupFilter;
-    }
-
-    $weeklySql = "SELECT
-            YEARWEEK(v.visit_datetime, 1) AS week_key,
-            COUNT(*) AS total_visits,
-            SUM(CASE WHEN v.visit_type = 'general' THEN 1 ELSE 0 END) AS consultation_visits
-        FROM visits v
-        INNER JOIN patients p ON p.id = v.patient_id
-        WHERE " . implode(' AND ', $weeklyWhere) . "
-        GROUP BY YEARWEEK(v.visit_datetime, 1)
-        ORDER BY week_key ASC";
-    $weeklyStmt = $pdo->prepare($weeklySql);
-    $weeklyStmt->execute($weeklyParams);
-    $weeklyRows = $weeklyStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $consultationValues = array_map(fn($x) => (float)$x['consultation_visits'], $weeklyRows);
-    $admissionValues = array_map(fn($x) => (float)$x['total_visits'], $weeklyRows);
-
-    $simpleForecast = function (array $values, int $horizon = 4): array {
-        if (empty($values)) {
-            return [];
-        }
-        $recent = array_slice($values, -8);
-        $older = array_slice($values, -16, 8);
-        $recentAvg = count($recent) ? array_sum($recent) / count($recent) : 0.0;
-        $olderAvg = count($older) ? array_sum($older) / count($older) : $recentAvg;
-        $step = ($recentAvg - $olderAvg) / max(1, $horizon);
-
-        $rows = [];
-        for ($i = 1; $i <= $horizon; $i++) {
-            $rows[] = max(0.0, $recentAvg + ($step * $i));
-        }
-        return $rows;
-    };
-
-    $consultationForecast = $simpleForecast($consultationValues, 4);
-    $admissionForecast = $simpleForecast($admissionValues, 4);
-} catch (Throwable $e) {
-    $consultationForecast = [];
-    $admissionForecast = [];
-}
-
-// 2. Seasonal Diseases (Dynamic with Filters)
+// 1. Seasonal Diseases (Dynamic with Filters)
 try {
     $seasonalWhere = ["pc.diagnosed_on IS NOT NULL"];
     $seasonalParams = [];
@@ -828,7 +759,7 @@ require __DIR__ . '/partials/header.php';
     <div>
       <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold mb-1">Health Analytics &amp; Master Registries</div>
       <h1 class="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Reports &amp; Program Registers (Barangay Tangcul)</h1>
-      <p class="text-sm text-slate-500 mt-1">Official DOH Target Client Lists (TCL), demographic lifecourse cohorts, consultations, and epidemiological disease trends.</p>
+      <p class="text-sm text-slate-500 mt-1">Official Target Client Lists (TCL), demographic lifecourse cohorts, consultations, and epidemiological disease trends.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2.5">
       <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition">
@@ -845,7 +776,7 @@ require __DIR__ . '/partials/header.php';
         <i class="fas fa-folder-closed text-teal-600"></i>
         <span>Official Target Client Lists (TCL) By Health Program</span>
       </div>
-      <span class="text-[11px] text-slate-400">Department of Health Master Clinical Registries</span>
+      <span class="text-[11px] text-slate-400">Master Clinical Registries</span>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -978,7 +909,7 @@ require __DIR__ . '/partials/header.php';
         <i class="fas fa-layer-group text-[10px]"></i> RHU Priority Demographics
       </div>
       <div class="text-xl font-bold text-slate-900 tracking-tight">Number of Patients per Classification</div>
-      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Distribution of registered community members across DOH lifecourse stages and priority clinical cohorts (Total: <?= number_format($totalClassifiedPatients) ?> patients).</p>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Distribution of registered community members across lifecourse stages and priority clinical cohorts (Total: <?= number_format($totalClassifiedPatients) ?> patients).</p>
     </div>
     <div class="flex items-center gap-2 self-end sm:self-auto print:hidden">
       <button type="button" class="inline-flex items-center text-xs font-semibold text-slate-700 hover:text-slate-900 border border-slate-200 bg-white px-3 py-1.5 rounded-xl hover:bg-slate-50 transition shadow-2xs" onclick="printReportSection('section-patient-classification', 'Official Report: Patients by Classification')">
@@ -1320,47 +1251,21 @@ require __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<!-- Section: Forecasting -->
-<div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-100 print:shadow-none print:border print:border-slate-300 print:mb-6">
-  <div class="flex items-center justify-between">
-    <div>
-      <div class="text-lg font-semibold text-slate-900">Admission / Consultation Forecasting</div>
-      <p class="text-sm text-slate-500 mt-0.5">Trend projections based on historic weekly clinic visits.</p>
+<!-- Section: Predictive Analytics Handoff -->
+<?php if (can_view_forecasting()): ?>
+<div class="mt-6 bg-white p-4 sm:p-5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+  <div>
+    <div class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+      <i class="fas fa-chart-line text-teal-600"></i>
+      <span>ARIMA &amp; Holt-Winters Predictive Forecasting</span>
     </div>
+    <p class="text-xs text-slate-500 mt-0.5">View 3-month medicine demand projections, consultation volume forecasts, and seasonal confidence intervals in the dedicated Forecasting module.</p>
   </div>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-4">
-    <div class="rounded-xl border border-slate-200 bg-slate-50/75 p-4">
-      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Consultation Forecast (Next 4 Weeks)</div>
-      <div class="mt-3 space-y-2 text-sm text-slate-700">
-        <?php if (!empty($consultationForecast)): ?>
-          <?php foreach ($consultationForecast as $i => $value): ?>
-            <div class="flex justify-between border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0">
-              <span>Week <?= h((string)($i + 1)) ?></span>
-              <strong><?= h(number_format($value, 1)) ?> consultations</strong>
-            </div>
-          <?php endforeach; ?>
-        <?php else: ?>
-          <div class="text-slate-400">Not enough consultation records for forecasting.</div>
-        <?php endif; ?>
-      </div>
-    </div>
-    <div class="rounded-xl border border-slate-200 bg-slate-50/75 p-4">
-      <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Total Visit / Intake Forecast (Next 4 Weeks)</div>
-      <div class="mt-3 space-y-2 text-sm text-slate-700">
-        <?php if (!empty($admissionForecast)): ?>
-          <?php foreach ($admissionForecast as $i => $value): ?>
-            <div class="flex justify-between border-b border-slate-200/60 pb-1.5 last:border-b-0 last:pb-0">
-              <span>Week <?= h((string)($i + 1)) ?></span>
-              <strong><?= h(number_format($value, 1)) ?> visits</strong>
-            </div>
-          <?php endforeach; ?>
-        <?php else: ?>
-          <div class="text-slate-400">Not enough visit records for forecasting.</div>
-        <?php endif; ?>
-      </div>
-    </div>
-  </div>
+  <a href="/HealthLogs/public/forecast.php" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition shrink-0">
+    Open Forecasting Engine <i class="fas fa-arrow-right text-[10px]"></i>
+  </a>
 </div>
+<?php endif; ?>
 
 <!-- Section: Seasonal Disease & Peak Months -->
 <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">

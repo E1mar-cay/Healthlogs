@@ -37,10 +37,19 @@ $rows = $stmt->fetchAll();
       <h1 class="text-xl font-semibold text-slate-900 mt-1">Vaccine catalog</h1>
       <p class="text-sm text-slate-500 mt-1">Manage vaccine names, codes, and required doses.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/HealthLogs/public/immunization/records/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+        <i class="fas fa-syringe text-teal-600"></i> Records
+      </a>
+      <a href="/HealthLogs/public/immunization/schedules/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+        <i class="fas fa-calendar-check text-slate-500"></i> Schedules
+      </a>
+      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-teal-800 text-xs font-semibold transition">
+        <i class="fas fa-table-list text-teal-600"></i> Child TCL
+      </a>
       <?php if (can_manage_clinical_records()): ?>
         <button type="button" id="vaccineModalOpenNew" data-embed-url="/HealthLogs/public/immunization/vaccines/form_embed.php"
-          class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+          class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer">
           <i class="fas fa-plus mr-1"></i> New Vaccine
         </button>
       <?php else: ?>

@@ -118,7 +118,10 @@ function ncd_risk_badge(?string $r): string {
       <p class="text-sm text-slate-500 mt-1">Manage registered patients and review their diagnoses, risk, and latest visits.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/HealthLogs/public/ncd/visits/index.php" class="inline-flex items-center px-3.5 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition">
+      <a href="/HealthLogs/public/ncd/tcl.php" class="inline-flex items-center px-3.5 py-2 rounded-xl border border-teal-200 bg-teal-50/70 text-teal-800 hover:bg-teal-100 text-xs font-semibold transition">
+        <i class="fas fa-table-list mr-1.5 text-xs text-teal-600"></i> Target Client List (TCL)
+      </a>
+      <a href="/HealthLogs/public/ncd/visits/index.php" class="inline-flex items-center px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition">
         <i class="fas fa-heart-pulse mr-1.5 text-xs"></i> Visits &amp; Vitals
       </a>
       <?php if (can_manage_clinical_records()): ?>

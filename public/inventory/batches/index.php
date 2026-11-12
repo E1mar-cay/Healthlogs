@@ -108,17 +108,29 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!-- Expiry Monitoring Notice Banners -->
 <?php if ($kpiStats['expired_stock'] > 0): ?>
-  <div class="mb-3 bg-slate-50 border border-slate-200 rounded p-3 flex items-start gap-3">
-    <div class="text-slate-500 mt-0.5 shrink-0">
-      <i class="fas fa-ban text-sm"></i>
+  <div class="mb-3 bg-rose-50/70 border border-rose-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-start gap-3 min-w-0">
+      <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+        <i class="fas fa-ban text-xs"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-sm font-bold text-rose-900"><?= number_format($kpiStats['expired_stock']) ?> expired units still in stock across batches</div>
+        <p class="text-xs text-rose-700 mt-0.5">Blocked from patient issuance. Write off expired stock to quarantine and clear active expiry alerts.</p>
+      </div>
     </div>
-    <div class="flex-1 min-w-0">
-      <div class="text-sm font-semibold text-slate-700"><?= number_format($kpiStats['expired']) ?> expired batches</div>
-      <p class="text-xs text-slate-600 mt-0.5"><?= number_format($kpiStats['expired_stock']) ?> units blocked from issuance</p>
+    <div class="flex items-center gap-2 shrink-0">
+      <a href="?expiry_status=expired&availability=in_stock" class="px-3 py-1.5 rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 text-xs font-semibold transition">
+        Review Expired Stock
+      </a>
+      <?php if (can_manage_clinical_records()): ?>
+        <form method="post" action="/HealthLogs/public/inventory/batches/write_off_expired.php" class="inline" data-confirm="Quarantine and write off all <?= number_format($kpiStats['expired_stock']) ?> expired units from physical inventory? Every batch disposal will be recorded in the Medicine Audit Trail." data-confirm-title="Write Off All Expired Stock" data-confirm-cta="Yes, write off all">
+          <input type="hidden" name="write_off_all" value="1" />
+          <button type="submit" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition shadow-xs">
+            <i class="fas fa-trash-can mr-1 text-[10px]"></i> Write Off All Expired
+          </button>
+        </form>
+      <?php endif; ?>
     </div>
-    <a href="?expiry_status=expired" class="px-2.5 py-1 rounded border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-medium transition shrink-0">
-      View
-    </a>
   </div>
 <?php endif; ?>
 
@@ -295,7 +307,11 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
               <!-- Issuance Status -->
               <td class="px-4 py-3 whitespace-nowrap">
-                <?php if ($classification['is_expired']): ?>
+                <?php if ($classification['is_expired'] && $onHand <= 0): ?>
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200" title="Expired stock has been written off or depleted">
+                    <i class="fas fa-check-double text-[10px] text-slate-500"></i> Written Off (0)
+                  </span>
+                <?php elseif ($classification['is_expired']): ?>
                   <span class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200" title="Expired stock is blocked from issuance">
                     <i class="fas fa-lock text-[10px]"></i> Barred
                   </span>

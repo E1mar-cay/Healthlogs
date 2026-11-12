@@ -521,10 +521,17 @@ require __DIR__ . '/../partials/header.php';
           <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Clinical Outcome & Management Notes</label>
           <textarea name="clinical_notes" rows="3" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="e.g. Service successfully rendered. Patient vitals stable. Prescribed maintenance medicines. Advised on follow-up in 1 month..."></textarea>
         </div>
+        <label class="flex items-start gap-2.5 p-3 rounded-xl bg-teal-50/60 border border-teal-200/80 cursor-pointer text-xs text-slate-700">
+          <input type="checkbox" name="open_program" value="1" checked class="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+          <span>
+            <strong class="font-semibold text-slate-900 block">Open Clinical Program Record after completing</strong>
+            <span class="text-[11px] text-slate-500">Automatically jump to the patient's Maternal TCL, Child Immunization TCL, Family Planning, NCD, or Clinical Profile to log detailed vitals/doses.</span>
+          </span>
+        </label>
         <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
           <button type="button" class="close-complete px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition">Dismiss</button>
           <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white text-xs font-semibold transition">
-            <i class="fas fa-check mr-1"></i> Mark as Completed
+            <i class="fas fa-check mr-1"></i> Complete Encounter
           </button>
         </div>
       </form>

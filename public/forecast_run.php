@@ -11,88 +11,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 ob_start();
 
-function load_daily_series(PDO $pdo, string $seriesKey, int $days = 84): array
+function load_daily_series(PDO $pdo, string $seriesKey, int $days = 180): array
 {
-    if ($seriesKey === 'visits_total') {
-        $sql = "SELECT DATE(v_date) AS day_key, COUNT(*) AS value
-                FROM (
-                    SELECT visit_datetime AS v_date FROM visits
-                    UNION ALL
-                    SELECT visit_datetime AS v_date FROM prenatal_visits
-                    UNION ALL
-                    SELECT visit_datetime AS v_date FROM postnatal_visits
-                    UNION ALL
-                    SELECT CAST(administered_on AS DATETIME) AS v_date FROM immunization_records
-                    UNION ALL
-                    SELECT CAST(visit_date AS DATETIME) AS v_date FROM fp_visits
-                    UNION ALL
-                    SELECT CAST(visit_date AS DATETIME) AS v_date FROM ncd_visits
-                ) all_v
-                WHERE DATE(v_date) <= CURDATE()
-                  AND v_date >= DATE_SUB((
-                      SELECT COALESCE(MAX(DATE(v2)), CURDATE()) FROM (
-                          SELECT visit_datetime AS v2 FROM visits WHERE DATE(visit_datetime) <= CURDATE()
-                          UNION ALL
-                          SELECT visit_datetime AS v2 FROM prenatal_visits WHERE DATE(visit_datetime) <= CURDATE()
-                          UNION ALL
-                          SELECT visit_datetime AS v2 FROM postnatal_visits WHERE DATE(visit_datetime) <= CURDATE()
-                          UNION ALL
-                          SELECT CAST(administered_on AS DATETIME) AS v2 FROM immunization_records WHERE administered_on <= CURDATE()
-                          UNION ALL
-                          SELECT CAST(visit_date AS DATETIME) AS v2 FROM fp_visits WHERE visit_date <= CURDATE()
-                          UNION ALL
-                          SELECT CAST(visit_date AS DATETIME) AS v2 FROM ncd_visits WHERE visit_date <= CURDATE()
-                      ) latest_v
-                  ), INTERVAL ? DAY)
-                GROUP BY DATE(v_date)
-                ORDER BY day_key ASC";
-        $params = [$days];
-    } elseif ($seriesKey === 'medicine_total') {
-        $sql = "SELECT DATE(transaction_datetime) AS day_key, COALESCE(SUM(ABS(quantity)), 0) AS value
-                FROM medicine_transactions
-                WHERE transaction_type = 'dispensed'
-                  AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed'), INTERVAL ? DAY)
-                GROUP BY DATE(transaction_datetime)
-                ORDER BY day_key ASC";
-        $params = [$days];
-    } else {
-        $sql = "SELECT series_date AS day_key, value
-                FROM timeseries_daily
-                WHERE series_key = ?
-                  AND series_date >= DATE_SUB((SELECT COALESCE(MAX(series_date), CURDATE()) FROM timeseries_daily WHERE series_key = ?), INTERVAL ? DAY)
-                ORDER BY day_key ASC";
-        $params = [$seriesKey, $seriesKey, $days];
-    }
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-
-    $rows = $stmt->fetchAll();
-    if (empty($rows)) {
-        return [];
-    }
-
-    $valuesByDate = [];
-    foreach ($rows as $row) {
-        $valuesByDate[$row['day_key']] = (float)$row['value'];
-    }
-
-    $start = new DateTime(array_key_first($valuesByDate));
-    $end = new DateTime(array_key_last($valuesByDate));
-    $filled = [];
-
-    while ($start <= $end) {
-        $day = $start->format('Y-m-d');
-        $filled[] = [
-            'date' => $day,
-            'value' => $valuesByDate[$day] ?? 0.0,
-        ];
-        $start->modify('+1 day');
-    }
-
-    return $filled;
+    return ArimaService::loadSeries($pdo, $seriesKey, $days);
 }
 
+/**
+ * Exponentially-Weighted Seasonal + Damped Trend Snapshot (Holt-Winters Fast Approximation).
+ * Uses recency-weighted day-of-week seasonality, damped trend progression across the horizon,
+ * horizon-widening statistical confidence bounds, and damped MAPE evaluation.
+ */
 function build_fast_forecast(array $history, string $seriesKey, int $horizon): array
 {
     if (count($history) < 14) {
@@ -100,47 +28,131 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
     }
 
     $metricLabel = $seriesKey === 'visits_total' ? 'visits' : 'medicine units';
-    $recentHistory = array_slice($history, -56);
-    $weekdayBuckets = array_fill(0, 7, []);
+    $recentHistory = array_slice($history, -min(84, count($history)));
+    $n = count($recentHistory);
 
-    foreach ($recentHistory as $row) {
+    $allValues = array_column($recentHistory, 'value');
+    $overallAverage = array_sum($allValues) / max($n, 1);
+
+    // 1. Exponentially-weighted weekday buckets (more recent weeks carry higher weight: 0.85^weeksAgo)
+    $weekdayWeightedSum = array_fill(0, 7, 0.0);
+    $weekdayWeightTotal = array_fill(0, 7, 0.0);
+    $weekdayRawValues = array_fill(0, 7, []);
+
+    foreach ($recentHistory as $idx => $row) {
         $weekday = (int)(new DateTime($row['date']))->format('w');
-        $weekdayBuckets[$weekday][] = (float)$row['value'];
+        $daysAgo = ($n - 1) - $idx;
+        $weeksAgo = $daysAgo / 7.0;
+        $weight = pow(0.85, $weeksAgo);
+        $val = (float)$row['value'];
+
+        $weekdayWeightedSum[$weekday] += $val * $weight;
+        $weekdayWeightTotal[$weekday] += $weight;
+        $weekdayRawValues[$weekday][] = $val;
     }
 
-    $overallAverage = array_sum(array_column($recentHistory, 'value')) / max(count($recentHistory), 1);
+    $weekdayBaseline = [];
+    for ($w = 0; $w < 7; $w++) {
+        $weekdayBaseline[$w] = $weekdayWeightTotal[$w] > 0
+            ? ($weekdayWeightedSum[$w] / $weekdayWeightTotal[$w])
+            : $overallAverage;
+    }
+
+    // Normalize seasonal indices around recent 28-day level
+    $recent28 = array_slice($allValues, -min(28, $n));
+    $prev28 = array_slice($allValues, -min(56, $n), max(1, min(28, $n - count($recent28))));
+    $recent28Avg = array_sum($recent28) / max(count($recent28), 1);
+    $prev28Avg = !empty($prev28) ? (array_sum($prev28) / count($prev28)) : $recent28Avg;
+
+    $meanWeekdayBaseline = array_sum($weekdayBaseline) / 7.0;
+    $seasonalFactors = [];
+    for ($w = 0; $w < 7; $w++) {
+        $seasonalFactors[$w] = $meanWeekdayBaseline > 0
+            ? ($weekdayBaseline[$w] / $meanWeekdayBaseline)
+            : 1.0;
+    }
+
+    // Damped daily trend slope derived from 28-day momentum (capped to prevent runaway extrapolation)
+    $rawDailySlope = ($recent28Avg - $prev28Avg) / 28.0;
+    $maxDailySlope = $recent28Avg * 0.008; // max ±0.8% per day
+    $dailySlope = max(-$maxDailySlope, min($maxDailySlope, $rawDailySlope));
+    $dampingPhi = 0.95;
+
+    // 2. Compute in-sample fitted values and error metrics (MAE, RMSE, damped MAPE)
+    $absErrors = [];
+    $squaredErrors = [];
+    $pctErrors = [];
+    $mapeFloor = max(1.0, $overallAverage * 0.25);
+
+    foreach ($recentHistory as $idx => $row) {
+        $w = (int)(new DateTime($row['date']))->format('w');
+        // Local 21-day level around $idx for realistic in-sample seasonal fit
+        $winStart = max(0, $idx - 14);
+        $winSlice = array_slice($allValues, $winStart, min(21, $n - $winStart));
+        $localLevel = !empty($winSlice) ? (array_sum($winSlice) / count($winSlice)) : $overallAverage;
+
+        $fitted = max(0.0, $localLevel * $seasonalFactors[$w]);
+        $actual = (float)$row['value'];
+        $err = $actual - $fitted;
+        $absErrors[] = abs($err);
+        $squaredErrors[] = $err * $err;
+        if ($actual > 0) {
+            $pctErrors[] = (abs($err) / max($actual, $mapeFloor)) * 100.0;
+        }
+    }
+
+    $mae = $n > 0 ? array_sum($absErrors) / $n : 0.0;
+    $rmse = $n > 0 ? sqrt(array_sum($squaredErrors) / $n) : 1.0;
+    $mape = !empty($pctErrors) ? array_sum($pctErrors) / count($pctErrors) : 0.0;
+    $accuracyRating = $mape < 10.0 ? 'High Accuracy' : ($mape < 20.0 ? 'Good Fit' : ($mape < 50.0 ? 'Reasonable' : 'High Variance'));
+
+    // 3. Project forward $horizon days from today (or latest history date if in future)
     $todayDt = new DateTime(date('Y-m-d'));
     $lastHistoryDt = new DateTime(end($history)['date']);
     $lastDate = $lastHistoryDt > $todayDt ? $lastHistoryDt : $todayDt;
+
     $forecast = [];
+    $cumulativeDampedTrend = 0.0;
 
-    for ($i = 1; $i <= $horizon; $i++) {
-        $forecastDate = (clone $lastDate)->modify('+' . $i . ' day');
+    for ($h = 1; $h <= $horizon; $h++) {
+        $forecastDate = (clone $lastDate)->modify('+' . $h . ' day');
         $weekday = (int)$forecastDate->format('w');
-        $bucket = $weekdayBuckets[$weekday];
-        $value = !empty($bucket) ? array_sum($bucket) / count($bucket) : $overallAverage;
 
-        $spread = !empty($bucket) ? max($bucket) - min($bucket) : max(1.0, $overallAverage * 0.25);
+        $cumulativeDampedTrend += $dailySlope * pow($dampingPhi, $h);
+        $projectedLevel = max(0.0, $recent28Avg + $cumulativeDampedTrend);
+        $pointValue = max(0.0, $projectedLevel * $seasonalFactors[$weekday]);
+
+        // Horizon-widening 80% prediction interval based on weekday std dev & RMSE
+        $wVals = $weekdayRawValues[$weekday];
+        $wMean = !empty($wVals) ? (array_sum($wVals) / count($wVals)) : $overallAverage;
+        $wVar = 0.0;
+        foreach ($wVals as $wv) {
+            $wVar += ($wv - $wMean) ** 2;
+        }
+        $wStd = count($wVals) > 1 ? sqrt($wVar / (count($wVals) - 1)) : $rmse;
+        $blendedSe = (0.6 * $wStd) + (0.4 * $rmse);
+        $horizonMargin = 1.28 * $blendedSe * sqrt(1.0 + (($h - 1) * 0.03));
+
         $forecast[] = [
             'date' => $forecastDate->format('Y-m-d'),
-            'value' => round(max(0, $value), 2),
-            'lower' => round(max(0, $value - ($spread * 0.35)), 2),
-            'upper' => round(max(0, $value + ($spread * 0.35)), 2),
+            'value' => round($pointValue, 2),
+            'lower' => round(max(0.0, $pointValue - $horizonMargin), 2),
+            'upper' => round(max(0.0, $pointValue + $horizonMargin), 2),
         ];
     }
 
-    $recent30 = array_slice($history, -30);
-    $previous30 = array_slice($history, -60, 30);
+    $recent30 = array_slice($history, -min(30, count($history)));
+    $previous30 = array_slice($history, -min(60, count($history)), max(1, min(30, count($history) - count($recent30))));
     $recentAverage = array_sum(array_column($recent30, 'value')) / max(count($recent30), 1);
     $previousAverage = !empty($previous30)
         ? array_sum(array_column($previous30, 'value')) / count($previous30)
         : $recentAverage;
     $forecastAverage = array_sum(array_column($forecast, 'value')) / max(count($forecast), 1);
 
-    if ($previousAverage <= 0) {
+    if ($recentAverage <= 0) {
         $trendLabel = $forecastAverage > 0 ? 'higher than recent activity' : 'close to recent activity';
     } else {
-        $ratio = ($forecastAverage - $previousAverage) / $previousAverage;
+        $ratio = ($forecastAverage - $recentAverage) / $recentAverage;
         if ($ratio > 0.05) {
             $trendLabel = 'higher than recent activity';
         } elseif ($ratio < -0.05) {
@@ -153,28 +165,6 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
     $peakValue = max(array_column($forecast, 'value'));
     $peakIndex = array_search($peakValue, array_column($forecast, 'value'), true);
     $peakDate = $forecast[$peakIndex]['date'];
-
-    // Calculate in-sample fitted values and error metrics (MAE, RMSE, MAPE)
-    $absErrors = [];
-    $squaredErrors = [];
-    $pctErrors = [];
-    foreach ($recentHistory as $row) {
-        $w = (int)(new DateTime($row['date']))->format('w');
-        $bucket = $weekdayBuckets[$w];
-        $fitted = !empty($bucket) ? array_sum($bucket) / count($bucket) : $overallAverage;
-        $actual = (float)$row['value'];
-        $err = $actual - $fitted;
-        $absErrors[] = abs($err);
-        $squaredErrors[] = $err * $err;
-        if ($actual > 0) {
-            $pctErrors[] = (abs($err) / $actual) * 100.0;
-        }
-    }
-    $n = count($recentHistory);
-    $mae = $n > 0 ? array_sum($absErrors) / $n : 0.0;
-    $rmse = $n > 0 ? sqrt(array_sum($squaredErrors) / $n) : 0.0;
-    $mape = !empty($pctErrors) ? array_sum($pctErrors) / count($pctErrors) : 0.0;
-    $accuracyRating = $mape < 10.0 ? 'High Accuracy' : ($mape < 20.0 ? 'Good Fit' : ($mape < 50.0 ? 'Reasonable' : 'High Variance'));
 
     $metrics = [
         'mae' => round($mae, 4),
@@ -194,19 +184,19 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
         'summary' => [
             'intro' => 'Expected average for the next ' . $horizon . ' days is about ' . number_format($forecastAverage, 1) . ' ' . $metricLabel . ' per day, which is ' . $trendLabel . '.',
             'metric_label' => $metricLabel,
-            'recent_average' => $recentAverage,
-            'previous_average' => $previousAverage,
-            'forecast_average' => $forecastAverage,
-            'expected_total' => array_sum(array_column($forecast, 'value')),
-            'peak_value' => $peakValue,
+            'recent_average' => round($recentAverage, 2),
+            'previous_average' => round($previousAverage, 2),
+            'forecast_average' => round($forecastAverage, 2),
+            'expected_total' => round(array_sum(array_column($forecast, 'value')), 2),
+            'peak_value' => round($peakValue, 2),
             'peak_date' => $peakDate,
             'trend_label' => $trendLabel,
             'history_points' => count($history),
-            'training_points' => count($recentHistory),
+            'training_points' => $n,
             'history_start' => $history[0]['date'],
             'history_end' => end($history)['date'],
-            'model' => 'fast_weekday_average',
-            'seasonal_model' => '7-day pattern',
+            'model' => 'Holt-Winters Seasonal',
+            'seasonal_model' => '7-day weighted pattern',
             'mae' => $metrics['mae'],
             'rmse' => $metrics['rmse'],
             'mape' => $metrics['mape'],
@@ -276,7 +266,7 @@ try {
             $diagnostics['mape'] = $metrics['mape'] ?? null;
         }
     }
-    
+
     ForecastLogger::logSuccess(
         $runId,
         (int)($data['summary']['history_points'] ?? 0),
@@ -295,4 +285,3 @@ try {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }
-

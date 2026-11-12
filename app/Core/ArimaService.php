@@ -3,14 +3,15 @@
 class ArimaService
 {
     /**
-     * Load daily historical series for a given series key.
+     * Load daily historical series for a given series key, de-duplicated across program tables
+     * and trimmed of any trailing unseeded sparse gaps.
      */
     public static function loadSeries(PDO $pdo, string $seriesKey, int $days = 180): array
     {
         if ($seriesKey === 'visits_total') {
             $sql = "SELECT DATE(v_date) AS day_key, COUNT(*) AS value
                     FROM (
-                        SELECT visit_datetime AS v_date FROM visits
+                        SELECT visit_datetime AS v_date FROM visits WHERE visit_type = 'general'
                         UNION ALL
                         SELECT visit_datetime AS v_date FROM prenatal_visits
                         UNION ALL
@@ -25,7 +26,7 @@ class ArimaService
                     WHERE DATE(v_date) <= CURDATE()
                       AND v_date >= DATE_SUB((
                           SELECT COALESCE(MAX(DATE(v2)), CURDATE()) FROM (
-                              SELECT visit_datetime AS v2 FROM visits WHERE DATE(visit_datetime) <= CURDATE()
+                              SELECT visit_datetime AS v2 FROM visits WHERE visit_type = 'general' AND DATE(visit_datetime) <= CURDATE()
                               UNION ALL
                               SELECT visit_datetime AS v2 FROM prenatal_visits WHERE DATE(visit_datetime) <= CURDATE()
                               UNION ALL
@@ -47,15 +48,15 @@ class ArimaService
                     FROM medicine_transactions
                     WHERE transaction_type = 'dispensed'
                       AND medicine_id = ?
-                      AND transaction_datetime >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                      AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed' AND medicine_id = ?), INTERVAL ? DAY)
                     GROUP BY DATE(transaction_datetime)
                     ORDER BY day_key ASC";
-            $params = [$medId, $days];
+            $params = [$medId, $medId, $days];
         } elseif ($seriesKey === 'medicine_total') {
             $sql = "SELECT DATE(transaction_datetime) AS day_key, COALESCE(SUM(ABS(quantity)), 0) AS value
                     FROM medicine_transactions
                     WHERE transaction_type = 'dispensed'
-                      AND transaction_datetime >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                      AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed'), INTERVAL ? DAY)
                     GROUP BY DATE(transaction_datetime)
                     ORDER BY day_key ASC";
             $params = [$days];
@@ -63,9 +64,9 @@ class ArimaService
             $sql = "SELECT series_date AS day_key, value
                     FROM timeseries_daily
                     WHERE series_key = ?
-                      AND series_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                      AND series_date >= DATE_SUB((SELECT COALESCE(MAX(series_date), CURDATE()) FROM timeseries_daily WHERE series_key = ?), INTERVAL ? DAY)
                     ORDER BY day_key ASC";
-            $params = [$seriesKey, $days];
+            $params = [$seriesKey, $seriesKey, $days];
         }
 
         $stmt = $pdo->prepare($sql);
@@ -103,6 +104,47 @@ class ArimaService
                 'value' => $valuesByDate[$day] ?? 0.0,
             ];
             $start->modify('+1 day');
+        }
+
+        return self::trimTrailingSparseGap($filled);
+    }
+
+    /**
+     * If a seeded historical dataset ends on a specific date and only isolated test records
+     * exist days/weeks later (creating a trailing block of zeros), trim the trailing sparse gap
+     * so ARIMA and seasonal models train on continuous clinical telemetry.
+     */
+    public static function trimTrailingSparseGap(array $filled): array
+    {
+        $n = count($filled);
+        if ($n < 45) {
+            return $filled;
+        }
+
+        $nonZeroVals = array_values(array_filter(array_column($filled, 'value'), fn($v) => $v > 0));
+        if (count($nonZeroVals) < 30) {
+            return $filled;
+        }
+        sort($nonZeroVals);
+        $medianActive = $nonZeroVals[(int)floor(count($nonZeroVals) * 0.5)];
+        if ($medianActive < 5.0) {
+            return $filled;
+        }
+
+        $threshold = $medianActive * 0.45;
+        $cutIdx = $n - 1;
+
+        while ($cutIdx >= 30) {
+            $windowSlice = array_slice($filled, max(0, $cutIdx - 6), 7);
+            $rolling7Avg = array_sum(array_column($windowSlice, 'value')) / count($windowSlice);
+            if ($rolling7Avg >= $threshold && $filled[$cutIdx]['value'] >= $threshold) {
+                break;
+            }
+            $cutIdx--;
+        }
+
+        if ($cutIdx >= 30 && $cutIdx < ($n - 3)) {
+            return array_slice($filled, 0, $cutIdx + 1);
         }
 
         return $filled;
@@ -157,6 +199,7 @@ class ArimaService
         $absErrors = [];
         $sqErrors = [];
         $pctErrors = [];
+        $mapeFloor = max(1.0, $overallMean * 0.25);
 
         for ($i = 0; $i < $n; $i++) {
             $w = (int)(new DateTime($history[$i]['date']))->format('w');
@@ -175,7 +218,7 @@ class ArimaService
             $absErrors[] = abs($err);
             $sqErrors[] = $err * $err;
             if ($values[$i] > 0) {
-                $pctErrors[] = (abs($err) / $values[$i]) * 100.0;
+                $pctErrors[] = (abs($err) / max($values[$i], $mapeFloor)) * 100.0;
             }
         }
 
@@ -197,6 +240,13 @@ class ArimaService
         $todayDt = new DateTime(date('Y-m-d'));
         $lastHistoryDt = new DateTime(end($history)['date']);
         $lastDate = $lastHistoryDt > $todayDt ? $lastHistoryDt : $todayDt;
+
+        $recentWindow = min(30, $n);
+        $recent30 = array_slice($values, -$recentWindow);
+        $previous30 = array_slice($values, -min(60, $n), max(1, min(30, $n - $recentWindow)));
+        $recentAvg = array_sum($recent30) / max(count($recent30), 1);
+        $previousAvg = !empty($previous30) ? (array_sum($previous30) / count($previous30)) : $recentAvg;
+
         $lastVal = end($values);
         $lastDiff = ($n > 1) ? ($values[$n - 1] - $values[$n - 2]) : 0.0;
 
@@ -210,14 +260,14 @@ class ArimaService
             $seasonalComponent = $weekdayMeans[$w] - $overallMean;
 
             $currentDiff = $phi * $currentDiff;
-            // Mean reversion factor to prevent runaway trends
-            $meanReversion = 0.05 * ($overallMean - $currentVal);
-            $pointForecast = max(0.0, $currentVal + $currentDiff + $meanReversion + (0.5 * $seasonalComponent));
+            // Mean reversion toward recent 30-day level + weekday seasonality
+            $meanReversion = 0.18 * ($recentAvg - $currentVal);
+            $pointForecast = max(0.0, $currentVal + $currentDiff + $meanReversion + (0.65 * $seasonalComponent));
 
             // Standard error expands with horizon
-            $hSe = max(1.0, $rmse * sqrt(1.0 + (($h - 1) * 0.06)));
-            $lowerBound = max(0.0, round($pointForecast - (1.96 * $hSe), 2));
-            $upperBound = round($pointForecast + (1.96 * $hSe), 2);
+            $hSe = max(1.0, $rmse * sqrt(1.0 + (($h - 1) * 0.04)));
+            $lowerBound = max(0.0, round($pointForecast - (1.28 * $hSe), 2));
+            $upperBound = round($pointForecast + (1.28 * $hSe), 2);
             $valRounded = round($pointForecast, 2);
 
             $forecast[] = [
@@ -227,23 +277,16 @@ class ArimaService
                 'upper' => $upperBound,
             ];
 
-            $currentVal = $pointForecast;
+            $currentVal = $recentAvg + (0.7 * ($pointForecast - $recentAvg));
         }
 
-        // Summary metrics
-        $recentWindow = min(30, $n);
-        $recent30 = array_slice($values, -$recentWindow);
-        $previous30 = array_slice($values, -min(60, $n), max(1, min(30, $n - $recentWindow)));
-
-        $recentAvg = array_sum($recent30) / max(count($recent30), 1);
-        $previousAvg = !empty($previous30) ? (array_sum($previous30) / count($previous30)) : $recentAvg;
         $forecastAvg = array_sum(array_column($forecast, 'value')) / max(count($forecast), 1);
         $totalForecast = array_sum(array_column($forecast, 'value'));
 
-        if ($previousAvg <= 0) {
+        if ($recentAvg <= 0) {
             $trendLabel = ($forecastAvg > 0) ? 'higher than recent activity' : 'close to recent activity';
         } else {
-            $ratio = ($forecastAvg - $previousAvg) / $previousAvg;
+            $ratio = ($forecastAvg - $recentAvg) / $recentAvg;
             if ($ratio > 0.05) {
                 $trendLabel = 'higher than recent activity';
             } elseif ($ratio < -0.05) {

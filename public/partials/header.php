@@ -15,7 +15,6 @@ if ($isActive('/HealthLogs/public/patients') || $isActive('/HealthLogs/public/ap
   || $isActive('/HealthLogs/public/maternal')
   || $isActive('/HealthLogs/public/family_planning')
   || $isActive('/HealthLogs/public/ncd')
-  || $isActive('/HealthLogs/public/tb')
 ) {
   $breadcrumbSection = 'Programs';
 } elseif (
@@ -677,87 +676,292 @@ if ($isActive('/HealthLogs/public/patients') || $isActive('/HealthLogs/public/ap
 
             <?php
               $headerNearExpiryAlerts = class_exists('ActivityLogger') ? ActivityLogger::getNearExpiryAlerts(60) : [];
+              $headerLowStockAlerts = class_exists('ActivityLogger') && method_exists('ActivityLogger', 'getLowStockAlerts') ? ActivityLogger::getLowStockAlerts() : [];
               $headerExpiredAlerts = class_exists('ActivityLogger') ? ActivityLogger::getExpiredStockAlerts() : [];
-              $headerTotalAlerts = count($headerNearExpiryAlerts) + count($headerExpiredAlerts);
+
+              $nearCount = count($headerNearExpiryAlerts);
+              $lowCount = count($headerLowStockAlerts);
+              $expCount = count($headerExpiredAlerts);
+              $headerTotalAlerts = $nearCount + $lowCount + $expCount;
+
+              $defaultNotifTab = 'near';
+              if ($nearCount > 0) {
+                  $defaultNotifTab = 'near';
+              } elseif ($lowCount > 0) {
+                  $defaultNotifTab = 'low';
+              } elseif ($expCount > 0) {
+                  $defaultNotifTab = 'expired';
+              }
+
+              $sigPayload = [
+                  'near' => array_map(fn($r) => $r['id'] . ':' . $r['on_hand'], $headerNearExpiryAlerts),
+                  'low' => array_map(fn($r) => $r['medicine_id'] . ':' . $r['on_hand'], $headerLowStockAlerts),
+                  'exp' => array_map(fn($r) => $r['id'] . ':' . $r['on_hand'], $headerExpiredAlerts),
+              ];
+              $headerAlertSignature = substr(md5(json_encode($sigPayload)), 0, 12);
+
+              $primaryExpiredAlerts = array_slice($headerExpiredAlerts, 0, 4);
+              $legacyExpiredAlerts = array_slice($headerExpiredAlerts, 4);
+              $canManageInventoryNotif = function_exists('can_manage_clinical_records') && can_manage_clinical_records();
             ?>
 
-            <!-- Expiry Notification Bell -->
+            <!-- Expiry & Stock Notification Bell -->
             <div class="relative">
-              <button id="expiryNotificationBtn" type="button" class="relative inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white/90 hover:bg-slate-100 text-slate-700 transition shadow-xs" title="Medicine Expiry Alerts">
+              <button id="expiryNotificationBtn" type="button" data-alert-sig="<?= h($headerAlertSignature) ?>" class="relative inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white/90 hover:bg-slate-100 text-slate-700 transition shadow-xs" title="Medicine & Inventory Alerts">
                 <i class="fas fa-bell text-sm text-slate-600"></i>
                 <?php if ($headerTotalAlerts > 0): ?>
-                  <span class="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[10px] font-bold text-white <?= count($headerExpiredAlerts) > 0 ? 'bg-rose-600' : 'bg-amber-500' ?> shadow-xs">
+                  <span id="expiryNotificationBadge" data-default-bg="<?= $expCount > 0 ? 'bg-rose-600' : 'bg-amber-500' ?>" class="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[10px] font-bold text-white <?= $expCount > 0 ? 'bg-rose-600' : 'bg-amber-500' ?> shadow-xs transition-colors">
                     <?= $headerTotalAlerts ?>
                   </span>
                 <?php endif; ?>
               </button>
 
               <!-- Notifications Dropdown Panel -->
-              <div id="expiryNotificationDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200/90 py-2 z-50 overflow-hidden text-xs">
-                <div class="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="font-bold text-slate-900 text-sm">Medicine Expiry Alerts</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold <?= count($headerExpiredAlerts) > 0 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800' ?>">
+              <div id="expiryNotificationDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-[410px] rounded-2xl bg-white shadow-2xl border border-slate-200/90 z-50 overflow-hidden text-xs">
+                <!-- Header -->
+                <div class="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="font-bold text-slate-900 text-sm truncate">Inventory Alerts</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 <?= $expCount > 0 ? 'bg-rose-100 text-rose-800' : ($headerTotalAlerts > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') ?>">
                       <?= $headerTotalAlerts ?> Alert<?= $headerTotalAlerts !== 1 ? 's' : '' ?>
                     </span>
                   </div>
-                  <a href="/HealthLogs/public/inventory/batches/index.php" class="text-teal-600 hover:text-teal-700 font-semibold text-[11px]">View All</a>
+                  <div class="flex items-center gap-2.5 shrink-0">
+                    <?php if ($headerTotalAlerts > 0): ?>
+                      <button type="button" id="markNotifSeenBtn" class="text-slate-500 hover:text-teal-700 font-semibold text-[11px] inline-flex items-center gap-1 transition" title="Dim notification badge until new alerts occur">
+                        <i class="fas fa-check-double text-[10px]"></i> <span id="markNotifSeenLabel">Mark Seen</span>
+                      </button>
+                    <?php endif; ?>
+                    <a href="/HealthLogs/public/inventory/batches/index.php" class="text-teal-600 hover:text-teal-700 font-semibold text-[11px]">View All</a>
+                  </div>
                 </div>
 
-                <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                <?php if ($headerTotalAlerts > 0): ?>
+                  <!-- Category Filter Tabs -->
+                  <div class="grid grid-cols-3 gap-1 p-1.5 bg-slate-100/80 border-b border-slate-200/70 text-[11px] font-semibold">
+                    <button type="button" data-notif-tab="near" class="notif-tab-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg transition <?= $defaultNotifTab === 'near' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900' ?>">
+                      <i class="fas fa-hourglass-half text-amber-500 text-[10px]"></i>
+                      <span>Near Expiry</span>
+                      <span class="px-1.5 py-0.2 rounded-full text-[10px] <?= $nearCount > 0 ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-200/70 text-slate-500' ?>"><?= $nearCount ?></span>
+                    </button>
+                    <button type="button" data-notif-tab="low" class="notif-tab-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg transition <?= $defaultNotifTab === 'low' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900' ?>">
+                      <i class="fas fa-boxes-stacked text-orange-500 text-[10px]"></i>
+                      <span>Low Stock</span>
+                      <span class="px-1.5 py-0.2 rounded-full text-[10px] <?= $lowCount > 0 ? 'bg-orange-100 text-orange-800 font-bold' : 'bg-slate-200/70 text-slate-500' ?>"><?= $lowCount ?></span>
+                    </button>
+                    <button type="button" data-notif-tab="expired" class="notif-tab-btn flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg transition <?= $defaultNotifTab === 'expired' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900' ?>">
+                      <i class="fas fa-ban text-rose-500 text-[10px]"></i>
+                      <span>Expired</span>
+                      <span class="px-1.5 py-0.2 rounded-full text-[10px] <?= $expCount > 0 ? 'bg-rose-100 text-rose-800 font-bold' : 'bg-slate-200/70 text-slate-500' ?>"><?= $expCount ?></span>
+                    </button>
+                  </div>
+                <?php endif; ?>
+
+                <div class="max-h-80 overflow-y-auto">
                   <?php if ($headerTotalAlerts === 0): ?>
                     <div class="p-6 text-center text-slate-400">
                       <i class="fas fa-circle-check text-2xl text-emerald-500 mb-2 block"></i>
-                      <div class="font-semibold text-slate-700">All Batches Valid</div>
-                      <div class="text-[11px] text-slate-400 mt-0.5">No batches approaching expiration or expired.</div>
+                      <div class="font-semibold text-slate-700">All Inventory Healthy</div>
+                      <div class="text-[11px] text-slate-400 mt-0.5">No near-expiry, low-stock, or expired batches found.</div>
                     </div>
                   <?php else: ?>
-                    <!-- Expired Batches (Barred) -->
-                    <?php foreach ($headerExpiredAlerts as $exp): ?>
-                      <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=expired" class="p-3 hover:bg-rose-50/50 flex items-start gap-2.5 transition block">
-                        <div class="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
-                          <i class="fas fa-ban text-xs"></i>
+                    <!-- TAB 1: Near Expiry Batches (FEFO Priority) -->
+                    <div data-notif-panel="near" class="divide-y divide-slate-100 <?= $defaultNotifTab === 'near' ? '' : 'hidden' ?>">
+                      <?php if ($nearCount === 0): ?>
+                        <div class="p-6 text-center text-slate-400">
+                          <i class="fas fa-check-circle text-xl text-emerald-500 mb-1.5 block"></i>
+                          <div class="font-semibold text-slate-700">No Near-Expiry Batches</div>
+                          <div class="text-[11px] text-slate-400 mt-0.5">No active batches are expiring within the next 60 days.</div>
                         </div>
-                        <div class="min-w-0 flex-1">
-                          <div class="flex items-center justify-between gap-1">
-                            <span class="font-bold text-slate-900 truncate"><?= h($exp['medicine_name']) ?></span>
-                            <span class="text-[10px] font-bold text-rose-600 uppercase shrink-0">Expired</span>
-                          </div>
-                          <div class="text-[11px] text-slate-500 mt-0.5">
-                            Batch <span class="font-mono"><?= h($exp['batch_no']) ?></span> • <span class="font-semibold text-rose-600"><?= number_format($exp['on_hand']) ?> <?= h($exp['unit'] ?? 'units') ?></span>
-                          </div>
-                          <div class="text-[10px] text-rose-500 mt-0.5">
-                            Expired <?= $exp['days_expired'] ?>d ago (<?= date('M d, Y', strtotime($exp['expiry_date'])) ?>) • <em>Barred from issuance</em>
-                          </div>
+                      <?php else: ?>
+                        <div class="px-3.5 py-2 bg-amber-50/70 border-b border-amber-100 flex items-center justify-between text-[11px] text-amber-800">
+                          <span><i class="fas fa-bolt mr-1 text-amber-600"></i> Prioritize these batches first (FEFO)</span>
+                          <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=near_expiry" class="font-bold text-amber-900 hover:underline">Filter List</a>
                         </div>
-                      </a>
-                    <?php endforeach; ?>
+                        <?php foreach ($headerNearExpiryAlerts as $near): ?>
+                          <div class="p-3 hover:bg-amber-50/40 flex items-start gap-2.5 transition">
+                            <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                              <i class="fas fa-triangle-exclamation text-xs"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                              <div class="flex items-center justify-between gap-1">
+                                <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=near_expiry&q=<?= urlencode($near['batch_no']) ?>" class="font-bold text-slate-900 hover:text-teal-700 truncate">
+                                  <?= h($near['medicine_name']) ?>
+                                </a>
+                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-[10px] font-bold text-amber-800 uppercase shrink-0">
+                                  <?= (int)$near['days_remaining'] === 0 ? 'Expires Today' : (int)$near['days_remaining'] . 'd left' ?>
+                                </span>
+                              </div>
+                              <div class="text-[11px] text-slate-500 mt-0.5">
+                                Batch <span class="font-mono font-semibold text-slate-700"><?= h($near['batch_no']) ?></span> • <span class="font-semibold text-slate-800"><?= number_format($near['on_hand']) ?> <?= h($near['unit'] ?? 'units') ?></span>
+                              </div>
+                              <div class="flex items-center justify-between gap-2 mt-1">
+                                <span class="text-[10px] text-amber-700">
+                                  Expires <?= date('M d, Y', strtotime($near['expiry_date'])) ?> • <em>FEFO Priority</em>
+                                </span>
+                                <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=near_expiry&q=<?= urlencode($near['batch_no']) ?>" class="text-[10px] font-bold text-teal-700 hover:text-teal-800 shrink-0">
+                                  Inspect →
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </div>
 
-                    <!-- Near Expiry Batches -->
-                    <?php foreach ($headerNearExpiryAlerts as $near): ?>
-                      <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=near_expiry" class="p-3 hover:bg-amber-50/50 flex items-start gap-2.5 transition block">
-                        <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
-                          <i class="fas fa-triangle-exclamation text-xs"></i>
+                    <!-- TAB 2: Low Stock Medicines -->
+                    <div data-notif-panel="low" class="divide-y divide-slate-100 <?= $defaultNotifTab === 'low' ? '' : 'hidden' ?>">
+                      <?php if ($lowCount === 0): ?>
+                        <div class="p-6 text-center text-slate-400">
+                          <i class="fas fa-check-circle text-xl text-emerald-500 mb-1.5 block"></i>
+                          <div class="font-semibold text-slate-700">Stock Levels Healthy</div>
+                          <div class="text-[11px] text-slate-400 mt-0.5">All medicines are above their minimum reorder level.</div>
                         </div>
-                        <div class="min-w-0 flex-1">
-                          <div class="flex items-center justify-between gap-1">
-                            <span class="font-bold text-slate-900 truncate"><?= h($near['medicine_name']) ?></span>
-                            <span class="text-[10px] font-bold text-amber-600 uppercase shrink-0"><?= $near['days_remaining'] ?>d left</span>
-                          </div>
-                          <div class="text-[11px] text-slate-500 mt-0.5">
-                            Batch <span class="font-mono"><?= h($near['batch_no']) ?></span> • <span class="font-semibold text-slate-700"><?= number_format($near['on_hand']) ?> <?= h($near['unit'] ?? 'units') ?></span>
-                          </div>
-                          <div class="text-[10px] text-amber-600 mt-0.5">
-                            Expires <?= date('M d, Y', strtotime($near['expiry_date'])) ?> • <em>Prioritize for FEFO</em>
-                          </div>
+                      <?php else: ?>
+                        <div class="px-3.5 py-2 bg-orange-50/70 border-b border-orange-100 flex items-center justify-between text-[11px] text-orange-800">
+                          <span><i class="fas fa-arrow-trend-down mr-1 text-orange-600"></i> At or below minimum reorder threshold</span>
+                          <a href="/HealthLogs/public/inventory/medicines/index.php?stock=low" class="font-bold text-orange-900 hover:underline">View Low Stock</a>
                         </div>
-                      </a>
-                    <?php endforeach; ?>
+                        <?php foreach ($headerLowStockAlerts as $low): ?>
+                          <?php $isZeroStock = (int)$low['on_hand'] <= 0; ?>
+                          <div class="p-3 hover:bg-orange-50/40 flex items-start gap-2.5 transition">
+                            <div class="w-7 h-7 rounded-lg <?= $isZeroStock ? 'bg-rose-100 text-rose-600' : 'bg-orange-100 text-orange-600' ?> flex items-center justify-center shrink-0 mt-0.5">
+                              <i class="fas <?= $isZeroStock ? 'fa-circle-exclamation' : 'fa-box-open' ?> text-xs"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                              <div class="flex items-center justify-between gap-1">
+                                <a href="/HealthLogs/public/inventory/medicines/index.php?q=<?= urlencode($low['medicine_name']) ?>" class="font-bold text-slate-900 hover:text-teal-700 truncate">
+                                  <?= h($low['medicine_name']) ?>
+                                </a>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 <?= $isZeroStock ? 'bg-rose-100 text-rose-800' : 'bg-orange-100 text-orange-800' ?>">
+                                  <?= $isZeroStock ? 'Out of Stock' : 'Low Stock' ?>
+                                </span>
+                              </div>
+                              <div class="text-[11px] text-slate-600 mt-0.5">
+                                Available: <span class="font-bold <?= $isZeroStock ? 'text-rose-600' : 'text-orange-700' ?>"><?= number_format($low['on_hand']) ?> <?= h($low['unit'] ?? 'units') ?></span>
+                                • Reorder Level: <span class="font-semibold text-slate-700"><?= number_format($low['reorder_level']) ?></span>
+                              </div>
+                              <div class="flex items-center justify-between gap-2 mt-1">
+                                <span class="text-[10px] text-slate-400">Excludes any expired batches</span>
+                                <a href="/HealthLogs/public/inventory/batches/index.php?q=<?= urlencode($low['medicine_name']) ?>" class="text-[10px] font-bold text-teal-700 hover:text-teal-800 shrink-0">
+                                  Restock Batch →
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </div>
+
+                    <!-- TAB 3: Expired Batches (Quarantined / Needs Write-Off) -->
+                    <div data-notif-panel="expired" class="divide-y divide-slate-100 <?= $defaultNotifTab === 'expired' ? '' : 'hidden' ?>">
+                      <?php if ($expCount === 0): ?>
+                        <div class="p-6 text-center text-slate-400">
+                          <i class="fas fa-check-circle text-xl text-emerald-500 mb-1.5 block"></i>
+                          <div class="font-semibold text-slate-700">No Unresolved Expired Stock</div>
+                          <div class="text-[11px] text-slate-400 mt-0.5">All expired batches have been written off from physical inventory.</div>
+                        </div>
+                      <?php else: ?>
+                        <!-- Bulk Write-Off Action Bar -->
+                        <div class="px-3.5 py-2 bg-rose-50/80 border-b border-rose-100 flex items-center justify-between gap-2">
+                          <span class="text-[11px] text-rose-800 font-medium">
+                            <i class="fas fa-shield-halved mr-1 text-rose-600"></i> <?= $expCount ?> expired batch<?= $expCount !== 1 ? 'es' : '' ?> barred from issuance
+                          </span>
+                          <?php if ($canManageInventoryNotif): ?>
+                            <form method="post" action="/HealthLogs/public/inventory/batches/write_off_expired.php" class="inline shrink-0" data-confirm="Write off and dispose all <?= $expCount ?> expired batches from physical stock? Each disposal will be recorded in the Medicine Audit Trail." data-confirm-title="Write Off All Expired Batches" data-confirm-cta="Yes, write off all">
+                              <input type="hidden" name="write_off_all" value="1" />
+                              <button type="submit" class="px-2 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold transition shadow-2xs">
+                                <i class="fas fa-trash-can mr-1"></i> Write Off All (<?= $expCount ?>)
+                              </button>
+                            </form>
+                          <?php else: ?>
+                            <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=expired&availability=in_stock" class="text-[11px] font-bold text-rose-800 hover:underline shrink-0">Review All</a>
+                          <?php endif; ?>
+                        </div>
+
+                        <?php foreach ($primaryExpiredAlerts as $exp): ?>
+                          <div class="p-3 hover:bg-rose-50/40 flex items-start gap-2.5 transition">
+                            <div class="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+                              <i class="fas fa-ban text-xs"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                              <div class="flex items-center justify-between gap-1">
+                                <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=expired&q=<?= urlencode($exp['batch_no']) ?>" class="font-bold text-slate-900 hover:text-rose-700 truncate">
+                                  <?= h($exp['medicine_name']) ?>
+                                </a>
+                                <span class="text-[10px] font-bold text-rose-600 uppercase shrink-0">Expired</span>
+                              </div>
+                              <div class="text-[11px] text-slate-500 mt-0.5">
+                                Batch <span class="font-mono font-semibold text-slate-700"><?= h($exp['batch_no']) ?></span> • <span class="font-semibold text-rose-600"><?= number_format($exp['on_hand']) ?> <?= h($exp['unit'] ?? 'units') ?></span>
+                              </div>
+                              <div class="flex items-center justify-between gap-2 mt-1">
+                                <span class="text-[10px] text-rose-500">
+                                  Expired <?= (int)$exp['days_expired'] ?>d ago (<?= date('M d, Y', strtotime($exp['expiry_date'])) ?>)
+                                </span>
+                                <?php if ($canManageInventoryNotif): ?>
+                                  <form method="post" action="/HealthLogs/public/inventory/batches/write_off_expired.php" class="inline shrink-0" data-confirm="Write off <?= number_format($exp['on_hand']) ?> <?= h($exp['unit'] ?? 'units') ?> of expired <?= h($exp['medicine_name']) ?> (Batch <?= h($exp['batch_no']) ?>)?" data-confirm-title="Write Off Expired Batch" data-confirm-cta="Yes, write off">
+                                    <input type="hidden" name="batch_id" value="<?= (int)$exp['id'] ?>" />
+                                    <button type="submit" class="px-2 py-0.5 rounded border border-rose-200 bg-white hover:bg-rose-600 hover:text-white text-rose-600 text-[10px] font-bold transition">
+                                      Write Off
+                                    </button>
+                                  </form>
+                                <?php endif; ?>
+                              </div>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
+
+                        <?php if (!empty($legacyExpiredAlerts)): ?>
+                          <div class="bg-slate-50/70">
+                            <button type="button" id="toggleLegacyExpiredBtn" class="w-full px-3.5 py-2 text-left text-[11px] font-semibold text-slate-600 hover:text-slate-900 flex items-center justify-between transition">
+                              <span><i class="fas fa-layer-group mr-1.5 text-slate-400"></i> Show <?= count($legacyExpiredAlerts) ?> older expired batch<?= count($legacyExpiredAlerts) !== 1 ? 'es' : '' ?></span>
+                              <i id="toggleLegacyExpiredIcon" class="fas fa-chevron-down text-[10px] text-slate-400 transition-transform"></i>
+                            </button>
+                            <div id="legacyExpiredList" class="hidden divide-y divide-slate-100 border-t border-slate-100">
+                              <?php foreach ($legacyExpiredAlerts as $exp): ?>
+                                <div class="p-3 hover:bg-rose-50/40 flex items-start gap-2.5 transition">
+                                  <div class="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+                                    <i class="fas fa-ban text-xs"></i>
+                                  </div>
+                                  <div class="min-w-0 flex-1">
+                                    <div class="flex items-center justify-between gap-1">
+                                      <a href="/HealthLogs/public/inventory/batches/index.php?expiry_status=expired&q=<?= urlencode($exp['batch_no']) ?>" class="font-bold text-slate-900 hover:text-rose-700 truncate">
+                                        <?= h($exp['medicine_name']) ?>
+                                      </a>
+                                      <span class="text-[10px] font-bold text-rose-600 uppercase shrink-0">Expired</span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">
+                                      Batch <span class="font-mono font-semibold text-slate-700"><?= h($exp['batch_no']) ?></span> • <span class="font-semibold text-rose-600"><?= number_format($exp['on_hand']) ?> <?= h($exp['unit'] ?? 'units') ?></span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2 mt-1">
+                                      <span class="text-[10px] text-rose-500">
+                                        Expired <?= (int)$exp['days_expired'] ?>d ago (<?= date('M d, Y', strtotime($exp['expiry_date'])) ?>)
+                                      </span>
+                                      <?php if ($canManageInventoryNotif): ?>
+                                        <form method="post" action="/HealthLogs/public/inventory/batches/write_off_expired.php" class="inline shrink-0" data-confirm="Write off <?= number_format($exp['on_hand']) ?> <?= h($exp['unit'] ?? 'units') ?> of expired <?= h($exp['medicine_name']) ?> (Batch <?= h($exp['batch_no']) ?>)?" data-confirm-title="Write Off Expired Batch" data-confirm-cta="Yes, write off">
+                                          <input type="hidden" name="batch_id" value="<?= (int)$exp['id'] ?>" />
+                                          <button type="submit" class="px-2 py-0.5 rounded border border-rose-200 bg-white hover:bg-rose-600 hover:text-white text-rose-600 text-[10px] font-bold transition">
+                                            Write Off
+                                          </button>
+                                        </form>
+                                      <?php endif; ?>
+                                    </div>
+                                  </div>
+                                </div>
+                              <?php endforeach; ?>
+                            </div>
+                          </div>
+                        <?php endif; ?>
+                      <?php endif; ?>
+                    </div>
                   <?php endif; ?>
                 </div>
 
-                <div class="p-2 border-t border-slate-100 bg-slate-50 text-center">
-                  <a href="/HealthLogs/public/inventory/audit_trail.php" class="text-slate-600 hover:text-slate-900 font-semibold text-[11px] block py-1">
+                <div class="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between px-3.5">
+                  <a href="/HealthLogs/public/inventory/batches/index.php" class="text-slate-600 hover:text-slate-900 font-semibold text-[11px] py-1">
+                    <i class="fas fa-boxes-stacked mr-1 text-slate-500"></i> Manage Batches
+                  </a>
+                  <a href="/HealthLogs/public/inventory/audit_trail.php" class="text-slate-600 hover:text-slate-900 font-semibold text-[11px] py-1">
                     <i class="fas fa-clipboard-check mr-1 text-teal-600"></i> Open Medicine Audit Trail
                   </a>
                 </div>
@@ -784,16 +988,84 @@ if ($isActive('/HealthLogs/public/patients') || $isActive('/HealthLogs/public/ap
       <script>
       (function() {
         const notifBtn = document.getElementById('expiryNotificationBtn');
+        const notifBadge = document.getElementById('expiryNotificationBadge');
         const notifDropdown = document.getElementById('expiryNotificationDropdown');
+        const markSeenBtn = document.getElementById('markNotifSeenBtn');
+        const markSeenLabel = document.getElementById('markNotifSeenLabel');
+        const alertSig = notifBtn ? notifBtn.getAttribute('data-alert-sig') : '';
+
+        function applySeenState(seen) {
+          if (!notifBadge) return;
+          const defaultBg = notifBadge.getAttribute('data-default-bg') || 'bg-rose-600';
+          if (seen) {
+            notifBadge.classList.remove('bg-rose-600', 'bg-amber-500', 'text-white');
+            notifBadge.classList.add('bg-slate-200', 'text-slate-600');
+            if (markSeenLabel) markSeenLabel.textContent = 'Seen';
+          } else {
+            notifBadge.classList.remove('bg-slate-200', 'text-slate-600');
+            notifBadge.classList.add(defaultBg, 'text-white');
+            if (markSeenLabel) markSeenLabel.textContent = 'Mark Seen';
+          }
+        }
+
+        if (alertSig && localStorage.getItem('hl_seen_alert_sig') === alertSig) {
+          applySeenState(true);
+        }
+
+        if (markSeenBtn && alertSig) {
+          markSeenBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            localStorage.setItem('hl_seen_alert_sig', alertSig);
+            applySeenState(true);
+          });
+        }
+
         if (notifBtn && notifDropdown) {
           notifBtn.addEventListener('click', function(e) {
             e.stopPropagation();
+            const isOpening = notifDropdown.classList.contains('hidden');
             notifDropdown.classList.toggle('hidden');
+            if (isOpening && alertSig) {
+              localStorage.setItem('hl_seen_alert_sig', alertSig);
+              applySeenState(true);
+            }
           });
           document.addEventListener('click', function(e) {
             if (!notifDropdown.contains(e.target) && !notifBtn.contains(e.target)) {
               notifDropdown.classList.add('hidden');
             }
+          });
+        }
+
+        // Notification Dropdown Category Tabs
+        const tabBtns = document.querySelectorAll('[data-notif-tab]');
+        const tabPanels = document.querySelectorAll('[data-notif-panel]');
+        tabBtns.forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const targetTab = btn.getAttribute('data-notif-tab');
+            tabBtns.forEach(function(b) {
+              const active = b.getAttribute('data-notif-tab') === targetTab;
+              b.classList.toggle('bg-white', active);
+              b.classList.toggle('text-slate-900', active);
+              b.classList.toggle('shadow-2xs', active);
+              b.classList.toggle('text-slate-600', !active);
+            });
+            tabPanels.forEach(function(p) {
+              p.classList.toggle('hidden', p.getAttribute('data-notif-panel') !== targetTab);
+            });
+          });
+        });
+
+        // Collapsible legacy expired batches inside dropdown
+        const toggleLegacyBtn = document.getElementById('toggleLegacyExpiredBtn');
+        const legacyList = document.getElementById('legacyExpiredList');
+        const toggleLegacyIcon = document.getElementById('toggleLegacyExpiredIcon');
+        if (toggleLegacyBtn && legacyList) {
+          toggleLegacyBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const hidden = legacyList.classList.toggle('hidden');
+            if (toggleLegacyIcon) toggleLegacyIcon.classList.toggle('rotate-180', !hidden);
           });
         }
 

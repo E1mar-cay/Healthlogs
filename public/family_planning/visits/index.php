@@ -52,6 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'recorded_by' => $recorded_by,
             ]);
 
+            $fpVisitId = (int)$pdo->lastInsertId();
+            if ($method_prescribed !== '' && $quantity > 0) {
+                ClinicalWorkflow::dispenseMedicineFEFO(
+                    $pdo,
+                    $method_prescribed,
+                    $quantity,
+                    "FP-VISIT-{$fpVisitId}",
+                    "Family Planning Dispensing ({$method_prescribed})"
+                );
+            }
+
             // Auto-schedule an SMS reminder if next appointment date is provided
             if ($next_appointment_date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $next_appointment_date)) {
                 $cStmt = $pdo->prepare("SELECT patient_id, client_code FROM fp_records WHERE id = ?");

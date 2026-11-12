@@ -24,29 +24,31 @@ warnings.filterwarnings("ignore", message="No supported index is available")
 
 
 def compute_evaluation_metrics(actual, fitted):
-    """Compute MAE, RMSE, and MAPE error evaluation metrics."""
+    """Compute MAE, RMSE, and damped MAPE error evaluation metrics."""
     actual = np.asarray(actual, dtype=float)
     fitted = np.asarray(fitted, dtype=float)
-    
+
     # Clip fitted values at zero since negative visits or items do not exist
     fitted = np.maximum(0.0, fitted)
-    
+
     errors = actual - fitted
     abs_errors = np.abs(errors)
     squared_errors = errors ** 2
-    
+
     n = len(actual)
     mae = float(np.mean(abs_errors)) if n > 0 else 0.0
     rmse = float(np.sqrt(np.mean(squared_errors))) if n > 0 else 0.0
-    
-    # MAPE: avoid division by zero by evaluating on non-zero actual points
+
+    # Damped MAPE: prevent single 1-visit outlier days from inflating MAPE by 2000%+
     non_zero = actual > 0
     if np.any(non_zero):
-        mape = float(np.mean(abs_errors[non_zero] / actual[non_zero]) * 100.0)
+        mean_val = float(np.mean(actual[non_zero]))
+        denom_floor = max(1.0, mean_val * 0.25)
+        denom = np.maximum(actual[non_zero], denom_floor)
+        mape = float(np.mean(abs_errors[non_zero] / denom) * 100.0)
     else:
         mape = 0.0 if np.all(fitted == 0) else 100.0
-        
-    # Interpret MAPE for qualitative assessment
+
     if mape < 10.0:
         accuracy_rating = "High Accuracy"
     elif mape < 20.0:
@@ -76,12 +78,43 @@ def get_connection():
     )
 
 
+def trim_trailing_sparse_gap(series: pd.Series) -> pd.Series:
+    """Trim trailing unseeded sparse/partial days so ARIMA does not anchor to an incomplete final day."""
+    recent = series.tail(min(len(series), 180))
+    n = len(series)
+    if len(recent) < 45:
+        return series
+
+    non_zero = recent[recent > 0]
+    if len(non_zero) < 30:
+        return series
+
+    median_active = float(non_zero.median())
+    if median_active < 5.0:
+        return series
+
+    threshold = median_active * 0.45
+    rolling_7 = series.rolling(window=7, min_periods=1).mean()
+
+    cut_idx = n - 1
+    vals = series.values
+    r_vals = rolling_7.values
+    while cut_idx >= (n - len(recent) + 30):
+        if r_vals[cut_idx] >= threshold and vals[cut_idx] >= threshold:
+            break
+        cut_idx -= 1
+
+    if 30 <= cut_idx < n - 1:
+        return series.iloc[: cut_idx + 1]
+    return series
+
+
 def load_series(series_key):
     if series_key == "visits_total":
         sql = """
             SELECT DATE(v_date) AS series_date, COUNT(*) AS value
             FROM (
-                SELECT visit_datetime AS v_date FROM visits
+                SELECT visit_datetime AS v_date FROM visits WHERE visit_type = 'general'
                 UNION ALL
                 SELECT visit_datetime AS v_date FROM prenatal_visits
                 UNION ALL
@@ -133,7 +166,7 @@ def load_series(series_key):
     series = series.reindex(full_index, fill_value=0.0)
     series.index.name = "series_date"
 
-    return series
+    return trim_trailing_sparse_gap(series)
 
 
 def forecast(series, horizon):
@@ -143,17 +176,17 @@ def forecast(series, horizon):
         training_series,
         seasonal=seasonal,
         m=7 if seasonal else 1,
+        d=0,
+        D=1 if seasonal else 0,
         error_action="ignore",
         suppress_warnings=True,
         stepwise=True,
         approximation=True,
         max_p=3,
         max_q=3,
-        max_d=2,
         max_P=2,
         max_Q=2,
-        max_D=1,
-        with_intercept="auto",
+        with_intercept=True,
     )
 
     preds, conf_int = model.predict(n_periods=horizon, return_conf_int=True, alpha=0.2)
@@ -193,10 +226,10 @@ def build_summary(series_key, series, dates, preds, conf_int, model, training_po
     else:
         previous_avg = recent_avg
 
-    if previous_avg <= 0:
+    if recent_avg <= 0:
         change_ratio = 0.0 if forecast_avg <= 0 else 1.0
     else:
-        change_ratio = (forecast_avg - previous_avg) / previous_avg
+        change_ratio = (forecast_avg - recent_avg) / recent_avg
 
     if change_ratio > 0.05:
         trend_label = "higher than recent activity"
@@ -222,9 +255,9 @@ def build_summary(series_key, series, dates, preds, conf_int, model, training_po
     forecast_rows = [
         {
             "date": d.date().isoformat(),
-            "value": float(v),
-            "lower": ci[0],
-            "upper": ci[1],
+            "value": round(float(v), 2),
+            "lower": round(ci[0], 2),
+            "upper": round(ci[1], 2),
         }
         for d, v, ci in zip(dates, preds, conf_int)
     ]
@@ -232,11 +265,11 @@ def build_summary(series_key, series, dates, preds, conf_int, model, training_po
     return {
         "intro": intro,
         "metric_label": metric_label,
-        "recent_average": recent_avg,
-        "previous_average": previous_avg,
-        "forecast_average": forecast_avg,
-        "expected_total": total_forecast,
-        "peak_value": float(peak_value),
+        "recent_average": round(recent_avg, 2),
+        "previous_average": round(previous_avg, 2),
+        "forecast_average": round(forecast_avg, 2),
+        "expected_total": round(total_forecast, 2),
+        "peak_value": round(float(peak_value), 2),
         "peak_date": peak_date,
         "trend_label": trend_label,
         "history_points": len(series),
@@ -267,25 +300,21 @@ def main():
         model, dates, preds, conf_int, training_points, metrics = forecast(series, args.horizon)
         summary = build_summary(args.series_key, series, dates, preds, conf_int, model, training_points)
 
-        # Extract model diagnostics safely
         aic = float(model.aic())
         bic = float(model.bic())
         log_likelihood = float(model.arima_res_.llf) if hasattr(model, 'arima_res_') and hasattr(model.arima_res_, 'llf') else None
-        
-        # Extract sigma2 (residual variance)
+
         sigma2 = None
         if hasattr(model, 'arima_res_') and hasattr(model.arima_res_, 'params'):
             if 'sigma2' in model.arima_res_.params:
                 sigma2 = float(model.arima_res_.params['sigma2'])
             elif 'sigma2' in model.arima_res_.param_names:
-                # Find by name index
                 try:
                     idx = model.arima_res_.param_names.index('sigma2')
                     sigma2 = float(model.arima_res_.params[idx])
                 except Exception:
                     pass
 
-        # Extract all parameters/coefficients
         params = {}
         if hasattr(model, 'arima_res_') and hasattr(model.arima_res_, 'params') and hasattr(model.arima_res_, 'param_names'):
             try:
@@ -339,7 +368,6 @@ def main():
     except Exception as exc:
         print(json.dumps({"error": str(exc)}))
         sys.exit(1)
-
 
 
 if __name__ == "__main__":

@@ -47,10 +47,19 @@ $stats = $pdo->query("SELECT
       <div class="text-xl font-bold text-slate-900 mt-0.5">Immunization Schedules</div>
       <p class="text-xs text-slate-500 mt-0.5">Vaccine dose schedule registry and tracking per patient.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/HealthLogs/public/immunization/records/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+        <i class="fas fa-syringe text-teal-600"></i> Records
+      </a>
+      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-teal-800 text-xs font-semibold transition">
+        <i class="fas fa-table-list text-teal-600"></i> Child TCL
+      </a>
+      <a href="/HealthLogs/public/immunization/vaccines/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+        <i class="fas fa-vial text-slate-500"></i> Vaccine Catalog
+      </a>
       <?php if (can_manage_clinical_records()): ?>
         <button type="button" id="scheduleModalOpenNew" data-embed-url="/HealthLogs/public/immunization/schedules/form_embed.php"
-          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition shadow-xs">
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition shadow-xs cursor-pointer">
           <i class="fas fa-plus text-xs"></i> Add Schedule
         </button>
       <?php endif; ?>

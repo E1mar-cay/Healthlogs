@@ -22,9 +22,27 @@ try {
         $stmt->execute([$pregnancy_id, str_replace('T', ' ', $visit_datetime), $ga, $sys, $dia, $weight, $notes, $id]);
         $_SESSION['success_message'] = 'Prenatal visit updated successfully';
     } else {
-        $stmt = $pdo->prepare("INSERT INTO prenatal_visits (pregnancy_id, visit_datetime, gestational_age_weeks, bp_systolic, bp_diastolic, weight_kg, notes) VALUES (?,?,?,?,?,?,?)");
-        $stmt->execute([$pregnancy_id, str_replace('T', ' ', $visit_datetime), $ga, $sys, $dia, $weight, $notes]);
-        $_SESSION['success_message'] = 'Prenatal visit created successfully';
+        $stmt = $pdo->prepare("INSERT INTO prenatal_visits (pregnancy_id, visit_datetime, gestational_age_weeks, bp_systolic, bp_diastolic, weight_kg, notes, recorded_by) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt->execute([$pregnancy_id, str_replace('T', ' ', $visit_datetime), $ga, $sys, $dia, $weight, $notes, $_SESSION['user_id'] ?? null]);
+        $newPrenatalId = (int)$pdo->lastInsertId();
+
+        // Auto-dispense Ferrous Sulfate + Folic Acid (FEFO) when iron/folate supplementation is noted on a new prenatal visit
+        if ($notes && preg_match('/\b(iron|ferrous|folate|folic)\b/i', (string)$notes)) {
+            $dispensed = ClinicalWorkflow::dispenseMedicineFEFO(
+                $pdo,
+                'Ferrous',
+                30,
+                "ANC-{$newPrenatalId}",
+                "Prenatal Iron/Folate supplementation (Pregnancy #{$pregnancy_id})"
+            );
+            if ($dispensed) {
+                $_SESSION['success_message'] = 'Prenatal visit created and 30 Iron/Folate tablets dispensed via FEFO.';
+            } else {
+                $_SESSION['success_message'] = 'Prenatal visit created successfully';
+            }
+        } else {
+            $_SESSION['success_message'] = 'Prenatal visit created successfully';
+        }
     }
 
     if ($next_appointment_date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $next_appointment_date)) {

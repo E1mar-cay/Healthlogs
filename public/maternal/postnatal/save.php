@@ -20,8 +20,21 @@ try {
         $stmt->execute([$pregnancy_id, str_replace('T', ' ', $visit_datetime), $mother, $baby, $notes, $id]);
         $_SESSION['success_message'] = 'Postnatal visit updated successfully';
     } else {
-        $stmt = $pdo->prepare("INSERT INTO postnatal_visits (pregnancy_id, visit_datetime, mother_condition, baby_condition, notes) VALUES (?,?,?,?,?)");
-        $stmt->execute([$pregnancy_id, str_replace('T', ' ', $visit_datetime), $mother, $baby, $notes]);
+        $stmt = $pdo->prepare("INSERT INTO postnatal_visits (pregnancy_id, visit_datetime, mother_condition, baby_condition, notes, recorded_by) VALUES (?,?,?,?,?,?)");
+        $stmt->execute([$pregnancy_id, str_replace('T', ' ', $visit_datetime), $mother, $baby, $notes, $_SESSION['user_id'] ?? null]);
+        $newPostnatalId = (int)$pdo->lastInsertId();
+
+        // Auto-dispense postpartum Iron/Folate or Vitamin A when noted on a new postnatal visit
+        if ($notes && preg_match('/\b(iron|ferrous|folate|folic)\b/i', (string)$notes)) {
+            ClinicalWorkflow::dispenseMedicineFEFO(
+                $pdo,
+                'Ferrous',
+                30,
+                "PNC-{$newPostnatalId}",
+                "Postpartum Iron supplementation (Pregnancy #{$pregnancy_id})",
+                $_SESSION['user_id'] ?? null
+            );
+        }
         $_SESSION['success_message'] = 'Postnatal visit created successfully';
     }
 

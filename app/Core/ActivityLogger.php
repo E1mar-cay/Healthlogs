@@ -440,6 +440,7 @@ class ActivityLogger
 
     /**
      * Fetch expired batches that still have stock (to warn staff for write-off/adjustment).
+     * Ordered by most recently expired first so newly expired batches are surfaced before legacy stock.
      */
     public static function getExpiredStockAlerts(): array
     {
@@ -458,7 +459,37 @@ class ActivityLogger
                 WHERE mb.expiry_date < CURDATE()
                 GROUP BY mb.id, mb.medicine_id, mb.batch_no, mb.expiry_date, m.name, m.unit
                 HAVING on_hand > 0
-                ORDER BY mb.expiry_date ASC";
+                ORDER BY mb.expiry_date DESC, mb.id DESC";
+
+        $stmt = $db->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Fetch medicines whose available non-expired stock is at or below their reorder level.
+     */
+    public static function getLowStockAlerts(): array
+    {
+        $db = self::getDb();
+        if (!$db) {
+            return [];
+        }
+
+        $sql = "SELECT m.id AS medicine_id, m.name AS medicine_name, m.unit,
+                       COALESCE(m.reorder_level, 0) AS reorder_level,
+                       COALESCE(MAX(stk.valid_stock), 0) AS on_hand
+                FROM medicines m
+                LEFT JOIN (
+                    SELECT mb.medicine_id, SUM(mt.quantity) AS valid_stock
+                    FROM medicine_batches mb
+                    JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                    WHERE mb.expiry_date >= CURDATE()
+                    GROUP BY mb.medicine_id
+                ) stk ON stk.medicine_id = m.id
+                WHERE COALESCE(m.reorder_level, 0) > 0
+                GROUP BY m.id, m.name, m.unit, m.reorder_level
+                HAVING on_hand <= reorder_level
+                ORDER BY on_hand ASC, m.name ASC";
 
         $stmt = $db->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

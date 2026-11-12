@@ -45,7 +45,7 @@ $countStmt->execute($params);
 $paginator = paginate((int)$countStmt->fetchColumn(), 20);
 
 $stmt = $pdo->prepare("SELECT r.*, p.first_name, p.last_name, p.sex, p.birth_date, p.barangay,
-        v.doses_required,
+        v.name AS vaccine_name, v.code AS vaccine_code, v.doses_required,
         TIMESTAMPDIFF(MONTH, p.birth_date, CURDATE()) AS patient_age_months,
         (SELECT COUNT(DISTINCT r2.dose_no)
          FROM immunization_records r2
@@ -66,16 +66,25 @@ $rows = $stmt->fetchAll();
 
 <!-- Page Header -->
 <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs mb-5">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
     <div>
-      <div class="text-xs font-semibold text-slate-500 uppercase tracking-widest"><i class="fas fa-syringe mr-1"></i> Child Health &bull; EPI Program</div>
+      <div class="text-xs font-semibold text-teal-700 uppercase tracking-widest"><i class="fas fa-syringe mr-1"></i> Child Health &bull; EPI Program</div>
       <div class="text-xl font-bold text-slate-900 mt-0.5">Immunization Records</div>
-      <p class="text-xs text-slate-500 mt-0.5">Patient information for administered records. View a patient chart for vaccine and dose status.</p>
+      <p class="text-xs text-slate-500 mt-0.5">Administered child and adult immunization doses, vaccine schedules, and Target Client List.</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/HealthLogs/public/immunization/tcl.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-teal-800 text-xs font-semibold transition">
+        <i class="fas fa-table-list text-teal-600"></i> Child TCL
+      </a>
+      <a href="/HealthLogs/public/immunization/schedules/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+        <i class="fas fa-calendar-check text-slate-500"></i> Schedules
+      </a>
+      <a href="/HealthLogs/public/immunization/vaccines/index.php" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+        <i class="fas fa-vial text-slate-500"></i> Vaccine Catalog
+      </a>
       <?php if (can_manage_clinical_records()): ?>
         <button type="button" id="recordModalOpenNew" data-embed-url="/HealthLogs/public/immunization/records/form_embed.php"
-          class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-xs">
+          class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow-xs cursor-pointer">
           <i class="fas fa-plus mr-1"></i> New Record
         </button>
       <?php else: ?>
@@ -132,6 +141,8 @@ $rows = $stmt->fetchAll();
       <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
         <tr>
           <th class="py-3.5 px-4">Patient</th>
+          <th class="py-3.5 px-4">Vaccine</th>
+          <th class="py-3.5 px-4">Dose</th>
           <th class="py-3.5 px-4">Sex</th>
           <th class="py-3.5 px-4">Date of Birth</th>
           <th class="py-3.5 px-4">Purok</th>
@@ -141,11 +152,22 @@ $rows = $stmt->fetchAll();
       </thead>
       <tbody class="divide-y divide-slate-100 text-xs">
         <?php if (empty($rows)): ?>
-          <tr><td class="px-4 py-8 text-center text-slate-500" colspan="6">No immunization records found.</td></tr>
+          <tr><td class="px-4 py-8 text-center text-slate-500" colspan="8">No immunization records found.</td></tr>
         <?php else: ?>
           <?php foreach ($rows as $r): ?>
             <tr class="hover:bg-slate-50/60 transition">
               <td class="px-4 py-3 font-semibold text-slate-900"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></td>
+              <td class="px-4 py-3">
+                <div class="font-semibold text-slate-900"><?= h($r['vaccine_name'] ?? '—') ?></div>
+                <?php if (!empty($r['vaccine_code'])): ?>
+                  <span class="text-[10px] font-mono text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200"><?= h($r['vaccine_code']) ?></span>
+                <?php endif; ?>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  Dose <?= (int)($r['dose_no'] ?? 1) ?><?= !empty($r['doses_required']) ? ' of ' . (int)$r['doses_required'] : '' ?>
+                </span>
+              </td>
               <td class="px-4 py-3 text-slate-600 capitalize"><?= h($r['sex']) ?></td>
               <td class="px-4 py-3 text-slate-600 whitespace-nowrap"><?= h(date('M d, Y', strtotime($r['birth_date']))) ?></td>
               <td class="px-4 py-3 text-slate-600"><?= h($r['barangay'] ?: '—') ?></td>

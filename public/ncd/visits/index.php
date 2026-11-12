@@ -73,19 +73,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'recorded_by' => $recorded_by,
             ]);
 
-            // Auto-schedule reminder if next appointment date is provided
+            $ncdVisitId = (int)$pdo->lastInsertId();
+
+            // Auto-deduct dispensed maintenance medicine from Pharmacy Inventory (FEFO) when available
+            if ($medications_dispensed !== '' && $quantity_dispensed > 0) {
+                $firstMedKeyword = trim( explode(',', explode('/', $medications_dispensed)[0])[0] );
+                $firstMedKeyword = preg_replace('/\b\d+\s*(mg|mcg|g|ml)\b/i', '', $firstMedKeyword);
+                $firstMedKeyword = trim($firstMedKeyword);
+                if ($firstMedKeyword !== '') {
+                    ClinicalWorkflow::dispenseMedicineFEFO(
+                        $pdo,
+                        $firstMedKeyword,
+                        $quantity_dispensed,
+                        "NCD-VISIT-{$ncdVisitId}",
+                        "NCD Maintenance Dispensing ({$medications_dispensed})"
+                    );
+                }
+            }
+
+            // Auto-schedule reminder & central appointment if next appointment date is provided
             if ($next_appointment_date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $next_appointment_date)) {
                 $cStmt = $pdo->prepare("SELECT r.patient_id, r.ncd_code, r.diagnosis_type, p.contact_no FROM ncd_records r JOIN patients p ON p.id = r.patient_id WHERE r.id = ?");
                 $cStmt->execute([$ncd_record_id]);
                 $cl = $cStmt->fetch();
                 if ($cl && !empty($cl['patient_id'])) {
-                    $timeText = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $next_appointment_time) ? ' at ' . date('g:i A', strtotime($next_appointment_time)) : '';
-                    $reminderMsg = "Good day! Reminder from Barangay Health Station: Your NCD checkup and maintenance medication refill is scheduled on " . date('M d, Y', strtotime($next_appointment_date)) . $timeText . ". Please bring your monitoring card.";
-                    $remStmt = $pdo->prepare("
-                        INSERT INTO reminders (patient_id, reminder_type, due_date, message, status)
-                        VALUES (?, 'non_communicable', ?, ?, 'pending')
-                    ");
-                    $remStmt->execute([$cl['patient_id'], $next_appointment_date, $reminderMsg]);
+                    ClinicalWorkflow::syncFollowUpAppointment(
+                        $pdo,
+                        (int)$cl['patient_id'],
+                        $next_appointment_date,
+                        'NCD_CHECKUP',
+                        'non_communicable',
+                        "NCD Follow-up & Maintenance Refill [{$cl['ncd_code']}]",
+                        'Nurse Maricar Ramos, RN'
+                    );
                 }
             }
 
