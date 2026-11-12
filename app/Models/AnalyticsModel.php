@@ -39,16 +39,26 @@ class AnalyticsModel
         $stmt = $this->db->query("SELECT COUNT(*) as total FROM patients WHERE status = 'active'");
         $stats['total_patients'] = $stmt->fetch()['total'];
         
-        // Total visits this month
-        $stmt = $this->db->query("SELECT (
-            (SELECT COUNT(*) FROM visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM prenatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM postnatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM fp_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM ncd_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM immunization_records WHERE MONTH(administered_on) = MONTH(CURDATE()) AND YEAR(administered_on) = YEAR(CURDATE()))
+        // Total visits this month (accurate current calendar month up to today)
+        $monthStart = date('Y-m-01');
+        $monthEnd = date('Y-m-d');
+        $vStmt = $this->db->prepare("SELECT (
+            (SELECT COUNT(*) FROM visits WHERE DATE(visit_datetime) BETWEEN ? AND ?)
+          + (SELECT COUNT(*) FROM prenatal_visits WHERE DATE(visit_datetime) BETWEEN ? AND ?)
+          + (SELECT COUNT(*) FROM postnatal_visits WHERE DATE(visit_datetime) BETWEEN ? AND ?)
+          + (SELECT COUNT(*) FROM fp_visits WHERE DATE(visit_date) BETWEEN ? AND ?)
+          + (SELECT COUNT(*) FROM ncd_visits WHERE DATE(visit_date) BETWEEN ? AND ?)
+          + (SELECT COUNT(*) FROM immunization_records WHERE DATE(administered_on) BETWEEN ? AND ?)
         ) as total");
-        $stats['monthly_visits'] = $stmt->fetch()['total'];
+        $vStmt->execute([
+            $monthStart, $monthEnd,
+            $monthStart, $monthEnd,
+            $monthStart, $monthEnd,
+            $monthStart, $monthEnd,
+            $monthStart, $monthEnd,
+            $monthStart, $monthEnd,
+        ]);
+        $stats['monthly_visits'] = $vStmt->fetch()['total'];
         
         // Pending reminders
         $stmt = $this->db->query("SELECT COUNT(*) as total FROM reminders WHERE status = 'pending' AND due_date <= CURDATE()");

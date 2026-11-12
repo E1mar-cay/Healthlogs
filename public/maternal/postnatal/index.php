@@ -48,8 +48,8 @@ $rows = $stmt->fetchAll();
         <?php foreach ($rows as $r): ?>
           <tr class="border-t">
             <td class="px-4 py-2">
-              <a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['pregnancy_id'] ?>" class="font-medium text-slate-900 hover:text-teal-700 hover:underline"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></a>
-              <div><a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['pregnancy_id'] ?>" class="text-xs text-teal-700 hover:underline">Open pregnancy record</a></div>
+              <a href="/HealthLogs/public/maternal/tcl.php?pregnancy_id=<?= (int)$r['pregnancy_id'] ?>" class="font-medium text-slate-900 hover:text-teal-700 hover:underline"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></a>
+              <div><a href="/HealthLogs/public/maternal/tcl.php?pregnancy_id=<?= (int)$r['pregnancy_id'] ?>" class="text-xs text-teal-700 hover:underline">View in Maternal TCL</a></div>
             </td>
             <td class="px-4 py-2"><?= h($r['visit_datetime']) ?></td>
             <td class="px-4 py-2"><?= h($r['mother_condition']) ?></td>

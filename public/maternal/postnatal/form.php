@@ -114,7 +114,7 @@ require __DIR__ . '/../../partials/header.php';
 
     <div class="md:col-span-2 flex items-center gap-2 mt-2">
       <button class="bg-slate-900 text-white px-4 py-2 rounded" type="submit">Save follow-up</button>
-      <a class="text-slate-600" href="<?= $linkedPregnancyId ? '/HealthLogs/public/maternal/pregnancies/view.php?id=' . $linkedPregnancyId : '/HealthLogs/public/maternal/postnatal/index.php' ?>">Cancel</a>
+      <a class="text-slate-600" href="<?= $linkedPregnancyId ? '/HealthLogs/public/maternal/tcl.php?pregnancy_id=' . $linkedPregnancyId : '/HealthLogs/public/maternal/postnatal/index.php' ?>">Cancel</a>
     </div>
   </form>
 </div>

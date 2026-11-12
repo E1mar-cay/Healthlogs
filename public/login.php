@@ -37,21 +37,22 @@ $recaptchaSiteKey = Recaptcha::siteKey();
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/fontawesome.min.css">
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
   <style>
-    
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
+
     :root {
-      --bg-1: #eef2ff;
-      --bg-2: #f0fdf4;
-      --ink: #0b1220;
-      --muted: #5b6b82;
-      --accent: #0ea5a4;
-      --accent-2: #2563eb;
-      --card: rgba(255, 255, 255, 0.92);
-      --line: rgba(15, 23, 42, 0.08);
-      --shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+      --bg-1: rgba(13, 148, 136, 0.10);
+      --bg-2: rgba(37, 99, 235, 0.08);
+      --ink: #0f172a;
+      --muted: #64748b;
+      --accent: #0d9488;
+      --accent-2: #0f766e;
+      --card: #ffffff;
+      --line: #e2e8f0;
+      --shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(13, 148, 136, 0.06);
     }
     
     body.app-body {
-      font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+      font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
       color: var(--ink);
       background:
         radial-gradient(1200px 600px at 10% -10%, var(--bg-1), transparent 60%),
@@ -71,6 +72,7 @@ $recaptchaSiteKey = Recaptcha::siteKey();
     .login-card {
       background: var(--card);
       border: 1px solid var(--line);
+      border-top: 4px solid #0d9488;
       box-shadow: var(--shadow);
       border-radius: 18px;
     }
@@ -80,8 +82,8 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       width: 420px;
       height: 420px;
       border-radius: 999px;
-      background: radial-gradient(circle at 30% 30%, rgba(37,99,235,0.25), transparent 60%),
-        radial-gradient(circle at 60% 60%, rgba(14,165,164,0.2), transparent 65%);
+      background: radial-gradient(circle at 30% 30%, rgba(13,148,136,0.22), transparent 60%),
+        radial-gradient(circle at 60% 60%, rgba(15,118,110,0.16), transparent 65%);
       filter: blur(0);
       opacity: 0.9;
     }
@@ -95,7 +97,7 @@ $recaptchaSiteKey = Recaptcha::siteKey();
     
     .brand {
       font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-      letter-spacing: 0.02em;
+      letter-spacing: -0.01em;
     }
 
     .brand-mark {
@@ -105,30 +107,32 @@ $recaptchaSiteKey = Recaptcha::siteKey();
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(145deg, rgba(37,99,235,0.16), rgba(14,165,164,0.2));
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      background: linear-gradient(145deg, #f0fdfa, #ccfbf1);
+      border: 1px solid #99f6e4;
+      box-shadow: 0 8px 20px rgba(13, 148, 136, 0.12);
     }
 
     .brand-mark svg {
       width: 28px;
       height: 28px;
-      color: #0f4ccf;
+      color: #0d9488;
     }
     
     .login-card input {
-      background: rgba(248, 250, 252, 0.9);
-      border: 1px solid var(--line);
-      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 11px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     
     .login-card input:focus {
-      outline: 2px solid rgba(14,165,164,0.25);
-      border-color: rgba(14,165,164,0.6);
+      outline: none;
+      border-color: #0d9488;
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
     }
     
     .login-card label {
-      font-weight: 500;
+      font-weight: 600;
     }
     
     @media (max-width: 768px) {

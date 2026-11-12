@@ -115,6 +115,8 @@ $medicineSummaryStats = [
     'critical_count' => 0,
     'reorder_count' => 0,
     'adequate_count' => 0,
+    'near_expiry_meds' => 0,
+    'near_expiry_units' => 0,
 ];
 
 try {
@@ -124,6 +126,8 @@ try {
         SELECT m.id, m.name, m.generic_name, m.unit, m.reorder_level,
                COALESCE(stk.current_stock, 0) AS current_stock,
                COALESCE(exp_stk.expired_stock, 0) AS expired_stock,
+               COALESCE(near_exp.near_expiry_stock_90d, 0) AS near_expiry_stock_90d,
+               near_exp.earliest_near_expiry,
                COALESCE(m1.qty, 0) AS m1_dispensed,
                COALESCE(m2.qty, 0) AS m2_dispensed,
                COALESCE(m3.qty, 0) AS m3_dispensed,
@@ -147,6 +151,22 @@ try {
             WHERE mb.expiry_date < CURDATE()
             GROUP BY mb.medicine_id
         ) exp_stk ON exp_stk.medicine_id = m.id
+        LEFT JOIN (
+            -- Track batches expiring within the 90-day forecast window (FEFO risk)
+            SELECT b_near.medicine_id,
+                   SUM(b_near.batch_qty) AS near_expiry_stock_90d,
+                   MIN(b_near.expiry_date) AS earliest_near_expiry
+            FROM (
+                SELECT mb.id, mb.medicine_id, mb.expiry_date, SUM(mt.quantity) AS batch_qty
+                FROM medicine_batches mb
+                JOIN medicine_transactions mt ON mt.batch_id = mb.id
+                WHERE mb.expiry_date >= CURDATE()
+                  AND mb.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
+                GROUP BY mb.id, mb.medicine_id, mb.expiry_date
+                HAVING SUM(mt.quantity) > 0
+            ) b_near
+            GROUP BY b_near.medicine_id
+        ) near_exp ON near_exp.medicine_id = m.id
         LEFT JOIN (
             SELECT medicine_id, SUM(ABS(quantity)) AS qty
             FROM medicine_transactions
@@ -195,7 +215,13 @@ try {
         $m3 = (float)$r['m3_dispensed'];
         $totalPast = (float)$r['total_past_dispensed'];
         $currentStock = max(0, (float)$r['current_stock']);
+        $nearExpiry90d = max(0, (float)$r['near_expiry_stock_90d']);
         $reorderLevel = (float)($r['reorder_level'] ?: 100);
+
+        if ($nearExpiry90d > 0) {
+            $medicineSummaryStats['near_expiry_meds']++;
+            $medicineSummaryStats['near_expiry_units'] += $nearExpiry90d;
+        }
 
         if ($m1 + $m2 + $m3 > 0) {
             $monthlyBase = ($m1 * 0.5) + ($m2 * 0.3) + ($m3 * 0.2);
@@ -213,20 +239,73 @@ try {
         $forecast_m3 = round(max(0, $monthlyBase + ($trendSlope * 0.8)));
         $forecast_total_3m = $forecast_m1 + $forecast_m2 + $forecast_m3;
 
-        // Buffer stock (20% safety stock)
+        // Estimated Days of Supply (Stockout Countdown based on daily burn rate)
+        $dailyBurnRate = $forecast_m1 > 0
+            ? ($forecast_m1 / 30.0)
+            : ($forecast_total_3m > 0 ? ($forecast_total_3m / 90.0) : 0);
+
+        if ($currentStock <= 0) {
+            $daysOfSupply = 0;
+            $daysSupplyLabel = '0d left (Out)';
+            $daysSupplyBadge = 'bg-rose-100 text-rose-800 border-rose-200';
+        } elseif ($dailyBurnRate > 0) {
+            $daysOfSupply = (int)round($currentStock / $dailyBurnRate);
+            if ($daysOfSupply < 30) {
+                $daysSupplyLabel = '~' . $daysOfSupply . 'd supply left';
+                $daysSupplyBadge = 'bg-rose-100 text-rose-800 border-rose-200';
+            } elseif ($daysOfSupply < 90) {
+                $daysSupplyLabel = '~' . $daysOfSupply . 'd supply left';
+                $daysSupplyBadge = 'bg-amber-100 text-amber-800 border-amber-200';
+            } else {
+                $daysSupplyLabel = ($daysOfSupply > 180 ? '180d+' : '~' . $daysOfSupply . 'd') . ' supply';
+                $daysSupplyBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            }
+        } else {
+            $daysOfSupply = 999;
+            $daysSupplyLabel = 'Low velocity';
+            $daysSupplyBadge = 'bg-slate-100 text-slate-600 border-slate-200';
+        }
+
+        // Clinical Program Tagging (based on generic / brand name)
+        $haystack = strtolower($r['name'] . ' ' . $r['generic_name']);
+        if (preg_match('/ferrous|folic|calcium|iron|prenatal|ob-/', $haystack)) {
+            $programTag = 'Maternal & Prenatal';
+            $programBadge = 'bg-pink-50 text-pink-700 border-pink-200';
+            $programIcon = 'fa-person-pregnant';
+        } elseif (preg_match('/amlodipine|losartan|metformin|gliclazide|simvastatin|atorvastatin|captopril|enalapril|hydrochlorothiazide|insulin/', $haystack)) {
+            $programTag = 'NCD Maintenance';
+            $programBadge = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+            $programIcon = 'fa-heart-pulse';
+        } elseif (preg_match('/amoxicillin|cotrimoxazole|ciprofloxacin|azithromycin|cefuroxime|cefalexin|erythromycin|metronidazole|cloxacillin|doxycycline/', $haystack)) {
+            $programTag = 'Anti-Infective';
+            $programBadge = 'bg-purple-50 text-purple-700 border-purple-200';
+            $programIcon = 'fa-shield-virus';
+        } elseif (preg_match('/paracetamol|oral rehydration|ors|zinc|salbutamol|cetirizine|lagundi|ambroxol|ibuprofen|mefenamic|carbocisteine|ascorbic|vitamin/', $haystack)) {
+            $programTag = 'Pediatric & Acute';
+            $programBadge = 'bg-teal-50 text-teal-700 border-teal-200';
+            $programIcon = 'fa-stethoscope';
+        } else {
+            $programTag = 'General Care';
+            $programBadge = 'bg-slate-100 text-slate-700 border-slate-200';
+            $programIcon = 'fa-capsules';
+        }
+
+        // Buffer stock (20% safety stock) + FEFO adjustment for batches expiring before consumption
         $bufferStock = round($forecast_total_3m * 0.2);
         $targetStock = $forecast_total_3m + $bufferStock;
-        $suggestedOrder = max(0, $targetStock - $currentStock);
+        $unconsumedExpiring = max(0, $nearExpiry90d - $forecast_m1);
+        $effectiveStock90d = max(0, $currentStock - $unconsumedExpiring);
+        $suggestedOrder = max(0, $targetStock - $effectiveStock90d);
 
         if ($forecast_m1 > 0 && $currentStock < $forecast_m1) {
             $status = 'Critical Shortage';
             $statusBadge = 'bg-rose-100 text-rose-800 border-rose-300';
             $medicineSummaryStats['critical_count']++;
-        } elseif ($forecast_total_3m > 0 && $currentStock < $forecast_total_3m) {
+        } elseif ($forecast_total_3m > 0 && $effectiveStock90d < $forecast_total_3m) {
             $status = 'Reorder Needed';
             $statusBadge = 'bg-amber-100 text-amber-800 border-amber-300';
             $medicineSummaryStats['reorder_count']++;
-        } elseif ($currentStock < $reorderLevel) {
+        } elseif ($effectiveStock90d < $reorderLevel) {
             $status = 'Low Buffer';
             $statusBadge = 'bg-yellow-100 text-yellow-800 border-yellow-300';
             $medicineSummaryStats['reorder_count']++;
@@ -247,8 +326,16 @@ try {
             'name' => $r['name'],
             'generic_name' => $r['generic_name'],
             'unit' => $r['unit'],
+            'program_tag' => $programTag,
+            'program_badge' => $programBadge,
+            'program_icon' => $programIcon,
             'current_stock' => $currentStock,
             'expired_stock' => (float)$r['expired_stock'],
+            'near_expiry_stock_90d' => $nearExpiry90d,
+            'earliest_near_expiry' => $r['earliest_near_expiry'] ?? null,
+            'days_of_supply' => $daysOfSupply,
+            'days_supply_label' => $daysSupplyLabel,
+            'days_supply_badge' => $daysSupplyBadge,
             'forecast_m1' => $forecast_m1,
             'forecast_m2' => $forecast_m2,
             'forecast_m3' => $forecast_m3,
@@ -594,66 +681,86 @@ if ($summary) {
 <!-- ============================================================ -->
 <!-- SECTION 1: 3-MONTH MEDICINE DEMAND & INVENTORY REORDER FORECAST -->
 <!-- ============================================================ -->
-<div class="mt-6 bg-white p-5 sm:p-6 rounded-xl shadow border border-slate-100">
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4">
+<div class="mt-6 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200/90 border-t-4 border-t-teal-600">
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-4">
     <div>
-      <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
-        <i class="fas fa-pills"></i>
+      <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
+        <i class="fas fa-pills text-teal-600"></i>
         <span>Medicine Demand Forecasting (Next 3 Months)</span>
       </div>
       <h3 class="text-xl font-bold text-slate-900 mt-2">Which Medicines Will Be In High Demand?</h3>
-      <p class="text-xs text-slate-500 mt-0.5">Projects 3-month unit consumption per medicine based on historical dispensing velocity, stock levels, and safety buffer recommendations.</p>
+      <p class="text-xs text-slate-500 mt-0.5">Projects 3-month unit consumption per medicine based on historical dispensing velocity, daily burn rate, 90-day FEFO expiry risk, and +20% safety buffer.</p>
     </div>
-    <div class="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-      <i class="fas fa-info-circle text-blue-600 mr-1"></i>
-      Includes <strong>+20% safety buffer</strong> recommendation
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="text-xs text-teal-900 bg-teal-50/70 px-3 py-2 rounded-xl border border-teal-200/80 font-medium">
+        <i class="fas fa-shield-heart text-teal-600 mr-1"></i>
+        <strong>+20% Buffer</strong> &amp; <strong>90d FEFO</strong> Check
+      </div>
+      <button type="button" id="exportMedReorderCsvBtn" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold shadow-2xs transition cursor-pointer" title="Download CSV of medicines needing reorder">
+        <i class="fas fa-file-csv text-teal-600"></i>
+        <span>Export Reorder CSV</span>
+      </button>
+      <button type="button" id="printMedReorderRisBtn" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs transition cursor-pointer" title="Print official Requisition & Issue Slip (RIS) for procurement">
+        <i class="fas fa-print text-amber-400"></i>
+        <span>Print Requisition Slip (RIS)</span>
+      </button>
     </div>
   </div>
 
   <!-- Medicine Summary Cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
-    <div class="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+    <div class="rounded-xl border border-rose-200 border-l-4 border-l-rose-500 bg-gradient-to-br from-rose-50/80 via-white to-rose-50/30 p-4 shadow-2xs">
       <div class="text-xs uppercase tracking-wider font-bold text-rose-700 flex items-center justify-between">
         <span>Critical Stockout Risk</span>
-        <i class="fas fa-exclamation-triangle"></i>
+        <span class="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 inline-flex items-center justify-center"><i class="fas fa-exclamation-triangle"></i></span>
       </div>
-      <div class="text-3xl font-extrabold text-rose-900 mt-2"><?= $medicineSummaryStats['critical_count'] ?></div>
-      <div class="text-xs text-rose-700 mt-1">Stock runs out in &lt; 30 days</div>
+      <div class="text-3xl font-extrabold text-rose-950 mt-2"><?= $medicineSummaryStats['critical_count'] ?></div>
+      <div class="text-xs text-rose-700 font-medium mt-1">Stock runs out in &lt; 30 days</div>
     </div>
 
-    <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
-      <div class="text-xs uppercase tracking-wider font-bold text-amber-700 flex items-center justify-between">
+    <div class="rounded-xl border border-amber-200 border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/30 p-4 shadow-2xs">
+      <div class="text-xs uppercase tracking-wider font-bold text-amber-800 flex items-center justify-between">
         <span>Reorder Recommended</span>
-        <i class="fas fa-cart-arrow-down"></i>
+        <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 inline-flex items-center justify-center"><i class="fas fa-cart-arrow-down"></i></span>
       </div>
-      <div class="text-3xl font-extrabold text-amber-900 mt-2"><?= $medicineSummaryStats['reorder_count'] ?></div>
-      <div class="text-xs text-amber-700 mt-1">Stock below 3-month demand</div>
+      <div class="text-3xl font-extrabold text-amber-950 mt-2"><?= $medicineSummaryStats['reorder_count'] ?></div>
+      <div class="text-xs text-amber-800 font-medium mt-1">
+        Stock below 3M demand<?php if ($medicineSummaryStats['near_expiry_meds'] > 0): ?> &bull; <?= $medicineSummaryStats['near_expiry_meds'] ?> near-expiry<?php endif; ?>
+      </div>
     </div>
 
-    <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
-      <div class="text-xs uppercase tracking-wider font-bold text-emerald-700 flex items-center justify-between">
+    <div class="rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/30 p-4 shadow-2xs">
+      <div class="text-xs uppercase tracking-wider font-bold text-emerald-800 flex items-center justify-between">
         <span>Adequate Stock</span>
-        <i class="fas fa-check-circle"></i>
+        <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 inline-flex items-center justify-center"><i class="fas fa-check-circle"></i></span>
       </div>
-      <div class="text-3xl font-extrabold text-emerald-900 mt-2"><?= $medicineSummaryStats['adequate_count'] ?></div>
-      <div class="text-xs text-emerald-700 mt-1">Stock covers 3+ months demand</div>
+      <div class="text-3xl font-extrabold text-emerald-950 mt-2"><?= $medicineSummaryStats['adequate_count'] ?></div>
+      <div class="text-xs text-emerald-700 font-medium mt-1">Stock covers 3+ months demand</div>
     </div>
 
-    <div class="rounded-xl border border-blue-200 bg-blue-50/70 p-4">
-      <div class="text-xs uppercase tracking-wider font-bold text-blue-700 flex items-center justify-between">
+    <div class="rounded-xl border border-indigo-200 border-l-4 border-l-indigo-500 bg-gradient-to-br from-indigo-50/80 via-white to-indigo-50/30 p-4 shadow-2xs">
+      <div class="text-xs uppercase tracking-wider font-bold text-indigo-800 flex items-center justify-between">
         <span>3-Month Projected Dispense</span>
-        <i class="fas fa-boxes-stacked"></i>
+        <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 inline-flex items-center justify-center"><i class="fas fa-boxes-stacked"></i></span>
       </div>
-      <div class="text-3xl font-extrabold text-blue-900 mt-2 font-mono"><?= number_format($medicineSummaryStats['total_demand_3m']) ?></div>
-      <div class="text-xs text-blue-700 mt-1">Total projected units needed</div>
+      <div class="text-3xl font-extrabold text-indigo-950 mt-2 font-mono"><?= number_format($medicineSummaryStats['total_demand_3m']) ?></div>
+      <div class="text-xs text-indigo-700 font-medium mt-1">Total projected units needed</div>
     </div>
   </div>
 
   <!-- Multi-Month Chart: Top In-Demand Medicines -->
-  <div class="mt-6 bg-slate-50/60 p-4 rounded-xl border border-slate-200">
-    <div class="flex items-center justify-between mb-2">
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Top Medicines Projected Demand by Month (<?= h(implode(' · ', $forecastMonthLabels)) ?>)</div>
-      <span class="text-[11px] text-slate-400">Unit: Dispensed Quantity</span>
+  <div class="mt-6 bg-gradient-to-b from-slate-50/90 to-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-800">Top Medicines Projected Demand by Month (<?= h(implode(' · ', $forecastMonthLabels)) ?>)</div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-600">
+        <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-xs bg-teal-600 inline-block"></span> <?= h($forecastMonthLabels[0]) ?> (+30d)</span>
+        <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-xs bg-indigo-600 inline-block"></span> <?= h($forecastMonthLabels[1]) ?> (+60d)</span>
+        <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-xs bg-purple-600 inline-block"></span> <?= h($forecastMonthLabels[2]) ?> (+90d)</span>
+        <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Current Stock</span>
+      </div>
     </div>
     <div class="h-64 sm:h-72">
       <canvas id="medicineForecastBarChart"></canvas>
@@ -662,75 +769,138 @@ if ($summary) {
 
   <!-- Detailed Medicine Demand & Stock Reorder Table -->
   <div class="mt-6">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-      <div class="text-sm font-bold text-slate-900">Medicine Demand Breakdown &amp; Suggested Reorder Quantities</div>
-      <div class="flex items-center gap-1.5 text-xs">
-        <span class="text-slate-500">Filter Risk:</span>
-        <button type="button" class="med-filter-btn px-2.5 py-1 rounded bg-slate-900 text-white font-semibold" data-med-filter="all">All</button>
-        <button type="button" class="med-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200" data-med-filter="Critical Shortage">Critical</button>
-        <button type="button" class="med-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200" data-med-filter="Reorder Needed">Reorder Needed</button>
-        <button type="button" class="med-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200" data-med-filter="Adequate Stock">Adequate</button>
+    <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 mb-3">
+      <div>
+        <div class="text-sm font-bold text-slate-900">Medicine Demand Breakdown &amp; Suggested Reorder Quantities</div>
+        <div class="text-[11px] text-slate-500">Includes daily burn-rate stockout countdown, clinical program driver tags, and 90-day FEFO batch expiry checks.</div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <div class="relative">
+          <i class="fas fa-search text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px]"></i>
+          <input type="text" id="medForecastSearchInput" placeholder="Search medicine or generic..." class="pl-7 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 w-48 sm:w-56" />
+        </div>
+        <select id="medProgramFilterSelect" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <option value="all">All Clinical Programs</option>
+          <option value="Maternal & Prenatal">Maternal &amp; Prenatal</option>
+          <option value="NCD Maintenance">NCD Maintenance</option>
+          <option value="Anti-Infective">Anti-Infective</option>
+          <option value="Pediatric & Acute">Pediatric &amp; Acute</option>
+          <option value="General Care">General Care</option>
+        </select>
+        <div class="flex flex-wrap items-center gap-1">
+          <button type="button" class="med-filter-btn px-2.5 py-1.5 rounded-lg bg-slate-900 text-white font-semibold transition cursor-pointer" data-med-filter="all">All (<?= count($medicineForecastList) ?>)</button>
+          <button type="button" class="med-filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-800 transition cursor-pointer" data-med-filter="Critical Shortage">Critical (<?= $medicineSummaryStats['critical_count'] ?>)</button>
+          <button type="button" class="med-filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-800 transition cursor-pointer" data-med-filter="Reorder Needed">Reorder (<?= $medicineSummaryStats['reorder_count'] ?>)</button>
+          <button type="button" class="med-filter-btn px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition cursor-pointer" data-med-filter="Adequate Stock">Adequate (<?= $medicineSummaryStats['adequate_count'] ?>)</button>
+        </div>
       </div>
     </div>
 
-    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table class="w-full text-left text-xs min-w-[760px] border-collapse" id="medicineForecastTable">
+    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 rounded-xl border border-slate-200">
+      <table class="w-full text-left text-xs min-w-[820px] border-collapse" id="medicineForecastTable">
         <thead>
-          <tr class="border-b bg-slate-100 text-slate-600 uppercase font-semibold">
-            <th class="py-3 px-3">Medicine Name</th>
-            <th class="py-3 px-3 text-right">Current Stock</th>
-            <th class="py-3 px-3 text-right"><?= h($forecastMonthLabels[0]) ?> (+30d)</th>
-            <th class="py-3 px-3 text-right"><?= h($forecastMonthLabels[1]) ?> (+60d)</th>
-            <th class="py-3 px-3 text-right"><?= h($forecastMonthLabels[2]) ?> (+90d)</th>
-            <th class="py-3 px-3 text-right font-bold text-slate-900">Total 3M Demand</th>
+          <tr class="border-b border-slate-200 bg-slate-100/90 text-slate-700 uppercase font-bold">
+            <th class="py-3 px-3">Medicine &amp; Program</th>
+            <th class="py-3 px-3 text-right">Current Stock &amp; Supply</th>
+            <th class="py-3 px-3 text-right bg-teal-50/70 text-teal-900"><?= h($forecastMonthLabels[0]) ?> (+30d)</th>
+            <th class="py-3 px-3 text-right bg-indigo-50/70 text-indigo-900"><?= h($forecastMonthLabels[1]) ?> (+60d)</th>
+            <th class="py-3 px-3 text-right bg-purple-50/70 text-purple-900"><?= h($forecastMonthLabels[2]) ?> (+90d)</th>
+            <th class="py-3 px-3 text-right font-extrabold bg-slate-200/70 text-slate-900">Total 3M Demand</th>
             <th class="py-3 px-3 text-center">Stock Status</th>
-            <th class="py-3 px-3 text-right font-bold text-teal-800">Suggested Reorder</th>
+            <th class="py-3 px-3 text-right font-bold text-teal-900">Suggested Reorder / Action</th>
           </tr>
         </thead>
-        <tbody class="divide-y text-slate-700">
+        <tbody class="divide-y divide-slate-100 text-slate-700">
           <?php if (empty($medicineForecastList)): ?>
             <tr>
               <td colspan="8" class="py-6 text-center text-slate-400">No medicine transaction history available for forecasting.</td>
             </tr>
           <?php else: ?>
             <?php foreach ($medicineForecastList as $m): ?>
-              <tr class="med-row hover:bg-slate-50 transition" data-med-status="<?= h($m['status']) ?>">
+              <?php
+                $rowShade = 'hover:bg-slate-50/90';
+                if ($m['status'] === 'Critical Shortage') {
+                    $rowShade = 'bg-rose-50/30 hover:bg-rose-50/60';
+                } elseif ($m['status'] === 'Reorder Needed' || $m['status'] === 'Low Buffer') {
+                    $rowShade = 'bg-amber-50/25 hover:bg-amber-50/50';
+                }
+                $searchHaystack = strtolower($m['name'] . ' ' . $m['generic_name'] . ' ' . $m['program_tag'] . ' ' . $m['status']);
+              ?>
+              <tr class="med-row <?= $rowShade ?> transition"
+                  data-med-status="<?= h($m['status']) ?>"
+                  data-med-program="<?= h($m['program_tag']) ?>"
+                  data-med-search="<?= h($searchHaystack) ?>"
+                  data-med-name="<?= h($m['name']) ?>"
+                  data-med-generic="<?= h($m['generic_name']) ?>"
+                  data-med-unit="<?= h($m['unit']) ?>"
+                  data-med-stock="<?= (int)$m['current_stock'] ?>"
+                  data-med-days="<?= h($m['days_supply_label']) ?>"
+                  data-med-nearexp="<?= (int)$m['near_expiry_stock_90d'] ?>"
+                  data-med-demand3m="<?= (int)$m['forecast_total_3m'] ?>"
+                  data-med-reorder="<?= (int)$m['suggested_order'] ?>">
                 <td class="py-2.5 px-3 whitespace-nowrap">
                   <div class="font-bold text-slate-900"><?= h($m['name']) ?></div>
-                  <div class="text-[11px] text-slate-400"><?= h($m['generic_name']) ?> &bull; <?= h($m['unit']) ?></div>
+                  <div class="text-[11px] text-slate-500"><?= h($m['generic_name']) ?> &bull; <?= h($m['unit']) ?></div>
+                  <div class="mt-1">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border <?= $m['program_badge'] ?>">
+                      <i class="fas <?= h($m['program_icon']) ?> text-[9px]"></i>
+                      <?= h($m['program_tag']) ?>
+                    </span>
+                  </div>
                 </td>
                 <td class="py-2.5 px-3 text-right font-mono font-semibold text-slate-800 whitespace-nowrap">
                   <div><?= number_format($m['current_stock']) ?> <?= h($m['unit']) ?></div>
+                  <div class="mt-0.5">
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold border <?= $m['days_supply_badge'] ?>" title="Estimated days of stock remaining based on projected daily burn rate">
+                      <i class="fas fa-hourglass-half text-[9px]"></i>
+                      <?= h($m['days_supply_label']) ?>
+                    </span>
+                  </div>
+                  <?php if (!empty($m['near_expiry_stock_90d']) && $m['near_expiry_stock_90d'] > 0): ?>
+                    <div class="text-[10px] text-amber-700 font-sans font-semibold mt-0.5" title="Batch stock expiring within the 90-day forecast window<?= $m['earliest_near_expiry'] ? ' (earliest: ' . h($m['earliest_near_expiry']) . ')' : '' ?>">
+                      <i class="fas fa-clock text-[9px] mr-0.5"></i> <?= number_format($m['near_expiry_stock_90d']) ?> exp. within 90d
+                    </div>
+                  <?php endif; ?>
                   <?php if (!empty($m['expired_stock']) && $m['expired_stock'] > 0): ?>
-                    <div class="text-[10px] text-rose-600 font-semibold" title="Excluded from available inventory and forecasting computation due to expiration">
+                    <div class="text-[10px] text-rose-600 font-sans font-semibold mt-0.5" title="Excluded from available inventory and forecasting computation due to expiration">
                       <i class="fas fa-ban text-[9px] mr-0.5"></i> <?= number_format($m['expired_stock']) ?> exp. excluded
                     </div>
                   <?php endif; ?>
                 </td>
-                <td class="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
+                <td class="py-2.5 px-3 text-right font-mono font-semibold text-teal-900 bg-teal-50/25 whitespace-nowrap">
                   <?= number_format($m['forecast_m1']) ?>
                 </td>
-                <td class="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
+                <td class="py-2.5 px-3 text-right font-mono font-semibold text-indigo-900 bg-indigo-50/25 whitespace-nowrap">
                   <?= number_format($m['forecast_m2']) ?>
                 </td>
-                <td class="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
+                <td class="py-2.5 px-3 text-right font-mono font-semibold text-purple-900 bg-purple-50/25 whitespace-nowrap">
                   <?= number_format($m['forecast_m3']) ?>
                 </td>
-                <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                <td class="py-2.5 px-3 text-right font-mono font-extrabold text-slate-900 bg-slate-100/60 whitespace-nowrap">
                   <?= number_format($m['forecast_total_3m']) ?>
                 </td>
                 <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                  <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border <?= $m['status_badge'] ?>">
+                  <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border <?= $m['status_badge'] ?>">
                     <?= h($m['status']) ?>
                   </span>
                 </td>
                 <td class="py-2.5 px-3 text-right whitespace-nowrap">
                   <?php if ($m['suggested_order'] > 0): ?>
-                    <span class="font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                      +<?= number_format($m['suggested_order']) ?> <?= h($m['unit']) ?>
-                    </span>
+                    <div class="flex flex-col items-end gap-1">
+                      <span class="font-mono font-bold text-rose-800 bg-rose-100/80 px-2.5 py-0.5 rounded-md border border-rose-300">
+                        +<?= number_format($m['suggested_order']) ?> <?= h($m['unit']) ?>
+                      </span>
+                      <?php if (function_exists('can_manage_clinical_records') && can_manage_clinical_records()): ?>
+                        <a href="/HealthLogs/public/inventory/transactions/form.php?medicine_id=<?= (int)$m['id'] ?>&amp;quantity=<?= (int)$m['suggested_order'] ?>"
+                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-semibold shadow-2xs transition"
+                           title="Pre-fill stock-in transaction for <?= h($m['name']) ?> (+<?= (int)$m['suggested_order'] ?> <?= h($m['unit']) ?>)">
+                          <i class="fas fa-plus-circle text-[9px]"></i>
+                          <span>Restock</span>
+                        </a>
+                      <?php endif; ?>
+                    </div>
                   <?php else: ?>
-                    <span class="text-emerald-700 font-semibold">&check; Sufficient</span>
+                    <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">&check; Sufficient</span>
                   <?php endif; ?>
                 </td>
               </tr>
@@ -1055,8 +1225,8 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           <th class="py-3 px-4">Run Time</th>
           <th class="py-3 px-4">Series Key</th>
           <th class="py-3 px-4">Horizon</th>
-          <th class="py-3 px-4">Model Type</th>
           <th class="py-3 px-4">Fitted Model</th>
+          <th class="py-3 px-4">Training Window</th>
           <th class="py-3 px-3">MAE</th>
           <th class="py-3 px-3">RMSE</th>
           <th class="py-3 px-3">MAPE</th>
@@ -1081,7 +1251,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
               ? 'bg-green-50 text-green-700 border border-green-200' 
               : 'bg-red-50 text-red-700 border border-red-200';
             
-            $modelOrderText = 'N/A';
+            $modelOrderText = 'Auto-fitted ARIMA';
             if ($run['model_type'] === 'ARIMA') {
                 $order = $run['model_order'] ?? '';
                 $seasonal = $run['seasonal_order'] ?? '';
@@ -1106,12 +1276,12 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
                 <?= h($run['horizon']) ?> days
               </td>
               <td class="py-3 px-4">
-                <span class="px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                  <?= h($run['model_type']) ?>
+                <span class="px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 font-mono">
+                  <?= h($modelOrderText) ?>
                 </span>
               </td>
-              <td class="py-3 px-4 text-xs font-semibold text-slate-700">
-                <?= h($modelOrderText === 'N/A' ? 'Auto-fitted model' : $modelOrderText) ?>
+              <td class="py-3 px-4 text-xs text-slate-600">
+                <?= !empty($run['training_points']) ? h($run['training_points'] . ' days') : '<span class="text-slate-300">--</span>' ?>
               </td>
               <td class="py-3 px-3 font-mono text-xs text-slate-700">
                 <?= $run['mae'] !== null ? h(number_format((float)$run['mae'], 2)) : '<span class="text-slate-300">--</span>' ?>
@@ -1996,24 +2166,24 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           {
             label: <?= json_encode($forecastMonthLabels[0] . ' (+30d)') ?>,
             data: topDemandMeds.map(m => m.forecast_m1),
-            backgroundColor: 'rgba(56, 189, 248, 0.85)',
-            borderColor: '#0284c7',
+            backgroundColor: 'rgba(13, 148, 136, 0.88)',
+            borderColor: '#0f766e',
             borderWidth: 1,
             borderRadius: 4
           },
           {
             label: <?= json_encode($forecastMonthLabels[1] . ' (+60d)') ?>,
             data: topDemandMeds.map(m => m.forecast_m2),
-            backgroundColor: 'rgba(14, 165, 233, 0.85)',
-            borderColor: '#0369a1',
+            backgroundColor: 'rgba(79, 70, 229, 0.85)',
+            borderColor: '#4338ca',
             borderWidth: 1,
             borderRadius: 4
           },
           {
             label: <?= json_encode($forecastMonthLabels[2] . ' (+90d)') ?>,
             data: topDemandMeds.map(m => m.forecast_m3),
-            backgroundColor: 'rgba(2, 132, 199, 0.85)',
-            borderColor: '#075985',
+            backgroundColor: 'rgba(147, 51, 234, 0.82)',
+            borderColor: '#7e22ce',
             borderWidth: 1,
             borderRadius: 4
           },
@@ -2021,12 +2191,12 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             label: 'Current Stock',
             data: topDemandMeds.map(m => m.current_stock),
             type: 'line',
-            borderColor: '#0f172a',
-            backgroundColor: '#0f172a',
-            borderWidth: 2,
+            borderColor: '#d97706',
+            backgroundColor: '#f59e0b',
+            borderWidth: 2.5,
             pointRadius: 4,
             pointHoverRadius: 6,
-            tension: 0.1
+            tension: 0.15
           }
         ]
       },
@@ -2056,18 +2226,44 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
     });
   }
 
-  // Medicine Risk Filter Buttons
+  // Medicine Risk Filter Buttons, Program Filter, Search, CSV Export & RIS Print
   const medFilterBtns = document.querySelectorAll('.med-filter-btn');
+  const medSearchInput = document.getElementById('medForecastSearchInput');
+  const medProgramSelect = document.getElementById('medProgramFilterSelect');
   const medRows = Array.from(document.querySelectorAll('.med-row'));
   const medPagination = document.getElementById('medicineForecastPagination');
   const medicineRowsPerPage = 20;
   let medicineCurrentPage = 1;
   let medicineFilter = 'all';
+  let medicineProgramFilter = 'all';
+  let medicineSearchQuery = '';
+
+  function getFilteredMedicineRows() {
+    return medRows.filter(row => {
+      const st = row.getAttribute('data-med-status') || '';
+      const prog = row.getAttribute('data-med-program') || '';
+      const searchStr = row.getAttribute('data-med-search') || '';
+
+      let statusMatch = true;
+      if (medicineFilter === 'Critical Shortage') {
+        statusMatch = st === 'Critical Shortage';
+      } else if (medicineFilter === 'Reorder Needed') {
+        statusMatch = st === 'Reorder Needed' || st === 'Low Buffer';
+      } else if (medicineFilter === 'Adequate Stock') {
+        statusMatch = st === 'Adequate Stock' || st === 'Overstocked';
+      }
+
+      const programMatch = medicineProgramFilter === 'all' || prog === medicineProgramFilter;
+      const searchMatch = !medicineSearchQuery || searchStr.includes(medicineSearchQuery);
+
+      return statusMatch && programMatch && searchMatch;
+    });
+  }
 
   function renderMedicinePagination() {
     if (!medPagination) return;
 
-    const filteredRows = medRows.filter(row => medicineFilter === 'all' || row.getAttribute('data-med-status') === medicineFilter);
+    const filteredRows = getFilteredMedicineRows();
     const totalPages = Math.max(1, Math.ceil(filteredRows.length / medicineRowsPerPage));
     medicineCurrentPage = Math.min(medicineCurrentPage, totalPages);
     const start = (medicineCurrentPage - 1) * medicineRowsPerPage;
@@ -2076,7 +2272,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
     filteredRows.slice(start, start + medicineRowsPerPage).forEach(row => row.classList.remove('hidden'));
 
     if (filteredRows.length <= medicineRowsPerPage) {
-      medPagination.innerHTML = '';
+      medPagination.innerHTML = `<span class="text-xs text-slate-500">Showing ${filteredRows.length} of ${medRows.length} medicines</span><div></div>`;
       return;
     }
 
@@ -2117,6 +2313,143 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
       renderMedicinePagination();
     });
   });
+
+  if (medSearchInput) {
+    medSearchInput.addEventListener('input', function() {
+      medicineSearchQuery = this.value.trim().toLowerCase();
+      medicineCurrentPage = 1;
+      renderMedicinePagination();
+    });
+  }
+
+  if (medProgramSelect) {
+    medProgramSelect.addEventListener('change', function() {
+      medicineProgramFilter = this.value;
+      medicineCurrentPage = 1;
+      renderMedicinePagination();
+    });
+  }
+
+  // Export Reorder CSV
+  const exportCsvBtn = document.getElementById('exportMedReorderCsvBtn');
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', function() {
+      const reorderRows = medRows.filter(r => Number(r.getAttribute('data-med-reorder') || 0) > 0);
+      const targetRows = reorderRows.length > 0 ? reorderRows : medRows;
+      const headers = ['Medicine Name', 'Generic Name', 'Clinical Program', 'Unit', 'Current Stock', 'Days of Supply', 'Near-Expiry (90d)', '90-Day Forecast Demand', 'Stock Status', 'Suggested Reorder Qty'];
+      const csvLines = [headers.join(',')];
+
+      targetRows.forEach(r => {
+        const vals = [
+          r.getAttribute('data-med-name') || '',
+          r.getAttribute('data-med-generic') || '',
+          r.getAttribute('data-med-program') || '',
+          r.getAttribute('data-med-unit') || '',
+          r.getAttribute('data-med-stock') || '0',
+          r.getAttribute('data-med-days') || '',
+          r.getAttribute('data-med-nearexp') || '0',
+          r.getAttribute('data-med-demand3m') || '0',
+          r.getAttribute('data-med-status') || '',
+          r.getAttribute('data-med-reorder') || '0'
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`);
+        csvLines.push(vals.join(','));
+      });
+
+      const blob = new Blob([csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Medicine_Reorder_Forecast_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // Print Requisition & Issue Slip (RIS)
+  const printRisBtn = document.getElementById('printMedReorderRisBtn');
+  if (printRisBtn) {
+    printRisBtn.addEventListener('click', function() {
+      const reorderRows = medRows.filter(r => Number(r.getAttribute('data-med-reorder') || 0) > 0);
+      const targetRows = reorderRows.length > 0 ? reorderRows : medRows;
+      const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      let rowsHtml = '';
+      targetRows.forEach((r, idx) => {
+        rowsHtml += `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td><strong>${r.getAttribute('data-med-name')}</strong><br><small style="color:#555;">${r.getAttribute('data-med-generic')} (${r.getAttribute('data-med-program')})</small></td>
+            <td style="text-align:center;">${r.getAttribute('data-med-unit')}</td>
+            <td style="text-align:right;">${Number(r.getAttribute('data-med-stock')).toLocaleString()}</td>
+            <td style="text-align:right;">${Number(r.getAttribute('data-med-demand3m')).toLocaleString()}</td>
+            <td style="text-align:center;">${r.getAttribute('data-med-status')}</td>
+            <td style="text-align:right;font-weight:bold;">+${Number(r.getAttribute('data-med-reorder')).toLocaleString()}</td>
+          </tr>
+        `;
+      });
+
+      const win = window.open('', '_blank', 'width=900,height=700');
+      if (!win) return;
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Medicine Requisition & Issue Slip (RIS) - ${todayStr}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #1e293b; margin: 28px; font-size: 12px; }
+            .header { text-align: center; border-bottom: 2px solid #0f766e; padding-bottom: 12px; margin-bottom: 16px; }
+            .header h2 { margin: 0; font-size: 18px; color: #0f766e; text-transform: uppercase; }
+            .header p { margin: 4px 0 0; color: #475569; font-size: 11px; }
+            .meta { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            th, td { border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 11.5px; }
+            th { background: #f1f5f9; text-transform: uppercase; font-size: 10.5px; color: #334155; }
+            .sigs { display: flex; justify-content: space-between; margin-top: 42px; gap: 24px; }
+            .sig-box { flex: 1; text-align: center; border-top: 1px solid #334155; padding-top: 6px; font-size: 11px; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="no-print" style="text-align:right;margin-bottom:10px;">
+            <button onclick="window.print()" style="background:#0f766e;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold;">Print Slip</button>
+          </div>
+          <div class="header">
+            <h2>Barangay Health Center — Requisition &amp; Issue Slip (RIS)</h2>
+            <p>90-Day Medicine Demand Forecast &amp; Safety Buffer Procurement Schedule (+20% Buffer &amp; FEFO Checked)</p>
+          </div>
+          <div class="meta">
+            <div><strong>Date Prepared:</strong> ${todayStr}</div>
+            <div><strong>Forecast Horizon:</strong> <?= h(implode(' – ', [$forecastMonthLabels[0], $forecastMonthLabels[2]])) ?> (Next 90 Days)</div>
+            <div><strong>Items Listed:</strong> ${targetRows.length} medicine(s)</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px;">#</th>
+                <th>Medicine &amp; Generic Description</th>
+                <th style="width:65px;">Unit</th>
+                <th style="width:90px;">On-Hand Stock</th>
+                <th style="width:105px;">90d Forecast Demand</th>
+                <th style="width:115px;">Risk Classification</th>
+                <th style="width:115px;">Suggested Reorder</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+          <div class="sigs">
+            <div class="sig-box"><strong>Requested By:</strong><br><br>Rural Health Midwife / Nurse</div>
+            <div class="sig-box"><strong>Reviewed By:</strong><br><br>RHU / CHO Pharmacist</div>
+            <div class="sig-box"><strong>Approved By:</strong><br><br>Municipal / City Health Officer</div>
+          </div>
+        </body>
+        </html>
+      `);
+      win.document.close();
+    });
+  }
+
   renderMedicinePagination();
 
   // 2. Patient Category 3-Month Forecast Chart

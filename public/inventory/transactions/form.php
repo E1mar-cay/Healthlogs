@@ -15,7 +15,10 @@ if ($id) {
     }
 }
 
-$displayQuantity = old('quantity', $rec ? abs((int)$rec['quantity']) : '');
+$preselectedMedId = isset($_GET['medicine_id']) ? (int)$_GET['medicine_id'] : 0;
+$prefillQty = isset($_GET['quantity']) && (int)$_GET['quantity'] > 0 ? (int)$_GET['quantity'] : '';
+$displayQuantity = old('quantity', $rec ? abs((int)$rec['quantity']) : $prefillQty);
+$defaultNotes = (!$rec && $preselectedMedId > 0 && $prefillQty !== '') ? 'Restock based on 90-Day Medicine Demand Forecast' : '';
 $adjustmentMode = old('adjustment_mode', ($rec && ($rec['transaction_type'] ?? '') === 'adjustment' && (int)$rec['quantity'] < 0)
     ? 'decrease'
     : 'increase');
@@ -63,7 +66,7 @@ require __DIR__ . '/../../partials/header.php';
       <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Medicine <span class="text-rose-500">*</span></label>
       <select id="medicineSelect" name="medicine_id" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
         <?php foreach ($meds as $m): ?>
-          <?php $sel = old('medicine_id', $rec['medicine_id'] ?? 0) == $m['id'] ? 'selected' : ''; ?>
+          <?php $sel = old('medicine_id', $rec['medicine_id'] ?? $preselectedMedId) == $m['id'] ? 'selected' : ''; ?>
           <option value="<?= (int)$m['id'] ?>" <?= $sel ?>><?= h($m['name']) ?></option>
         <?php endforeach; ?>
       </select>
@@ -134,7 +137,7 @@ require __DIR__ . '/../../partials/header.php';
 
     <div class="md:col-span-2">
       <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Notes / Remarks</label>
-      <textarea name="notes" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" rows="2" placeholder="Reason for transaction, patient name, or program details..."><?= h(old('notes', $rec['notes'] ?? '')) ?></textarea>
+      <textarea name="notes" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" rows="2" placeholder="Reason for transaction, patient name, or program details..."><?= h(old('notes', $rec['notes'] ?? $defaultNotes)) ?></textarea>
     </div>
 
     <div class="md:col-span-2 flex items-center justify-end gap-2 pt-3 border-t border-slate-100">

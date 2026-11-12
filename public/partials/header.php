@@ -5,6 +5,35 @@ $isActive = function (string $prefix) use ($currentPath): bool {
   return strncmp($currentPath, $prefix, strlen($prefix)) === 0;
 };
 $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/HealthLogs/public/index.php');
+
+// Determine active clinical section for topbar breadcrumb context
+$breadcrumbSection = 'Clinical Overview';
+if ($isActive('/HealthLogs/public/patients') || $isActive('/HealthLogs/public/appointments')) {
+  $breadcrumbSection = 'Core Registry';
+} elseif (
+  $isActive('/HealthLogs/public/immunization')
+  || $isActive('/HealthLogs/public/maternal')
+  || $isActive('/HealthLogs/public/family_planning')
+  || $isActive('/HealthLogs/public/ncd')
+  || $isActive('/HealthLogs/public/tb')
+) {
+  $breadcrumbSection = 'Programs';
+} elseif (
+  $currentPath === '/HealthLogs/public/inventory.php'
+  || $isActive('/HealthLogs/public/inventory/')
+  || $isActive('/HealthLogs/public/medicine_supplies')
+) {
+  $breadcrumbSection = 'Pharmacy & Supply';
+} elseif ($isActive('/HealthLogs/public/reminders')) {
+  $breadcrumbSection = 'Outreach & SMS';
+} elseif (
+  $isActive('/HealthLogs/public/reports')
+  || $isActive('/HealthLogs/public/users')
+  || $isActive('/HealthLogs/public/forecast')
+  || $isActive('/HealthLogs/public/activity_logs')
+) {
+  $breadcrumbSection = 'Administration';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,7 +41,7 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HealthLogs</title>
+  <title><?= isset($pageTitle) ? h($pageTitle) . ' — HealthLogs' : 'HealthLogs EHR' ?></title>
   <link rel="icon" type="image/jpeg" href="/HealthLogs/public/assets/images/logo.jpeg">
   <!-- Local Assets for 100% Offline Support -->
   <script src="/HealthLogs/public/assets/js/tailwind.js"></script>
@@ -22,20 +51,26 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <link rel="stylesheet" href="/HealthLogs/public/assets/css/card-icons.css">
   <script src="/HealthLogs/public/assets/js/card-icons.js" defer></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 
     :root {
-      --bg-1: #eef2ff;
-      --bg-2: #f0fdf4;
-      --ink: #0b1220;
-      --muted: #5b6b82;
-      --accent: #0ea5a4;
-      --accent-2: #2563eb;
-      --card: rgba(255, 255, 255, 0.92);
-      --line: rgba(15, 23, 42, 0.08);
-      --shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-      --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
-      --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+      --bg-canvas: #f8fafc;
+      --bg-glow-1: rgba(13, 148, 136, 0.06);
+      --bg-glow-2: rgba(37, 99, 235, 0.05);
+      --ink: #0f172a;
+      --ink-secondary: #334155;
+      --muted: #64748b;
+      --accent: #0d9488;
+      --accent-dark: #0f766e;
+      --accent-light: #ccfbf1;
+      --card: #ffffff;
+      --line: #e2e8f0;
+      --line-subtle: #f1f5f9;
+      --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+      --shadow-card-hover: 0 4px 14px -2px rgba(13, 148, 136, 0.10), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+      --font-body: 'Plus Jakarta Sans', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-display: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
     html,
@@ -44,49 +79,55 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       padding: 0;
       margin: 0;
       font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     body.app-body {
       font-family: var(--font-body);
-      font-size: clamp(13px, 0.8vw, 15px);
-      line-height: 1.5;
-      letter-spacing: 0.01em;
+      font-size: 14px;
+      line-height: 1.55;
       color: var(--ink);
       background:
-        radial-gradient(1200px 600px at 10% -10%, var(--bg-1), transparent 60%),
-        radial-gradient(1000px 500px at 100% 0%, var(--bg-2), transparent 55%),
-        #f8fafc;
+        radial-gradient(1100px 550px at 12% -8%, var(--bg-glow-1), transparent 60%),
+        radial-gradient(900px 480px at 95% 0%, var(--bg-glow-2), transparent 55%),
+        var(--bg-canvas);
       margin: 0;
     }
 
-    .app-content,
-    .app-content p,
-    .app-content li,
-    .app-content span,
-    .app-content div,
-    .app-content td,
-    .app-content th,
-    .app-content label,
-    .app-content small,
-    .app-content button,
-    .app-content input,
-    .app-content select,
-    .app-content textarea {
+    .app-content {
       font-family: var(--font-body);
-      font-size: clamp(13px, 0.75vw, 14px);
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .app-content h1,
     .app-content h2,
     .app-content h3,
     .app-content h4,
-    .app-content h5,
-    .app-content h6,
     .app-brand,
     .app-title {
       font-family: var(--font-display);
       letter-spacing: -0.02em;
+    }
+
+    .font-mono {
+      font-family: var(--font-mono) !important;
+    }
+
+    /* Custom Clinical Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(13, 148, 136, 0.55);
     }
 
     .app-shell {
@@ -97,30 +138,23 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
       margin: 0;
     }
 
+    /* Deep Emerald-Slate EHR Sidebar */
     .app-sidebar {
-      background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+      background:
+        radial-gradient(320px 220px at 15% 0%, rgba(13, 148, 136, 0.16), transparent 70%),
+        linear-gradient(180deg, #091321 0%, #0c192c 55%, #091524 100%);
       color: #e2e8f0;
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      border-right: 1px solid rgba(148, 163, 184, 0.12);
       height: 100vh;
       top: 0;
       left: 0;
       margin-top: 0;
       padding-top: 0;
+      box-shadow: 4px 0 24px rgba(9, 19, 33, 0.18);
       transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .app-sidebar::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 12px;
-      background: #0f172a;
-      z-index: 1;
-    }
-
-    .app-sidebar>* {
+    .app-sidebar > * {
       position: relative;
       z-index: 2;
     }
@@ -133,33 +167,44 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
     @media (min-width: 768px) {
       .app-sidebar {
         position: fixed;
-        width: 18rem;
+        width: 17.5rem;
       }
 
       .app-main {
-        margin-left: 18rem;
+        margin-left: 17.5rem;
       }
 
       /* Collapsed Sidebar on Desktop */
       body.sidebar-collapsed .app-sidebar,
       html.sidebar-collapsed body .app-sidebar {
-        width: 5rem;
+        width: 4.75rem;
       }
 
       body.sidebar-collapsed .app-main,
       html.sidebar-collapsed body .app-main {
-        margin-left: 5rem;
+        margin-left: 4.75rem;
       }
 
       body.sidebar-collapsed .app-brand-text,
       body.sidebar-collapsed .app-brand-badge,
       body.sidebar-collapsed .nav-text,
       body.sidebar-collapsed .nav-section,
+      body.sidebar-collapsed .sidebar-status-card,
       html.sidebar-collapsed body .app-brand-text,
       html.sidebar-collapsed body .app-brand-badge,
       html.sidebar-collapsed body .nav-text,
-      html.sidebar-collapsed body .nav-section {
+      html.sidebar-collapsed body .nav-section,
+      html.sidebar-collapsed body .sidebar-status-card {
         display: none !important;
+      }
+
+      body.sidebar-collapsed #navProgramsMenu,
+      body.sidebar-collapsed #navInventoryMenu,
+      html.sidebar-collapsed body #navProgramsMenu,
+      html.sidebar-collapsed body #navInventoryMenu {
+        padding-left: 0 !important;
+        border-left: none !important;
+        margin-left: 0 !important;
       }
 
       body.sidebar-collapsed .app-brand-container,
@@ -186,167 +231,230 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         left: 100%;
         top: 50%;
         transform: translateY(-50%);
-        margin-left: 10px;
+        margin-left: 12px;
         background: #0f172a;
         color: #f8fafc;
-        padding: 5px 11px;
+        padding: 6px 12px;
         border-radius: 8px;
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 600;
         white-space: nowrap;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(45, 212, 191, 0.25);
         z-index: 50;
         pointer-events: none;
       }
     }
 
+    /* Sticky Frosted Clinical Topbar */
     .app-topbar {
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(255, 255, 255, 0.75);
-      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--line);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
       transition: padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .app-brand {
       font-family: var(--font-display);
-      letter-spacing: 0.02em;
+      letter-spacing: -0.01em;
     }
 
     .app-brand-badge {
-      background: linear-gradient(120deg, rgba(14, 165, 164, 0.2), rgba(37, 99, 235, 0.2));
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(13, 148, 136, 0.16);
+      border: 1px solid rgba(45, 212, 191, 0.28);
       border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 11px;
+      padding: 2px 9px;
+      font-size: 10px;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.18em;
-      color: #cbd5f5;
+      letter-spacing: 0.12em;
+      color: #5eead4;
     }
 
     .nav-link {
+      position: relative;
       display: flex;
-      gap: 10px;
+      gap: 11px;
       align-items: center;
-      padding: 9px 12px;
-      border-radius: 12px;
-      color: #cbd5f5;
-      font-size: clamp(12.5px, 0.8vw, 14px);
-      transition: all .15s ease;
+      padding: 8.5px 11px;
+      border-radius: 11px;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .nav-text {
-      font-size: clamp(12.5px, 0.8vw, 14px);
+      font-size: 13px;
+      letter-spacing: 0.005em;
     }
 
     .nav-link:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+      color: #ffffff;
     }
 
     .nav-link.active {
-      background: linear-gradient(120deg, rgba(14, 165, 164, 0.22), rgba(37, 99, 235, 0.25));
-      color: #fff;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.3);
+      background: linear-gradient(90deg, rgba(13, 148, 136, 0.24) 0%, rgba(15, 118, 110, 0.08) 100%);
+      color: #ffffff;
+      font-weight: 600;
+      border: 1px solid rgba(45, 212, 191, 0.22);
+      box-shadow: 0 4px 14px rgba(6, 78, 59, 0.25);
+    }
+
+    .nav-link.active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 22%;
+      bottom: 22%;
+      width: 3.5px;
+      border-radius: 0 4px 4px 0;
+      background: #2dd4bf;
+      box-shadow: 0 0 8px rgba(45, 212, 191, 0.8);
     }
 
     .nav-link .nav-icon {
-      width: 22px;
-      height: 22px;
+      width: 28px;
+      height: 28px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: rgba(226, 232, 240, 0.8);
-      font-size: 10px;
-      font-weight: 700;
+      color: #94a3b8;
+      font-size: 12.5px;
       border-radius: 8px;
-      background: rgba(148, 163, 184, 0.18);
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.12);
       flex-shrink: 0;
+      transition: all 0.16s ease;
     }
 
-    .nav-link.active .nav-icon,
     .nav-link:hover .nav-icon {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.18);
+      color: #5eead4;
+      background: rgba(13, 148, 136, 0.18);
+      border-color: rgba(45, 212, 191, 0.28);
+    }
+
+    .nav-link.active .nav-icon {
+      color: #ffffff;
+      background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+      border-color: rgba(94, 234, 212, 0.4);
+      box-shadow: 0 2px 8px rgba(13, 148, 136, 0.45);
+    }
+
+    .nav-submenu {
+      border-left: 1px solid rgba(148, 163, 184, 0.16);
+      margin-left: 1.25rem;
+      padding-left: 0.6rem;
     }
 
     .nav-section {
       text-transform: uppercase;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.14em;
       font-size: 10px;
-      color: rgba(226, 232, 240, 0.45);
-      padding: 10px 12px 4px;
+      font-weight: 700;
+      color: #64748b;
+      padding: 14px 12px 5px;
     }
 
     .app-title {
-      font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-      font-weight: 600;
-      letter-spacing: 0.01em;
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: #0f172a;
     }
 
+    /* Refined Clinical Cards */
     .app-content .bg-white {
       background: var(--card);
       border: 1px solid var(--line);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-card);
     }
 
+    .app-content .rounded.shadow,
+    .app-content .rounded-lg.shadow {
+      border-radius: 0.875rem;
+    }
+
+    .app-content a.bg-white:hover {
+      border-color: rgba(13, 148, 136, 0.35);
+      box-shadow: var(--shadow-card-hover);
+    }
+
+    /* Clinical Data Tables */
     .app-content table {
       border-collapse: collapse;
       width: 100%;
     }
 
     .app-content thead {
-      background: rgba(148, 163, 184, 0.15);
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
     }
 
     .app-content th {
-      font-size: clamp(11px, 0.68vw, 12px);
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
+      letter-spacing: 0.07em;
+      color: #475569;
+    }
+
+    .app-content tbody tr {
+      transition: background-color 0.12s ease;
+    }
+
+    .app-content tbody tr:hover {
+      background-color: rgba(240, 253, 250, 0.55);
     }
 
     .app-content td {
-      color: #0f172a;
-      font-size: clamp(12.5px, 0.72vw, 14px);
+      color: #1e293b;
     }
 
-    .app-content input,
+    /* Clinical Form Inputs & Controls */
+    .app-content input:not([type="checkbox"]):not([type="radio"]),
     .app-content select,
     .app-content textarea {
-      background: rgba(248, 250, 252, 0.9);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      font-size: clamp(12.5px, 0.75vw, 14px);
-      padding: 0.65rem 0.8rem;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      color: #0f172a;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .app-content button,
-    .app-content .btn,
-    .app-content a.btn {
-      font-size: clamp(12.5px, 0.75vw, 14px);
-      line-height: 1.4;
+    .app-content input:not([type="checkbox"]):not([type="radio"]):hover,
+    .app-content select:hover,
+    .app-content textarea:hover {
+      border-color: #94a3b8;
     }
 
     .app-content input:focus,
     .app-content select:focus,
     .app-content textarea:focus {
-      outline: 2px solid rgba(14, 165, 164, 0.25);
-      border-color: rgba(14, 165, 164, 0.6);
+      outline: none;
+      border-color: #0d9488;
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
     }
 
     .app-chip {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(37, 99, 235, 0.12);
-      color: #1d4ed8;
-      padding: 4px 10px;
+      background: #f0fdfa;
+      color: #0f766e;
+      border: 1px solid #99f6e4;
+      padding: 4px 11px;
       border-radius: 999px;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
     }
 
@@ -394,36 +502,40 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
   <div class="app-shell">
     <div id="appOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition md:hidden z-30"></div>
     <aside id="appSidebar" class="flex flex-col app-sidebar fixed inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0">
-      <div class="px-5 py-5 flex items-center justify-between app-brand-container">
+      <div class="px-4 py-4 flex items-center justify-between app-brand-container border-b border-slate-800/80">
         <div class="flex items-center gap-3 overflow-hidden">
-          <div class="w-10 h-10 rounded-xl overflow-hidden shadow-sm shrink-0 border border-white/20 bg-white/10 flex items-center justify-center">
+          <div class="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 border border-teal-400/30 bg-slate-900 flex items-center justify-center ring-2 ring-teal-500/15">
             <img src="/HealthLogs/public/assets/images/logo.jpeg" alt="HealthLogs Logo" class="w-full h-full object-cover">
           </div>
           <div class="app-brand-text overflow-hidden">
-            <div class="app-brand text-xl font-bold text-white tracking-wide truncate">HealthLogs</div>
-            <div class="app-brand-badge mt-1">Brgy. Tangcul Care Hub</div>
+            <div class="app-brand text-lg font-bold text-white tracking-tight truncate flex items-center gap-1.5">
+              <span>HealthLogs</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-teal-400 inline-block"></span>
+            </div>
+            <div class="app-brand-badge mt-0.5">Brgy. Tangcul EHR</div>
           </div>
         </div>
-        <button id="sidebarCollapseBtn" type="button" class="hidden md:inline-flex text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/80 transition shrink-0" title="Collapse / Expand Sidebar">
+        <button id="sidebarCollapseBtn" type="button" class="hidden md:inline-flex text-slate-400 hover:text-teal-300 p-1.5 rounded-lg hover:bg-slate-800/80 transition shrink-0 cursor-pointer" title="Collapse / Expand Sidebar">
           <i class="fas fa-angles-left text-xs transition-transform duration-200" id="collapseIcon"></i>
         </button>
       </div>
-      <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto">
-        <div class="nav-section">Core</div>
+
+      <nav class="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+        <div class="nav-section">Clinical Core</div>
         <a class="nav-link <?= $isDashboard ? 'active' : '' ?>" href="/HealthLogs/public/index.php" title="Dashboard">
-          <span class="nav-icon">DB</span>
-          <span class="nav-text font-medium">Dashboard</span>
+          <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+          <span class="nav-text">Dashboard</span>
         </a>
         <a class="nav-link <?= $isActive('/HealthLogs/public/patients') ? 'active' : '' ?>" href="/HealthLogs/public/patients/index.php" title="Patient Records">
-          <span class="nav-icon">PT</span>
-          <span class="nav-text font-medium">Patient Records</span>
+          <span class="nav-icon"><i class="fas fa-hospital-user"></i></span>
+          <span class="nav-text">Patient Records</span>
         </a>
         <a class="nav-link <?= $isActive('/HealthLogs/public/appointments') ? 'active' : '' ?>" href="/HealthLogs/public/appointments/index.php" title="Appointments">
-          <span class="nav-icon">AP</span>
-          <span class="nav-text font-medium">Appointments</span>
+          <span class="nav-icon"><i class="fas fa-calendar-check"></i></span>
+          <span class="nav-text">Appointments</span>
         </a>
 
-        <div class="nav-section">Programs</div>
+        <div class="nav-section">Health Programs</div>
         <?php
           $programsOpen = $isActive('/HealthLogs/public/immunization')
             || $isActive('/HealthLogs/public/maternal')
@@ -436,103 +548,133 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
         ?>
         <!-- Programs collapsible group -->
         <button type="button" id="navProgramsToggle"
-          class="nav-link w-full text-left <?= $programsOpen ? 'active' : '' ?>"
-          aria-expanded="<?= $programsOpen ? 'true' : 'false' ?>">
-          <span class="nav-icon">PG</span>
-          <span class="nav-text font-medium flex-1">Programs</span>
-          <i class="fas fa-chevron-down nav-text text-[10px] transition-transform duration-200 <?= $programsOpen ? 'rotate-180' : '' ?>" id="navProgramsChevron"></i>
+          class="nav-link w-full text-left cursor-pointer <?= $programsOpen ? 'active' : '' ?>"
+          aria-expanded="<?= $programsOpen ? 'true' : 'false' ?>"
+          title="Health Programs">
+          <span class="nav-icon"><i class="fas fa-notes-medical"></i></span>
+          <span class="nav-text flex-1">Programs</span>
+          <i class="fas fa-chevron-down nav-text text-[10px] text-slate-400 transition-transform duration-200 <?= $programsOpen ? 'rotate-180 text-teal-300' : '' ?>" id="navProgramsChevron"></i>
         </button>
-        <div id="navProgramsMenu" class="<?= $programsOpen ? '' : 'hidden' ?> pl-3 space-y-0.5 mt-0.5">
-          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/immunization') ? 'active' : '' ?>" href="/HealthLogs/public/immunization/records/index.php" title="Immunization">
-            <span class="nav-icon text-[9px]">IM</span>
+        <div id="navProgramsMenu" class="<?= $programsOpen ? '' : 'hidden' ?> nav-submenu space-y-0.5 mt-0.5">
+          <a class="nav-link text-xs <?= $isActive('/HealthLogs/public/immunization') ? 'active' : '' ?>" href="/HealthLogs/public/immunization/records/index.php" title="Child Immunization (EPI)">
+            <span class="nav-icon"><i class="fas fa-syringe text-[11px]"></i></span>
             <span class="nav-text">Immunization</span>
           </a>
-          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/maternal') ? 'active' : '' ?>" href="/HealthLogs/public/maternal.php" title="Maternal Health">
-            <span class="nav-icon text-[9px]">MH</span>
+          <a class="nav-link text-xs <?= $isActive('/HealthLogs/public/maternal') ? 'active' : '' ?>" href="/HealthLogs/public/maternal.php" title="Maternal Health (ANC/PNC)">
+            <span class="nav-icon"><i class="fas fa-person-pregnant text-[11px]"></i></span>
             <span class="nav-text">Maternal Health</span>
           </a>
-          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/family_planning') ? 'active' : '' ?>" href="/HealthLogs/public/family_planning.php" title="Family Planning">
-            <span class="nav-icon text-[9px]">FP</span>
+          <a class="nav-link text-xs <?= $isActive('/HealthLogs/public/family_planning') ? 'active' : '' ?>" href="/HealthLogs/public/family_planning.php" title="Family Planning">
+            <span class="nav-icon"><i class="fas fa-people-roof text-[11px]"></i></span>
             <span class="nav-text">Family Planning</span>
           </a>
-          <a class="nav-link text-sm <?= $isActive('/HealthLogs/public/ncd') ? 'active' : '' ?>" href="/HealthLogs/public/ncd/records/index.php" title="Non-Communicable Diseases">
-            <span class="nav-icon text-[9px]">NC</span>
+          <a class="nav-link text-xs <?= $isActive('/HealthLogs/public/ncd') ? 'active' : '' ?>" href="/HealthLogs/public/ncd/records/index.php" title="Non-Communicable Diseases (PhilPEN)">
+            <span class="nav-icon"><i class="fas fa-heart-pulse text-[11px]"></i></span>
             <span class="nav-text">Non-Communicable</span>
           </a>
         </div>
 
         <!-- Inventory collapsible group -->
         <button type="button" id="navInventoryToggle"
-          class="nav-link w-full text-left <?= $inventoryOpen ? 'active' : '' ?>"
-          aria-expanded="<?= $inventoryOpen ? 'true' : 'false' ?>">
-          <span class="nav-icon">IV</span>
-          <span class="nav-text font-medium flex-1">Inventory</span>
-          <i class="fas fa-chevron-down nav-text text-[10px] transition-transform duration-200 <?= $inventoryOpen ? 'rotate-180' : '' ?>" id="navInventoryChevron"></i>
+          class="nav-link w-full text-left cursor-pointer <?= $inventoryOpen ? 'active' : '' ?>"
+          aria-expanded="<?= $inventoryOpen ? 'true' : 'false' ?>"
+          title="Pharmacy & Inventory">
+          <span class="nav-icon"><i class="fas fa-boxes-stacked"></i></span>
+          <span class="nav-text flex-1">Inventory</span>
+          <i class="fas fa-chevron-down nav-text text-[10px] text-slate-400 transition-transform duration-200 <?= $inventoryOpen ? 'rotate-180 text-teal-300' : '' ?>" id="navInventoryChevron"></i>
         </button>
-        <div id="navInventoryMenu" class="<?= $inventoryOpen ? '' : 'hidden' ?> pl-3 space-y-0.5 mt-0.5">
-          <a class="nav-link text-sm <?= ($currentPath === '/HealthLogs/public/inventory.php' || $isActive('/HealthLogs/public/inventory/medicines')) ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicines">
-            <span class="nav-icon text-[9px]">MD</span>
+        <div id="navInventoryMenu" class="<?= $inventoryOpen ? '' : 'hidden' ?> nav-submenu space-y-0.5 mt-0.5">
+          <a class="nav-link text-xs <?= ($currentPath === '/HealthLogs/public/inventory.php' || $isActive('/HealthLogs/public/inventory/medicines')) ? 'active' : '' ?>" href="/HealthLogs/public/inventory.php" title="Medicine Catalog">
+            <span class="nav-icon"><i class="fas fa-pills text-[11px]"></i></span>
             <span class="nav-text">Medicines</span>
           </a>
-          <a class="nav-link text-sm <?= ($isActive('/HealthLogs/public/medicine_supplies') || $isActive('/HealthLogs/public/inventory/batches') || $isActive('/HealthLogs/public/inventory/transactions')) ? 'active' : '' ?>" href="/HealthLogs/public/medicine_supplies.php" title="Supply & Batches">
-            <span class="nav-icon text-[9px]">SB</span>
-            <span class="nav-text">Supply & Batches</span>
+          <a class="nav-link text-xs <?= ($isActive('/HealthLogs/public/medicine_supplies') || $isActive('/HealthLogs/public/inventory/batches') || $isActive('/HealthLogs/public/inventory/transactions')) ? 'active' : '' ?>" href="/HealthLogs/public/medicine_supplies.php" title="Supply & Batches">
+            <span class="nav-icon"><i class="fas fa-box-open text-[11px]"></i></span>
+            <span class="nav-text">Supply &amp; Batches</span>
           </a>
         </div>
 
-        <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php" title="Reminders">
-          <span class="nav-icon">RM</span>
-          <span class="nav-text font-medium">Reminders</span>
+        <a class="nav-link <?= $isActive('/HealthLogs/public/reminders') ? 'active' : '' ?>" href="/HealthLogs/public/reminders.php" title="SMS Reminders">
+          <span class="nav-icon"><i class="fas fa-bell"></i></span>
+          <span class="nav-text">Reminders</span>
         </a>
 
         <?php if (($_SESSION['role'] ?? 'health_worker') === 'admin'): ?>
           <div class="nav-section">Administration</div>
           <a class="nav-link <?= $isActive('/HealthLogs/public/reports') ? 'active' : '' ?>" href="/HealthLogs/public/reports.php" title="Reports">
-            <span class="nav-icon">RP</span>
-            <span class="nav-text font-medium">Reports</span>
+            <span class="nav-icon"><i class="fas fa-file-waveform"></i></span>
+            <span class="nav-text">Reports</span>
           </a>
           <a class="nav-link <?= $isActive('/HealthLogs/public/users') ? 'active' : '' ?>" href="/HealthLogs/public/users.php" title="User Management">
-            <span class="nav-icon">US</span>
-            <span class="nav-text font-medium">User Management</span>
+            <span class="nav-icon"><i class="fas fa-user-doctor"></i></span>
+            <span class="nav-text">User Management</span>
           </a>
-          <a class="nav-link <?= $isActive('/HealthLogs/public/forecast') ? 'active' : '' ?>" href="/HealthLogs/public/forecast.php" title="Forecasting">
-            <span class="nav-icon">FC</span>
-            <span class="nav-text font-medium">Forecasting</span>
+          <a class="nav-link <?= $isActive('/HealthLogs/public/forecast') ? 'active' : '' ?>" href="/HealthLogs/public/forecast.php" title="SARIMA & Demand Forecasting">
+            <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+            <span class="nav-text">Forecasting</span>
           </a>
-          <a class="nav-link <?= $isActive('/HealthLogs/public/activity_logs') ? 'active' : '' ?>" href="/HealthLogs/public/activity_logs.php" title="Activity Logs">
-            <span class="nav-icon">AL</span>
-            <span class="nav-text font-medium">Activity Logs</span>
+          <a class="nav-link <?= $isActive('/HealthLogs/public/activity_logs') ? 'active' : '' ?>" href="/HealthLogs/public/activity_logs.php" title="Security & Activity Logs">
+            <span class="nav-icon"><i class="fas fa-shield-halved"></i></span>
+            <span class="nav-text">Activity Logs</span>
           </a>
         <?php endif; ?>
       </nav>
-      <div class="px-3 pb-5 mt-auto pt-2 border-t border-slate-800/80">
-        <a class="nav-link text-rose-300 hover:text-rose-100 hover:bg-rose-950/30" href="/HealthLogs/public/logout.php" title="Logout">
-          <span class="nav-icon bg-rose-950/40 text-rose-300">LG</span>
-          <span class="nav-text font-medium">Logout</span>
+
+      <div class="px-3 pb-4 mt-auto pt-3 border-t border-slate-800/80 space-y-2">
+        <div class="sidebar-status-card px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-[11px]">
+          <div class="flex items-center gap-2 text-slate-300 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>EHR Hub Active</span>
+          </div>
+          <span class="text-[10px] font-mono text-teal-400">ONLINE</span>
+        </div>
+        <a class="nav-link text-rose-300 hover:text-rose-100 hover:bg-rose-950/40" href="/HealthLogs/public/logout.php" title="Logout">
+          <span class="nav-icon !bg-rose-950/60 !border-rose-800/40 !text-rose-300"><i class="fas fa-right-from-bracket"></i></span>
+          <span class="nav-text font-semibold">Sign Out</span>
         </a>
       </div>
     </aside>
 
     <main class="app-main min-w-0">
       <header class="app-topbar">
-        <div class="w-full px-3 sm:px-4 md:px-6 py-3.5 flex items-center justify-between">
+        <div class="w-full px-3 sm:px-5 md:px-6 py-3 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <button id="sidebarToggle" aria-label="Toggle navigation" class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs shrink-0 transition" title="Toggle Sidebar">
+              <i class="fas fa-bars text-sm"></i>
+            </button>
             <?php if (!$isDashboard): ?>
-              <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/HealthLogs/public/index.php'; }" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white/95 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-semibold shadow-xs transition shrink-0" title="Go back to previous page">
-                <i class="fas fa-arrow-left text-xs text-teal-600"></i>
+              <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/HealthLogs/public/index.php'; }" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-teal-50/60 hover:border-teal-300 text-slate-700 hover:text-teal-800 text-xs font-semibold shadow-2xs transition shrink-0 cursor-pointer" title="Go back to previous page">
+                <i class="fas fa-arrow-left text-[11px] text-teal-600"></i>
                 <span class="hidden sm:inline">Back</span>
               </button>
             <?php endif; ?>
-            <button id="sidebarToggle" aria-label="Toggle navigation" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white/90 text-slate-700 hover:bg-slate-100 shadow-xs shrink-0 transition" title="Toggle Sidebar">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
-            <div class="app-title text-base sm:text-lg font-semibold truncate"><?= $pageTitle ?? 'Dashboard' ?></div>
+            <div class="min-w-0">
+              <div class="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-slate-400 leading-none mb-0.5">
+                <a href="/HealthLogs/public/index.php" class="hover:text-teal-600 transition">Brgy. Tangcul EHR</a>
+                <i class="fas fa-chevron-right text-[8px] text-slate-300"></i>
+                <span class="text-teal-700 font-semibold"><?= h($breadcrumbSection) ?></span>
+              </div>
+              <div class="app-title text-base sm:text-lg font-bold text-slate-900 truncate leading-tight"><?= h($pageTitle ?? 'Dashboard') ?></div>
+            </div>
           </div>
-          <div class="flex items-center gap-2 sm:gap-3 text-sm shrink-0">
+
+          <div class="flex items-center gap-2 sm:gap-2.5 text-sm shrink-0">
+            <!-- Quick Clinical Action Shortcuts -->
+            <div class="hidden lg:flex items-center gap-1.5 mr-1">
+              <a href="/HealthLogs/public/patients/index.php" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100/80 text-teal-800 border border-teal-200/80 text-xs font-semibold transition" title="Open Patient Registry">
+                <i class="fas fa-hospital-user text-teal-600 text-[11px]"></i>
+                <span>Patients</span>
+              </a>
+              <a href="/HealthLogs/public/appointments/index.php" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition" title="View Clinical Appointments">
+                <i class="fas fa-calendar-check text-slate-500 text-[11px]"></i>
+                <span>Schedule</span>
+              </a>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100/80 text-slate-600 text-[11px] font-medium border border-slate-200/60">
+                <i class="far fa-calendar text-teal-600"></i>
+                <span><?= date('M d, Y') ?></span>
+              </span>
+            </div>
+
             <?php
               $headerNearExpiryAlerts = class_exists('ActivityLogger') ? ActivityLogger::getNearExpiryAlerts(60) : [];
               $headerExpiredAlerts = class_exists('ActivityLogger') ? ActivityLogger::getExpiredStockAlerts() : [];
@@ -623,13 +765,16 @@ $isDashboard = ($currentPath === '/HealthLogs/public/' || $currentPath === '/Hea
             </div>
 
             <!-- User pill -->
-            <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
-              <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
-                <?= substr($_SESSION['username'] ?? 'U', 0, 1) ?>
+            <div class="flex items-center gap-2.5 pl-2.5 border-l border-slate-200">
+              <div class="relative">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-600 to-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shadow-2xs ring-2 ring-teal-500/20">
+                  <?= h(substr($_SESSION['username'] ?? 'U', 0, 1)) ?>
+                </div>
+                <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></span>
               </div>
               <div class="hidden sm:block text-left">
-                <div class="text-xs font-semibold text-slate-800 leading-tight"><?= h($_SESSION['username'] ?? 'User') ?></div>
-                <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold"><?= h(str_replace('_', ' ', $_SESSION['role'] ?? 'Staff')) ?></div>
+                <div class="text-xs font-bold text-slate-900 leading-tight"><?= h($_SESSION['full_name'] ?? ($_SESSION['username'] ?? 'User')) ?></div>
+                <div class="text-[10px] text-teal-700 uppercase tracking-wider font-bold"><?= h(str_replace('_', ' ', $_SESSION['role'] ?? 'Staff')) ?></div>
               </div>
             </div>
           </div>

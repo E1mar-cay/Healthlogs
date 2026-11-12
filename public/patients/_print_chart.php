@@ -194,8 +194,18 @@
       </div>
     </div>
     <div class="data-card">
-      <div class="data-label">Emergency Contact</div>
-      <div class="data-val"><?= h($patient['emergency_contact_name'] ?: 'None') ?> (<?= h($patient['emergency_contact_phone'] ?: 'No phone') ?>)</div>
+      <div class="data-label">Parents / Legal Guardian</div>
+      <div class="data-val">
+        <?php
+          $parentParts = [];
+          if (!empty($patient['mother_name'])) $parentParts[] = 'Mother: ' . $patient['mother_name'];
+          if (!empty($patient['father_name'])) $parentParts[] = 'Father: ' . $patient['father_name'];
+          if (!empty($patient['guardian_name'])) $parentParts[] = 'Guardian: ' . $patient['guardian_name'];
+        ?>
+        <?= !empty($parentParts) ? h(implode(' • ', $parentParts)) : h($patient['emergency_contact_name'] ?: 'None') ?>
+        <?php $pPhone = $patient['parent_contact_no'] ?? $patient['emergency_contact_phone'] ?? ''; ?>
+        <?= $pPhone ? ' (' . h($pPhone) . ')' : '' ?>
+      </div>
     </div>
   </div>
 

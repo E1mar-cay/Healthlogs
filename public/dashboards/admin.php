@@ -2,6 +2,19 @@
 $pageTitle = 'Administrator Dashboard';
 require __DIR__ . '/../partials/header.php';
 
+$selectedVisitMonth = trim((string)($_GET['visit_month'] ?? ''));
+if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $selectedVisitMonth)) {
+    $selectedVisitMonth = date('Y-m');
+}
+$isCurrentVisitMonth = ($selectedVisitMonth === date('Y-m'));
+$visitMonthStart = $selectedVisitMonth . '-01';
+$visitMonthEndLastDay = date('Y-m-t', strtotime($visitMonthStart));
+// For the current month, cap at today's date so future scheduled dates are never counted as completed visits
+$visitMonthEnd = ($isCurrentVisitMonth && date('Y-m-d') < $visitMonthEndLastDay)
+    ? date('Y-m-d')
+    : $visitMonthEndLastDay;
+$selectedMonthLabel = date('F Y', strtotime($visitMonthStart));
+
 $adminStats = [
     'total_patients' => 0,
     'monthly_visits' => 0,
@@ -11,22 +24,47 @@ $adminStats = [
     'ongoing_pregnancies' => 0,
     'ncd_clients' => 0,
 ];
+$visitBreakdown = [
+    'general' => 0,
+    'prenatal' => 0,
+    'postnatal' => 0,
+    'fp' => 0,
+    'ncd' => 0,
+    'immunization' => 0,
+];
 
 try {
     $adminStats['total_patients'] = (int)$pdo->query(
         "SELECT COUNT(*) FROM patients WHERE status = 'active'"
     )->fetchColumn();
 
-    $adminStats['monthly_visits'] = (int)$pdo->query(
-        "SELECT (
-            (SELECT COUNT(*) FROM visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM prenatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM postnatal_visits WHERE MONTH(visit_datetime) = MONTH(CURDATE()) AND YEAR(visit_datetime) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM fp_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM ncd_visits WHERE MONTH(visit_date) = MONTH(CURDATE()) AND YEAR(visit_date) = YEAR(CURDATE()))
-          + (SELECT COUNT(*) FROM immunization_records WHERE MONTH(administered_on) = MONTH(CURDATE()) AND YEAR(administered_on) = YEAR(CURDATE()))
-        )"
-    )->fetchColumn();
+    $vStmt = $pdo->prepare("
+        SELECT
+            (SELECT COUNT(*) FROM visits WHERE DATE(visit_datetime) BETWEEN ? AND ?) AS general_cnt,
+            (SELECT COUNT(*) FROM prenatal_visits WHERE DATE(visit_datetime) BETWEEN ? AND ?) AS prenatal_cnt,
+            (SELECT COUNT(*) FROM postnatal_visits WHERE DATE(visit_datetime) BETWEEN ? AND ?) AS postnatal_cnt,
+            (SELECT COUNT(*) FROM fp_visits WHERE DATE(visit_date) BETWEEN ? AND ?) AS fp_cnt,
+            (SELECT COUNT(*) FROM ncd_visits WHERE DATE(visit_date) BETWEEN ? AND ?) AS ncd_cnt,
+            (SELECT COUNT(*) FROM immunization_records WHERE DATE(administered_on) BETWEEN ? AND ?) AS imm_cnt
+    ");
+    $vStmt->execute([
+        $visitMonthStart, $visitMonthEnd,
+        $visitMonthStart, $visitMonthEnd,
+        $visitMonthStart, $visitMonthEnd,
+        $visitMonthStart, $visitMonthEnd,
+        $visitMonthStart, $visitMonthEnd,
+        $visitMonthStart, $visitMonthEnd,
+    ]);
+    $vRow = $vStmt->fetch(PDO::FETCH_ASSOC);
+    if ($vRow) {
+        $visitBreakdown['general'] = (int)$vRow['general_cnt'];
+        $visitBreakdown['prenatal'] = (int)$vRow['prenatal_cnt'];
+        $visitBreakdown['postnatal'] = (int)$vRow['postnatal_cnt'];
+        $visitBreakdown['fp'] = (int)$vRow['fp_cnt'];
+        $visitBreakdown['ncd'] = (int)$vRow['ncd_cnt'];
+        $visitBreakdown['immunization'] = (int)$vRow['imm_cnt'];
+        $adminStats['monthly_visits'] = array_sum($visitBreakdown);
+    }
 
     $adminStats['low_stock_items'] = (int)$pdo->query(
         "SELECT COUNT(*)
@@ -68,119 +106,177 @@ try {
 }
 ?>
 
-<div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 mb-5">
+<div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 border-t-4 border-t-teal-600 mb-5">
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <div>
-    <div class="text-sm text-slate-500">Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></div>
-      <div class="text-2xl font-semibold">Administrator Dashboard</div>
-      <p class="text-sm text-slate-500 mt-1">System overview, user management, program analytics, and operational controls.</p>
+      <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200 mb-1.5">
+        <i class="fas fa-user-shield text-[10px]"></i>
+        <span>Welcome back, <?= h($_SESSION['full_name'] ?? $_SESSION['username']) ?></span>
+      </div>
+      <div class="text-2xl font-bold text-slate-900">Administrator Dashboard</div>
+      <p class="text-sm text-slate-500 mt-0.5">System overview, user management, program analytics, and operational controls.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <span class="app-chip">Admin Access</span>
-      <span class="app-chip">Full Control</span>
+      <span class="app-chip"><i class="fas fa-shield-halved text-teal-600"></i> Admin Access</span>
+      <a href="/HealthLogs/public/patients/form.php" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-2xs transition">
+        <i class="fas fa-user-plus text-[11px]"></i>
+        <span>New Patient</span>
+      </a>
     </div>
   </div>
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-  <div class="bg-white p-5 rounded-xl border border-slate-200">
-    <div class="text-xs uppercase tracking-widest text-slate-400">Patients</div>
-    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['total_patients'])) ?></div>
-    <div class="text-sm text-slate-500">Total registered</div>
+  <div class="bg-white p-5 rounded-2xl border border-slate-200 border-l-4 border-l-teal-500">
+    <div class="text-xs font-bold uppercase tracking-wider text-teal-700">Patients</div>
+    <div class="text-3xl font-extrabold text-slate-900 mt-1.5 font-mono"><?= h(number_format($adminStats['total_patients'])) ?></div>
+    <div class="text-xs text-slate-500 mt-1 font-medium">Total active registered</div>
   </div>
-  <div class="bg-white p-5 rounded-xl border border-slate-200">
-    <div class="text-xs uppercase tracking-widest text-slate-400">Visits</div>
-    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['monthly_visits'])) ?></div>
-    <div class="text-sm text-slate-500">This month</div>
+  <div class="bg-white p-5 rounded-2xl border border-slate-200 border-l-4 border-l-indigo-500">
+    <div class="flex items-center justify-between gap-2">
+      <div class="text-xs font-bold uppercase tracking-wider text-indigo-700">Visits</div>
+      <form method="get" class="inline-block">
+        <select name="visit_month" onchange="this.form.submit()" aria-label="Select visits month" class="text-[11px] font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <?php
+            for ($mIdx = 0; $mIdx < 12; $mIdx++) {
+                $mTs = strtotime("first day of -$mIdx month");
+                $mVal = date('Y-m', $mTs);
+                $mText = date('M Y', $mTs) . ($mIdx === 0 ? ' (This Month)' : '');
+                $mSel = ($selectedVisitMonth === $mVal) ? 'selected' : '';
+                echo "<option value=\"" . h($mVal) . "\" $mSel>" . h($mText) . "</option>";
+            }
+          ?>
+        </select>
+      </form>
+    </div>
+    <div class="text-3xl font-extrabold text-slate-900 mt-1.5 font-mono"><?= h(number_format($adminStats['monthly_visits'])) ?></div>
+    <div class="text-xs text-slate-500 mt-1 font-medium">
+      <?= $isCurrentVisitMonth ? 'This month (' . h($selectedMonthLabel) . ')' : h($selectedMonthLabel) ?>
+    </div>
+    <?php
+      $bdParts = [];
+      if ($visitBreakdown['immunization'] > 0) $bdParts[] = 'Bakuna: ' . number_format($visitBreakdown['immunization']);
+      if (($visitBreakdown['prenatal'] + $visitBreakdown['postnatal']) > 0) $bdParts[] = 'Maternal: ' . number_format($visitBreakdown['prenatal'] + $visitBreakdown['postnatal']);
+      if ($visitBreakdown['fp'] > 0) $bdParts[] = 'FP: ' . number_format($visitBreakdown['fp']);
+      if ($visitBreakdown['ncd'] > 0) $bdParts[] = 'NCD: ' . number_format($visitBreakdown['ncd']);
+      if ($visitBreakdown['general'] > 0) $bdParts[] = 'Consult: ' . number_format($visitBreakdown['general']);
+    ?>
+    <?php if (!empty($bdParts)): ?>
+      <div class="text-[11px] text-slate-400 mt-1 truncate" title="<?= h(implode(' • ', $bdParts)) ?>">
+        <?= h(implode(' • ', $bdParts)) ?>
+      </div>
+    <?php endif; ?>
   </div>
-  <div class="bg-white p-5 rounded-xl border border-slate-200">
-    <div class="text-xs uppercase tracking-widest text-slate-400">NCD Clients</div>
-    <div class="text-2xl font-semibold mt-1 text-slate-900"><?= h(number_format($adminStats['ncd_clients'])) ?></div>
-    <div class="text-sm text-slate-500">HPN, Diabetes &amp; CKD</div>
+  <div class="bg-white p-5 rounded-2xl border border-slate-200 border-l-4 border-l-purple-500">
+    <div class="text-xs font-bold uppercase tracking-wider text-purple-700">NCD Clients</div>
+    <div class="text-3xl font-extrabold mt-1.5 text-slate-900 font-mono"><?= h(number_format($adminStats['ncd_clients'])) ?></div>
+    <div class="text-xs text-slate-500 mt-1 font-medium">HPN, Diabetes &amp; CKD</div>
   </div>
-  <div class="bg-white p-5 rounded-xl border border-slate-200">
-    <div class="text-xs uppercase tracking-widest text-slate-400">Low Stock</div>
-    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['low_stock_items'])) ?></div>
-    <div class="text-sm text-slate-500">Items below reorder</div>
+  <div class="bg-white p-5 rounded-2xl border border-slate-200 border-l-4 <?= $adminStats['low_stock_items'] > 0 ? 'border-l-amber-500' : 'border-l-emerald-500' ?>">
+    <div class="text-xs font-bold uppercase tracking-wider <?= $adminStats['low_stock_items'] > 0 ? 'text-amber-700' : 'text-emerald-700' ?>">Low Stock</div>
+    <div class="text-3xl font-extrabold text-slate-900 mt-1.5 font-mono"><?= h(number_format($adminStats['low_stock_items'])) ?></div>
+    <div class="text-xs text-slate-500 mt-1 font-medium">Items below reorder</div>
   </div>
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
-  <div class="bg-white p-5 rounded-xl border border-slate-200">
-    <div class="text-xs uppercase tracking-widest text-slate-400">Accounts</div>
-    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['active_users'])) ?></div>
-    <div class="text-sm text-slate-500">Active user accounts</div>
+  <div class="bg-white p-5 rounded-2xl border border-slate-200">
+    <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Accounts</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1 font-mono"><?= h(number_format($adminStats['active_users'])) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5">Active clinical user accounts</div>
   </div>
-  <div class="bg-white p-5 rounded-xl border border-slate-200">
-    <div class="text-xs uppercase tracking-widest text-slate-400">Reminders</div>
-    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['pending_reminders'])) ?></div>
-    <div class="text-sm text-slate-500">Pending and due now</div>
+  <div class="bg-white p-5 rounded-2xl border border-slate-200">
+    <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Reminders</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1 font-mono"><?= h(number_format($adminStats['pending_reminders'])) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5">Pending SMS outreach due now</div>
   </div>
-  <div class="bg-white p-5 rounded-xl border border-slate-200 sm:col-span-2 xl:col-span-1">
-    <div class="text-xs uppercase tracking-widest text-slate-400">Maternal</div>
-    <div class="text-2xl font-semibold mt-1"><?= h(number_format($adminStats['ongoing_pregnancies'])) ?></div>
-    <div class="text-sm text-slate-500">Ongoing pregnancies</div>
+  <div class="bg-white p-5 rounded-2xl border border-slate-200 sm:col-span-2 xl:col-span-1">
+    <div class="text-xs font-bold uppercase tracking-wider text-pink-700">Maternal</div>
+    <div class="text-2xl font-bold text-slate-900 mt-1 font-mono"><?= h(number_format($adminStats['ongoing_pregnancies'])) ?></div>
+    <div class="text-xs text-slate-500 mt-0.5">Ongoing tracked pregnancies</div>
   </div>
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-  <div class="bg-white p-5 rounded-xl border border-slate-200 xl:col-span-2">
+  <div class="bg-white p-5 rounded-2xl border border-slate-200 xl:col-span-2">
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm text-slate-500">Quick Links</div>
-        <div class="text-lg font-semibold">Program Modules</div>
+        <div class="text-xs font-bold uppercase tracking-wider text-teal-700">Quick Links</div>
+        <div class="text-lg font-bold text-slate-900">Program Modules</div>
       </div>
-      <a class="text-slate-600 hover:text-slate-900 text-sm font-medium" href="/HealthLogs/public/forecast.php">View Forecast &rarr;</a>
+      <a class="text-teal-700 hover:text-teal-800 text-xs font-bold bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-xl border border-teal-200 transition" href="/HealthLogs/public/forecast.php">View Forecast &rarr;</a>
     </div>
     <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      <a href="/HealthLogs/public/immunization/records/index.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
-        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Immunization</div>
-        <div class="text-sm font-semibold text-slate-800 mt-1">Child Vaccines</div>
+      <a href="/HealthLogs/public/immunization/records/index.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-teal-50/40 transition group">
+        <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-teal-700 font-bold">
+          <i class="fas fa-syringe"></i>
+          <span>Immunization</span>
+        </div>
+        <div class="text-sm font-bold text-slate-900 mt-1.5 group-hover:text-teal-800">Child Vaccines</div>
         <p class="text-slate-500 text-xs mt-1">Schedules, records &amp; coverage.</p>
       </a>
-      <a href="/HealthLogs/public/maternal.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
-        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Maternal Health</div>
-        <div class="text-sm font-semibold text-slate-800 mt-1"><?= number_format($adminStats['ongoing_pregnancies']) ?> Ongoing</div>
-        <p class="text-slate-500 text-xs mt-1">Prenatal &amp; postnatal care.</p>
+      <a href="/HealthLogs/public/maternal.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-pink-50/40 transition group">
+        <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-pink-700 font-bold">
+          <i class="fas fa-person-pregnant"></i>
+          <span>Maternal Health</span>
+        </div>
+        <div class="text-sm font-bold text-slate-900 mt-1.5 group-hover:text-pink-800"><?= number_format($adminStats['ongoing_pregnancies']) ?> Ongoing</div>
+        <p class="text-slate-500 text-xs mt-1">Prenatal &amp; postnatal TCL care.</p>
       </a>
-      <a href="/HealthLogs/public/ncd/records/index.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
-        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">NCD / PhilPEN</div>
-        <div class="text-sm font-semibold text-slate-800 mt-1"><?= number_format($adminStats['ncd_clients']) ?> Active</div>
+      <a href="/HealthLogs/public/ncd/records/index.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-indigo-50/40 transition group">
+        <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-indigo-700 font-bold">
+          <i class="fas fa-heart-pulse"></i>
+          <span>NCD / PhilPEN</span>
+        </div>
+        <div class="text-sm font-bold text-slate-900 mt-1.5 group-hover:text-indigo-800"><?= number_format($adminStats['ncd_clients']) ?> Active</div>
         <p class="text-slate-500 text-xs mt-1">HPN &amp; Diabetes monitoring.</p>
       </a>
-      <a href="/HealthLogs/public/inventory.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
-        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Medicine Inventory</div>
-        <div class="text-sm font-semibold text-slate-800 mt-1"><?= $adminStats['low_stock_items'] > 0 ? $adminStats['low_stock_items'] . ' Low Stock' : 'Stocked' ?></div>
+      <a href="/HealthLogs/public/inventory.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-amber-50/40 transition group">
+        <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-amber-700 font-bold">
+          <i class="fas fa-pills"></i>
+          <span>Medicine Inventory</span>
+        </div>
+        <div class="text-sm font-bold text-slate-900 mt-1.5 group-hover:text-amber-800"><?= $adminStats['low_stock_items'] > 0 ? $adminStats['low_stock_items'] . ' Low Stock' : 'Stocked' ?></div>
         <p class="text-slate-500 text-xs mt-1">Batches, expiry &amp; dispensing.</p>
       </a>
-      <a href="/HealthLogs/public/family_planning.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
-        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Family Planning</div>
-        <div class="text-sm font-semibold text-slate-800 mt-1">FP Clients</div>
+      <a href="/HealthLogs/public/family_planning.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-emerald-50/40 transition group">
+        <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-emerald-700 font-bold">
+          <i class="fas fa-people-roof"></i>
+          <span>Family Planning</span>
+        </div>
+        <div class="text-sm font-bold text-slate-900 mt-1.5 group-hover:text-emerald-800">FP Clients</div>
         <p class="text-slate-500 text-xs mt-1">Contraceptive users &amp; refills.</p>
       </a>
-      <a href="/HealthLogs/public/reports.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition">
-        <div class="text-xs uppercase tracking-widest text-slate-500 font-semibold">Reports</div>
-        <div class="text-sm font-semibold text-slate-800 mt-1">TCL &amp; Analytics</div>
+      <a href="/HealthLogs/public/reports.php" class="p-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition group">
+        <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-700 font-bold">
+          <i class="fas fa-file-waveform"></i>
+          <span>Reports</span>
+        </div>
+        <div class="text-sm font-bold text-slate-900 mt-1.5">TCL &amp; Analytics</div>
         <p class="text-slate-500 text-xs mt-1">Program registers &amp; exports.</p>
       </a>
     </div>
   </div>
 
-  <div class="bg-white p-5 rounded-xl border border-slate-200">
-    <div class="text-sm text-slate-500">Quick Actions</div>
-    <div class="text-lg font-semibold">Administrator Tools</div>
-    <div class="mt-4 space-y-2">
-      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/users.php">
-        <i class="fas fa-users mr-2"></i>Manage Users
+  <div class="bg-white p-5 rounded-2xl border border-slate-200">
+    <div class="text-xs font-bold uppercase tracking-wider text-teal-700">Quick Actions</div>
+    <div class="text-lg font-bold text-slate-900">Administrator Tools</div>
+    <div class="mt-4 space-y-2.5">
+      <a class="flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-teal-50/50 hover:border-teal-300 font-medium text-xs transition" href="/HealthLogs/public/users.php">
+        <span><i class="fas fa-user-doctor mr-2.5 text-teal-600"></i>Manage Clinical Staff</span>
+        <i class="fas fa-chevron-right text-[10px] text-slate-400"></i>
       </a>
-      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/inventory.php">
-        <i class="fas fa-pills mr-2"></i>Review Inventory
+      <a class="flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-teal-50/50 hover:border-teal-300 font-medium text-xs transition" href="/HealthLogs/public/inventory.php">
+        <span><i class="fas fa-pills mr-2.5 text-amber-600"></i>Review Pharmacy Inventory</span>
+        <i class="fas fa-chevron-right text-[10px] text-slate-400"></i>
       </a>
-      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/reminders.php">
-        <i class="fas fa-bell mr-2"></i>Review Reminders
+      <a class="flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-teal-50/50 hover:border-teal-300 font-medium text-xs transition" href="/HealthLogs/public/reminders.php">
+        <span><i class="fas fa-bell mr-2.5 text-indigo-600"></i>Review SMS Reminders</span>
+        <i class="fas fa-chevron-right text-[10px] text-slate-400"></i>
       </a>
-      <a class="block px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors" href="/HealthLogs/public/forecast.php">
-        <i class="fas fa-chart-line mr-2"></i>Run Forecast
+      <a class="flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-teal-50/50 hover:border-teal-300 font-medium text-xs transition" href="/HealthLogs/public/forecast.php">
+        <span><i class="fas fa-chart-line mr-2.5 text-emerald-600"></i>Run SARIMA &amp; Stock Forecast</span>
+        <i class="fas fa-chevron-right text-[10px] text-slate-400"></i>
       </a>
     </div>
   </div>

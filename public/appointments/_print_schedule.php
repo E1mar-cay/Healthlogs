@@ -112,7 +112,18 @@
           <tr>
             <td style="font-family: monospace; font-weight: 700;"><?= h($r['appointment_code']) ?></td>
             <td style="white-space: nowrap;"><?= date('M d, Y', strtotime($r['appointment_date'])) ?> <?= date('h:i A', strtotime($r['appointment_time'])) ?></td>
-            <td style="font-weight: 700;"><?= h($r['last_name'] . ', ' . $r['first_name']) ?></td>
+            <td style="font-weight: 700;">
+              <?= h($r['last_name'] . ', ' . $r['first_name']) ?>
+              <?php
+                $pGuardian = $r['mother_name'] ?? $r['father_name'] ?? $r['guardian_name'] ?? '';
+                $pPhone = $r['parent_contact_no'] ?? $r['contact_no'] ?? '';
+              ?>
+              <?php if ($pGuardian !== ''): ?>
+                <div style="font-weight: 400; font-size: 9px; color: #475569; margin-top: 2px;">
+                  Parent/Guardian: <?= h($pGuardian) ?><?= $pPhone ? ' (' . h($pPhone) . ')' : '' ?>
+                </div>
+              <?php endif; ?>
+            </td>
             <td><?= PatientClassifier::formatAge($r['birth_date']) ?> (<?= ucfirst(str_replace('_', ' ', $r['classification'])) ?>)</td>
             <td style="text-transform: capitalize;"><?= h($r['sex']) ?></td>
             <td><?= h($r['barangay']) ?></td>

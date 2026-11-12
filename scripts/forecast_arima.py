@@ -79,9 +79,22 @@ def get_connection():
 def load_series(series_key):
     if series_key == "visits_total":
         sql = """
-            SELECT DATE(visit_datetime) AS series_date, COUNT(*) AS value
-            FROM visits
-            GROUP BY DATE(visit_datetime)
+            SELECT DATE(v_date) AS series_date, COUNT(*) AS value
+            FROM (
+                SELECT visit_datetime AS v_date FROM visits
+                UNION ALL
+                SELECT visit_datetime AS v_date FROM prenatal_visits
+                UNION ALL
+                SELECT visit_datetime AS v_date FROM postnatal_visits
+                UNION ALL
+                SELECT CAST(administered_on AS DATETIME) AS v_date FROM immunization_records
+                UNION ALL
+                SELECT CAST(visit_date AS DATETIME) AS v_date FROM fp_visits
+                UNION ALL
+                SELECT CAST(visit_date AS DATETIME) AS v_date FROM ncd_visits
+            ) all_v
+            WHERE DATE(v_date) <= CURDATE()
+            GROUP BY DATE(v_date)
             ORDER BY series_date ASC
         """
         params = ()
@@ -147,7 +160,7 @@ def forecast(series, horizon):
     preds = [max(0.0, float(v)) for v in preds]
     conf_int = [[max(0.0, float(low)), max(0.0, float(high))] for low, high in conf_int]
 
-    last_date = training_series.index.max()
+    last_date = max(training_series.index.max(), pd.Timestamp(date.today()))
     future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=horizon, freq="D")
 
     # Compute in-sample predictions and evaluation metrics (MAE, RMSE, MAPE)

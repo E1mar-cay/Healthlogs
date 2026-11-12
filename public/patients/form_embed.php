@@ -52,12 +52,49 @@ $title = $patient ? 'Edit Patient' : 'New Patient';
       var lastName = form.querySelector('[name="last_name"]');
       var birthDate = form.querySelector('[name="birth_date"]');
       var barangay = form.querySelector('[name="barangay"]');
+      var classification = form.querySelector('[name="classification"]');
+      var motherName = form.querySelector('[name="mother_name"]');
+      var fatherName = form.querySelector('[name="father_name"]');
+      var guardianName = form.querySelector('[name="guardian_name"]');
+      var parentContact = form.querySelector('[name="parent_contact_no"]');
+      var contactNo = form.querySelector('[name="contact_no"]');
 
       var missing = [];
       if (!firstName || !firstName.value.trim()) missing.push('First Name');
       if (!lastName || !lastName.value.trim()) missing.push('Last Name');
       if (!birthDate || !birthDate.value.trim()) missing.push('Birth Date');
       if (!barangay || !barangay.value.trim()) missing.push('Barangay');
+
+      var isMinor = false;
+      var clsVal = classification ? classification.value : '';
+      if (['infant', 'under_five', 'school_age', 'adolescent'].indexOf(clsVal) !== -1) {
+        isMinor = true;
+      } else if (birthDate && birthDate.value.trim()) {
+        var dob = new Date(birthDate.value.trim());
+        var today = new Date();
+        if (!isNaN(dob.getTime())) {
+          var ageYears = today.getFullYear() - dob.getFullYear();
+          var m = today.getMonth() - dob.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+            ageYears--;
+          }
+          if (ageYears < 18) isMinor = true;
+        }
+      }
+
+      if (isMinor) {
+        var hasParentName = (motherName && motherName.value.trim() !== '') ||
+                            (fatherName && fatherName.value.trim() !== '') ||
+                            (guardianName && guardianName.value.trim() !== '');
+        var hasParentPhone = (parentContact && parentContact.value.trim() !== '') ||
+                             (contactNo && contactNo.value.trim() !== '');
+        if (!hasParentName) {
+          missing.push("Parent / Guardian Name (Mother's, Father's, or Guardian's Full Name is required for minors/pediatric patients)");
+        }
+        if (!hasParentPhone) {
+          missing.push("Parent / Guardian Contact Number (Required for minors/pediatric patients)");
+        }
+      }
 
       if (missing.length > 0) {
         e.preventDefault();

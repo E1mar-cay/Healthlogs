@@ -29,26 +29,32 @@ class PatientsModel
                     household_id, philhealth_no, national_id,
                     first_name, middle_name, last_name, suffix,
                     sex, birth_date, blood_type,
-                    contact_no, email, address_line, barangay, status
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    contact_no, email, address_line, barangay, status,
+                    mother_name, father_name, guardian_name, parent_contact_no, mother_patient_id
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            $data['household_id'],
-            $data['philhealth_no'],
-            $data['national_id'],
+            $data['household_id'] ?? null,
+            $data['philhealth_no'] ?? null,
+            $data['national_id'] ?? null,
             $data['first_name'],
-            $data['middle_name'],
+            $data['middle_name'] ?? null,
             $data['last_name'],
-            $data['suffix'],
+            $data['suffix'] ?? null,
             $data['sex'],
             $data['birth_date'],
-            $data['blood_type'],
-            $data['contact_no'],
-            $data['email'],
-            $data['address_line'],
+            $data['blood_type'] ?? null,
+            $data['contact_no'] ?? null,
+            $data['email'] ?? null,
+            $data['address_line'] ?? null,
             $data['barangay'],
             $data['status'] ?? 'active',
+            $data['mother_name'] ?? null,
+            $data['father_name'] ?? null,
+            $data['guardian_name'] ?? null,
+            $data['parent_contact_no'] ?? null,
+            $data['mother_patient_id'] ?? null,
         ]);
 
         return (int)$this->db->lastInsertId();
@@ -60,26 +66,32 @@ class PatientsModel
                     household_id = ?, philhealth_no = ?, national_id = ?,
                     first_name = ?, middle_name = ?, last_name = ?, suffix = ?,
                     sex = ?, birth_date = ?, blood_type = ?,
-                    contact_no = ?, email = ?, address_line = ?, barangay = ?, status = ?
+                    contact_no = ?, email = ?, address_line = ?, barangay = ?, status = ?,
+                    mother_name = ?, father_name = ?, guardian_name = ?, parent_contact_no = ?, mother_patient_id = ?
                 WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            $data['household_id'],
-            $data['philhealth_no'],
-            $data['national_id'],
+            $data['household_id'] ?? null,
+            $data['philhealth_no'] ?? null,
+            $data['national_id'] ?? null,
             $data['first_name'],
-            $data['middle_name'],
+            $data['middle_name'] ?? null,
             $data['last_name'],
-            $data['suffix'],
+            $data['suffix'] ?? null,
             $data['sex'],
             $data['birth_date'],
-            $data['blood_type'],
-            $data['contact_no'],
-            $data['email'],
-            $data['address_line'],
+            $data['blood_type'] ?? null,
+            $data['contact_no'] ?? null,
+            $data['email'] ?? null,
+            $data['address_line'] ?? null,
             $data['barangay'],
-            $data['status'],
+            $data['status'] ?? 'active',
+            $data['mother_name'] ?? null,
+            $data['father_name'] ?? null,
+            $data['guardian_name'] ?? null,
+            $data['parent_contact_no'] ?? null,
+            $data['mother_patient_id'] ?? null,
             $id,
         ]);
     }

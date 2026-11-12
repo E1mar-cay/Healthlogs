@@ -14,9 +14,9 @@ $params = [];
 $classificationFilter = trim($_GET['classification'] ?? '');
 
 if ($q !== '') {
-    $whereParts[] = "(first_name LIKE ? OR last_name LIKE ? OR middle_name LIKE ? OR barangay LIKE ? OR COALESCE(contact_no, '') LIKE ?)";
+    $whereParts[] = "(first_name LIKE ? OR last_name LIKE ? OR middle_name LIKE ? OR barangay LIKE ? OR COALESCE(contact_no, '') LIKE ? OR COALESCE(mother_name, '') LIKE ? OR COALESCE(father_name, '') LIKE ? OR COALESCE(guardian_name, '') LIKE ? OR COALESCE(parent_contact_no, '') LIKE ?)";
     $like = '%' . $q . '%';
-    array_push($params, $like, $like, $like, $like, $like);
+    array_push($params, $like, $like, $like, $like, $like, $like, $like, $like, $like);
 }
 if ($purokFilter !== '') {
     $whereParts[] = "barangay = ?";
@@ -431,6 +431,23 @@ require __DIR__ . '/../partials/header.php';
                   <?= h($p['last_name'] . ', ' . $p['first_name'] . ($p['middle_name'] ? ' ' . $p['middle_name'] : '')) ?>
                 </a>
                 <div class="text-[11px] text-slate-400 font-mono">ID: #<?= (int)$p['id'] ?><?= !empty($p['philhealth_no']) ? ' • PH: ' . h($p['philhealth_no']) : '' ?></div>
+                <?php
+                  $primaryParent = $p['mother_name'] ?? '';
+                  $parentRole = 'Mother';
+                  if ($primaryParent === '' && !empty($p['father_name'])) {
+                      $primaryParent = $p['father_name'];
+                      $parentRole = 'Father';
+                  } elseif ($primaryParent === '' && !empty($p['guardian_name'])) {
+                      $primaryParent = $p['guardian_name'];
+                      $parentRole = 'Guardian';
+                  }
+                ?>
+                <?php if ($primaryParent !== ''): ?>
+                  <div class="text-[11px] text-slate-600 mt-0.5">
+                    <i class="fas fa-user-shield text-[10px] text-teal-600 mr-0.5"></i>
+                    <span class="font-medium"><?= h($parentRole) ?>:</span> <?= h($primaryParent) ?>
+                  </div>
+                <?php endif; ?>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1.5 flex-wrap">
@@ -448,6 +465,9 @@ require __DIR__ . '/../partials/header.php';
               <td class="px-4 py-3">
                 <?php if ($p['contact_no']): ?>
                   <div class="text-xs font-medium text-slate-800"><?= h($p['contact_no']) ?></div>
+                <?php elseif (!empty($p['parent_contact_no'])): ?>
+                  <div class="text-xs font-medium text-slate-800"><?= h($p['parent_contact_no']) ?></div>
+                  <div class="text-[10px] text-slate-500">Parent / Guardian</div>
                 <?php else: ?>
                   <span class="text-xs text-slate-400">—</span>
                 <?php endif; ?>

@@ -52,6 +52,37 @@ if (!validate_in_array($statusRaw, ['active', 'inactive', 'deceased'])) {
     $validationErrors['status'][] = 'Status value is invalid.';
 }
 
+$motherNameRaw = trim((string)field('mother_name', ''));
+$fatherNameRaw = trim((string)field('father_name', ''));
+$guardianNameRaw = trim((string)field('guardian_name', ''));
+$parentContactRaw = trim((string)field('parent_contact_no', ''));
+$classificationPost = trim((string)field('classification', ''));
+
+if ($motherNameRaw !== '' && !validate_max_length($motherNameRaw, 120)) {
+    $validationErrors['mother_name'][] = "Mother's name must not exceed 120 characters.";
+}
+if ($fatherNameRaw !== '' && !validate_max_length($fatherNameRaw, 120)) {
+    $validationErrors['father_name'][] = "Father's name must not exceed 120 characters.";
+}
+if ($guardianNameRaw !== '' && !validate_max_length($guardianNameRaw, 120)) {
+    $validationErrors['guardian_name'][] = "Guardian's name must not exceed 120 characters.";
+}
+if ($parentContactRaw !== '' && !validate_phone($parentContactRaw)) {
+    $validationErrors['parent_contact_no'][] = 'Parent/Guardian contact number format is invalid.';
+}
+
+$isMinorOrPediatric = in_array($classificationPost, ['infant', 'under_five', 'school_age', 'adolescent'], true)
+    || (!empty($birthDateRaw) && validate_date($birthDateRaw) && PatientClassifier::getAgeInYears((string)$birthDateRaw) < 18);
+
+if ($isMinorOrPediatric) {
+    if ($motherNameRaw === '' && $fatherNameRaw === '' && $guardianNameRaw === '') {
+        $validationErrors['mother_name'][] = 'At least one Parent or Legal Guardian name (Mother, Father, or Guardian) is required for minor/pediatric patients.';
+    }
+    if ($parentContactRaw === '' && trim((string)$contactNoRaw) === '') {
+        $validationErrors['parent_contact_no'][] = 'A Parent / Guardian contact number is required for minor/pediatric patients.';
+    }
+}
+
 $conditionName = sanitize_string(field('condition_name'));
 $diagnosedOn = field('diagnosed_on');
 $conditionStatus = field('condition_status', 'active');
@@ -123,8 +154,31 @@ $is_pwd = !empty($_POST['is_pwd']) ? 1 : 0;
 $is_4ps = !empty($_POST['is_4ps']) ? 1 : 0;
 $civil_status = field('civil_status', 'single');
 $philhealth_category = field('philhealth_category', 'non_member');
+$mother_name = sanitize_string(field('mother_name'));
+$father_name = sanitize_string(field('father_name'));
+$guardian_name = sanitize_string(field('guardian_name'));
+$parent_contact_no = sanitize_phone(field('parent_contact_no'));
+$mother_patient_id = (int)field('mother_patient_id', 0);
+if ($mother_patient_id <= 0) {
+    $mother_patient_id = null;
+}
+
 $emergency_contact_name = sanitize_string(field('emergency_contact_name'));
 $emergency_contact_phone = sanitize_phone(field('emergency_contact_phone'));
+
+// Fallback emergency contact to parent/guardian when blank
+if (empty($emergency_contact_name)) {
+    if (!empty($mother_name)) {
+        $emergency_contact_name = $mother_name . ' (Mother)';
+    } elseif (!empty($father_name)) {
+        $emergency_contact_name = $father_name . ' (Father)';
+    } elseif (!empty($guardian_name)) {
+        $emergency_contact_name = $guardian_name . ' (Guardian)';
+    }
+}
+if (empty($emergency_contact_phone) && !empty($parent_contact_no)) {
+    $emergency_contact_phone = $parent_contact_no;
+}
 
 if (empty($classificationRaw) || !array_key_exists($classificationRaw, PatientClassifier::getClassifications())) {
     $classificationRaw = PatientClassifier::detectClassification(
@@ -157,6 +211,11 @@ $data = [
     'is_4ps' => $is_4ps,
     'civil_status' => in_array($civil_status, ['single', 'married', 'widowed', 'separated', 'child']) ? $civil_status : 'single',
     'philhealth_category' => in_array($philhealth_category, ['indigent_4ps', 'formal_economy', 'informal_economy', 'senior_citizen', 'lifetime_member', 'non_member']) ? $philhealth_category : 'non_member',
+    'mother_name' => $mother_name,
+    'father_name' => $father_name,
+    'guardian_name' => $guardian_name,
+    'parent_contact_no' => $parent_contact_no,
+    'mother_patient_id' => $mother_patient_id,
     'emergency_contact_name' => $emergency_contact_name,
     'emergency_contact_phone' => $emergency_contact_phone,
 ];
@@ -173,7 +232,8 @@ try {
                     sex = ?, birth_date = ?, blood_type = ?,
                     contact_no = ?, email = ?, address_line = ?, barangay = ?, status = ?,
                     classification = ?, is_pwd = ?, is_4ps = ?, civil_status = ?,
-                    philhealth_category = ?, emergency_contact_name = ?, emergency_contact_phone = ?
+                    philhealth_category = ?, mother_name = ?, father_name = ?, guardian_name = ?,
+                    parent_contact_no = ?, mother_patient_id = ?, emergency_contact_name = ?, emergency_contact_phone = ?
                 WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -197,6 +257,11 @@ try {
             $data['is_4ps'],
             $data['civil_status'],
             $data['philhealth_category'],
+            $data['mother_name'],
+            $data['father_name'],
+            $data['guardian_name'],
+            $data['parent_contact_no'],
+            $data['mother_patient_id'],
             $data['emergency_contact_name'],
             $data['emergency_contact_phone'],
             $id,
@@ -208,8 +273,9 @@ try {
                     sex, birth_date, blood_type,
                     contact_no, email, address_line, barangay, status,
                     classification, is_pwd, is_4ps, civil_status,
-                    philhealth_category, emergency_contact_name, emergency_contact_phone
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    philhealth_category, mother_name, father_name, guardian_name,
+                    parent_contact_no, mother_patient_id, emergency_contact_name, emergency_contact_phone
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             $data['household_id'],
@@ -232,6 +298,11 @@ try {
             $data['is_4ps'],
             $data['civil_status'],
             $data['philhealth_category'],
+            $data['mother_name'],
+            $data['father_name'],
+            $data['guardian_name'],
+            $data['parent_contact_no'],
+            $data['mother_patient_id'],
             $data['emergency_contact_name'],
             $data['emergency_contact_phone'],
         ]);

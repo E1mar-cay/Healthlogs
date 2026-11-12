@@ -135,13 +135,13 @@ $sensitiveVisitsCount = (int)$pdo->query("
             ?>
             <tr class="<?= $rowClass ?>">
               <td class="px-4 py-3">
-                <a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['pregnancy_id'] ?>" class="font-semibold text-slate-900 hover:text-teal-700 hover:underline">
+                <a href="/HealthLogs/public/maternal/tcl.php?pregnancy_id=<?= (int)$r['pregnancy_id'] ?>" class="font-semibold text-slate-900 hover:text-teal-700 hover:underline">
                   <?= h($r['last_name'] . ', ' . $r['first_name']) ?>
                 </a>
                 <?php if ($r['barangay']): ?>
                   <div class="text-xs text-slate-500"><?= h($r['barangay']) ?></div>
                 <?php endif; ?>
-                <a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['pregnancy_id'] ?>" class="text-xs text-teal-700 hover:underline">Open pregnancy record</a>
+                <a href="/HealthLogs/public/maternal/tcl.php?pregnancy_id=<?= (int)$r['pregnancy_id'] ?>" class="text-xs text-teal-700 hover:underline">View in Maternal TCL</a>
               </td>
               <td class="px-4 py-3 text-slate-700 whitespace-nowrap font-mono text-xs">
                 <?= date('M d, Y h:i A', strtotime($r['visit_datetime'])) ?>

@@ -75,7 +75,7 @@ try {
 }
 
 if ($returnPregnancyId > 0 && $returnPregnancyId === $pregnancy_id) {
-    header("Location: /HealthLogs/public/maternal/pregnancies/view.php?id=$returnPregnancyId");
+    header("Location: /HealthLogs/public/maternal/tcl.php?pregnancy_id=$returnPregnancyId#postnatal-section");
     exit;
 }
 

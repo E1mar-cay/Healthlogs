@@ -85,6 +85,10 @@ $maternalSummary = [
       <p class="text-sm text-slate-500 mt-1">Patient information, pregnancy status, and prenatal/postnatal visit records.</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
+      <a href="/HealthLogs/public/maternal/tcl.php" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 transition">
+        <i class="fas fa-table-list text-teal-600"></i>
+        <span>Master 8-ANC TCL Register</span>
+      </a>
       <?php if ($sensitiveCount > 0): ?>
         <a href="/HealthLogs/public/maternal/pregnancies/index.php?tab=ongoing&stage=sensitive" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition">
           <span><?= $sensitiveCount ?> Sensitive (6–7 Mos)</span>
@@ -231,17 +235,20 @@ $maternalSummary = [
               </td>
               <td class="px-4 py-3 whitespace-nowrap text-right text-xs">
                 <div class="inline-flex items-center gap-1.5">
-                  <a href="/HealthLogs/public/maternal/pregnancies/view.php?id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium">
-                    View
+                  <a href="/HealthLogs/public/maternal/tcl.php?pregnancy_id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-teal-200 bg-teal-50/70 text-teal-800 hover:bg-teal-100 font-semibold" title="View Mother's TCL &amp; Prenatal/Postnatal Visits">
+                    <i class="fas fa-clipboard-list mr-1 text-[10px]"></i> View TCL
                   </a>
                 <?php if (can_manage_clinical_records()): ?>
                     <?php if ($r['status'] === 'ongoing'): ?>
                     <a href="/HealthLogs/public/maternal/prenatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium" title="Record prenatal checkup">
                       Prenatal Visit
                     </a>
+                    <a href="/HealthLogs/public/maternal/tcl.php?pregnancy_id=<?= (int)$r['id'] ?>&deliver=1" class="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-medium" title="Mark as gave birth and unlock Postnatal Care">
+                      <i class="fas fa-baby mr-1 text-[10px]"></i> Gave Birth
+                    </a>
                     <?php elseif ($r['status'] === 'delivered'): ?>
-                    <a href="/HealthLogs/public/maternal/postnatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium" title="Record postnatal checkup">
-                      Postnatal Visit
+                    <a href="/HealthLogs/public/maternal/postnatal/form.php?pregnancy_id=<?= (int)$r['id'] ?>" class="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold" title="Record postnatal checkup">
+                      <i class="fas fa-baby-carriage mr-1 text-[10px]"></i> Postnatal Visit
                     </a>
                     <?php endif; ?>
                     <button type="button" class="pregnancy-modal-edit px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium" data-embed-url="/HealthLogs/public/maternal/pregnancies/form_embed.php?id=<?= (int)$r['id'] ?>">

@@ -62,6 +62,44 @@ class ForecastLogger
             $stmt = $db->prepare($sql);
             $stmt->execute([$historyPoints, $trainingPoints, $executionTime, $mae, $rmse, $mape, $runId]);
 
+            // Remove older duplicate successful runs with the same series, model type, and identical metrics (or same horizon)
+            $runMetaStmt = $db->prepare("SELECT series_key, horizon, model_type FROM forecast_runs WHERE id = ?");
+            $runMetaStmt->execute([$runId]);
+            $runMeta = $runMetaStmt->fetch(PDO::FETCH_ASSOC);
+            if ($runMeta) {
+                $dupStmt = $db->prepare("
+                    SELECT id FROM forecast_runs
+                    WHERE id <> ?
+                      AND status = 'success'
+                      AND series_key = ?
+                      AND model_type = ?
+                      AND (
+                          horizon = ?
+                          OR (
+                              COALESCE(ROUND(mae, 2), -1) = COALESCE(ROUND(?, 2), -1)
+                              AND COALESCE(ROUND(rmse, 2), -1) = COALESCE(ROUND(?, 2), -1)
+                              AND COALESCE(ROUND(mape, 2), -1) = COALESCE(ROUND(?, 2), -1)
+                          )
+                      )
+                ");
+                $dupStmt->execute([
+                    $runId,
+                    $runMeta['series_key'],
+                    $runMeta['model_type'],
+                    (int)$runMeta['horizon'],
+                    $mae,
+                    $rmse,
+                    $mape,
+                ]);
+                $dupIds = $dupStmt->fetchAll(PDO::FETCH_COLUMN);
+                if (!empty($dupIds)) {
+                    $inPlaceholders = implode(',', array_fill(0, count($dupIds), '?'));
+                    $db->prepare("DELETE FROM arima_parameters WHERE run_id IN ($inPlaceholders)")->execute($dupIds);
+                    $db->prepare("DELETE FROM forecast_results WHERE run_id IN ($inPlaceholders)")->execute($dupIds);
+                    $db->prepare("DELETE FROM forecast_runs WHERE id IN ($inPlaceholders)")->execute($dupIds);
+                }
+            }
+
             // 2. Save ARIMA parameters if provided
             if ($diagnostics !== null) {
                 // Get model order and seasonal order from parameters if present or leave blank
@@ -136,19 +174,34 @@ class ForecastLogger
     }
 
     /**
-     * Get recent forecast runs
+     * Get recent deduplicated forecast runs
      */
     public static function getRecentLogs(int $limit = 20, ?string $status = null): array
     {
         $db = self::init();
-        $where = $status !== null ? "WHERE r.status = ?" : "";
+        $where = $status !== null ? "AND r.status = ?" : "";
         $sql = "SELECT r.*, p.model_order, p.seasonal_order, p.aic, p.bic,
                        COALESCE(p.mae, r.mae) AS mae,
                        COALESCE(p.rmse, r.rmse) AS rmse,
                        COALESCE(p.mape, r.mape) AS mape
                 FROM forecast_runs r
                 LEFT JOIN arima_parameters p ON r.id = p.run_id
-                {$where}
+                INNER JOIN (
+                    SELECT MAX(r2.id) AS latest_id
+                    FROM forecast_runs r2
+                    LEFT JOIN arima_parameters p2 ON r2.id = p2.run_id
+                    WHERE r2.model_type = 'ARIMA'
+                    GROUP BY
+                        r2.series_key,
+                        r2.model_type,
+                        r2.status,
+                        COALESCE(p2.model_order, ''),
+                        COALESCE(ROUND(COALESCE(p2.mae, r2.mae), 2), -1),
+                        COALESCE(ROUND(COALESCE(p2.rmse, r2.rmse), 2), -1),
+                        COALESCE(ROUND(COALESCE(p2.mape, r2.mape), 2), -1),
+                        COALESCE(r2.error_message, '')
+                ) dedup ON r.id = dedup.latest_id
+                WHERE 1=1 {$where}
                 ORDER BY r.created_at DESC 
                 LIMIT ?";
         $stmt = $db->prepare($sql);

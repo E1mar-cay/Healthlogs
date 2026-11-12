@@ -197,6 +197,25 @@ require __DIR__ . '/../partials/header.php';
     <div><dt class="text-slate-500">Blood Type</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['blood_type'] ?: '—') ?></dd></div>
     <div><dt class="text-slate-500">PhilHealth PIN</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['philhealth_no'] ?: '—') ?></dd></div>
     <div><dt class="text-slate-500">PhilHealth Category</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h(str_replace('_', ' ', $patient['philhealth_category'] ?? '—')) ?></dd></div>
+    <div>
+      <dt class="text-slate-500">Mother's Full Name</dt>
+      <dd class="font-medium text-slate-900 mt-0.5">
+        <?php if (!empty($patient['mother_name'])): ?>
+          <?php if (!empty($patient['mother_patient_id'])): ?>
+            <a href="/HealthLogs/public/patients/view.php?id=<?= (int)$patient['mother_patient_id'] ?>" class="text-teal-700 hover:underline font-semibold">
+              <?= h($patient['mother_name']) ?> <i class="fas fa-arrow-up-right-from-square text-[10px] ml-0.5"></i>
+            </a>
+          <?php else: ?>
+            <?= h($patient['mother_name']) ?>
+          <?php endif; ?>
+        <?php else: ?>
+          —
+        <?php endif; ?>
+      </dd>
+    </div>
+    <div><dt class="text-slate-500">Father's Full Name</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['father_name'] ?? '') ?: '—' ?></dd></div>
+    <div><dt class="text-slate-500">Legal Guardian Name</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['guardian_name'] ?? '') ?: '—' ?></dd></div>
+    <div><dt class="text-slate-500">Parent / Guardian Contact</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['parent_contact_no'] ?? '') ?: '—' ?></dd></div>
     <div><dt class="text-slate-500">Emergency Contact</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h($patient['emergency_contact_name'] ?: '—') ?><?= $patient['emergency_contact_phone'] ? ' · ' . h($patient['emergency_contact_phone']) : '' ?></dd></div>
     <div><dt class="text-slate-500">Classification</dt><dd class="font-medium text-slate-900 mt-0.5"><?= h(str_replace('_', ' ', $patient['classification'] ?? '—')) ?></dd></div>
     <div><dt class="text-slate-500">4Ps Beneficiary</dt><dd class="font-medium text-slate-900 mt-0.5"><?= !empty($patient['is_4ps']) ? 'Yes' : 'No' ?></dd></div>

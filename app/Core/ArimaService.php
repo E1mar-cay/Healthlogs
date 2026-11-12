@@ -22,7 +22,22 @@ class ArimaService
                         UNION ALL
                         SELECT CAST(visit_date AS DATETIME) AS v_date FROM ncd_visits
                     ) all_v
-                    WHERE v_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                    WHERE DATE(v_date) <= CURDATE()
+                      AND v_date >= DATE_SUB((
+                          SELECT COALESCE(MAX(DATE(v2)), CURDATE()) FROM (
+                              SELECT visit_datetime AS v2 FROM visits WHERE DATE(visit_datetime) <= CURDATE()
+                              UNION ALL
+                              SELECT visit_datetime AS v2 FROM prenatal_visits WHERE DATE(visit_datetime) <= CURDATE()
+                              UNION ALL
+                              SELECT visit_datetime AS v2 FROM postnatal_visits WHERE DATE(visit_datetime) <= CURDATE()
+                              UNION ALL
+                              SELECT CAST(administered_on AS DATETIME) AS v2 FROM immunization_records WHERE administered_on <= CURDATE()
+                              UNION ALL
+                              SELECT CAST(visit_date AS DATETIME) AS v2 FROM fp_visits WHERE visit_date <= CURDATE()
+                              UNION ALL
+                              SELECT CAST(visit_date AS DATETIME) AS v2 FROM ncd_visits WHERE visit_date <= CURDATE()
+                          ) latest_v
+                      ), INTERVAL ? DAY)
                     GROUP BY DATE(v_date)
                     ORDER BY day_key ASC";
             $params = [$days];
@@ -179,7 +194,9 @@ class ArimaService
         ];
 
         // Generate forecasts for the next $horizon days
-        $lastDate = new DateTime(end($history)['date']);
+        $todayDt = new DateTime(date('Y-m-d'));
+        $lastHistoryDt = new DateTime(end($history)['date']);
+        $lastDate = $lastHistoryDt > $todayDt ? $lastHistoryDt : $todayDt;
         $lastVal = end($values);
         $lastDiff = ($n > 1) ? ($values[$n - 1] - $values[$n - 2]) : 0.0;
 

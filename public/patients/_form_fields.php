@@ -4,13 +4,52 @@
  * Expects: $patient (array|null), form tag opened/closed by caller.
  */
 $classifications = PatientClassifier::getClassifications();
-$currentClass = old('classification', $patient['classification'] ?? '');
-$currentBirthDate = old('birth_date', $patient['birth_date'] ?? '');
+$prefillMotherId = !$patient ? (int)($_GET['mother_patient_id'] ?? 0) : 0;
+$prefillBirthDate = !$patient ? trim((string)($_GET['birth_date'] ?? '')) : '';
+$prefillMotherRow = null;
+if ($prefillMotherId > 0 && isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $pmStmt = $pdo->prepare("SELECT id, first_name, middle_name, last_name, barangay, address_line, contact_no FROM patients WHERE id = ? LIMIT 1");
+        $pmStmt->execute([$prefillMotherId]);
+        $prefillMotherRow = $pmStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) {
+        $prefillMotherRow = null;
+    }
+}
+$prefillMotherFullName = $prefillMotherRow
+    ? trim($prefillMotherRow['first_name'] . ' ' . ($prefillMotherRow['middle_name'] ? $prefillMotherRow['middle_name'] . ' ' : '') . $prefillMotherRow['last_name'])
+    : '';
+
+$currentClass = old('classification', $patient['classification'] ?? ($prefillMotherRow ? 'infant' : ''));
+$currentBirthDate = old('birth_date', $patient['birth_date'] ?? $prefillBirthDate);
 $currentSex = old('sex', $patient['sex'] ?? 'male');
 $isPwd = (bool)old('is_pwd', $patient['is_pwd'] ?? 0);
 $is4ps = (bool)old('is_4ps', $patient['is_4ps'] ?? 0);
-$currentCivil = old('civil_status', $patient['civil_status'] ?? 'single');
+$currentCivil = old('civil_status', $patient['civil_status'] ?? ($prefillMotherRow ? 'child' : 'single'));
 $currentPhilhealthCat = old('philhealth_category', $patient['philhealth_category'] ?? 'non_member');
+$currentMotherPatientId = (int)old('mother_patient_id', $patient['mother_patient_id'] ?? $prefillMotherId);
+$isMinorInitial = in_array($currentClass, ['infant', 'under_five', 'school_age', 'adolescent'], true)
+    || ($currentBirthDate !== '' && PatientClassifier::getAgeInYears($currentBirthDate) < 18);
+
+$maternalOptions = [];
+if (isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $excludeId = (int)($patient['id'] ?? 0);
+        $matStmt = $pdo->prepare("
+            SELECT id, first_name, middle_name, last_name, barangay, contact_no
+            FROM patients
+            WHERE sex = 'female'
+              AND status = 'active'
+              AND id != ?
+              AND (classification IN ('pregnant', 'postpartum', 'adult') OR TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 15 AND 55)
+            ORDER BY last_name ASC, first_name ASC
+        ");
+        $matStmt->execute([$excludeId]);
+        $maternalOptions = $matStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $maternalOptions = [];
+    }
+}
 ?>
     <?php if ($patient): ?>
       <input type="hidden" name="id" value="<?= (int)$patient['id'] ?>" />
@@ -117,7 +156,7 @@ $currentPhilhealthCat = old('philhealth_category', $patient['philhealth_category
     <div>
       <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Purok <span class="text-xs text-teal-700 font-semibold">(Barangay Tangcul)</span> <span class="text-rose-500">*</span></label>
       <?php 
-        $currentPurok = old('barangay', $patient['barangay'] ?? 'Purok 1'); 
+        $currentPurok = old('barangay', $patient['barangay'] ?? ($prefillMotherRow['barangay'] ?? 'Purok 1')); 
         $stdPuroks = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7'];
       ?>
       <select name="barangay" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">
@@ -131,7 +170,7 @@ $currentPhilhealthCat = old('philhealth_category', $patient['philhealth_category
     </div>
     <div>
       <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Address Details (House No. / Street)</label>
-      <input name="address_line" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="e.g. Near Chapel, Purok 2" value="<?= h(old('address_line', $patient['address_line'] ?? '')) ?>" />
+      <input name="address_line" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="e.g. Near Chapel, Purok 2" value="<?= h(old('address_line', $patient['address_line'] ?? ($prefillMotherRow['address_line'] ?? ''))) ?>" />
     </div>
 
     <div>
@@ -141,6 +180,72 @@ $currentPhilhealthCat = old('philhealth_category', $patient['philhealth_category
     <div>
       <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Email Address (Optional)</label>
       <input name="email" type="email" placeholder="patient@example.com" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" value="<?= h(old('email', $patient['email'] ?? '')) ?>" />
+    </div>
+
+    <!-- Parents / Legal Guardian Information -->
+    <div class="md:col-span-2 mt-2 pt-3 border-t border-slate-200">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <i class="fas fa-Hands-holding-child fa-users text-teal-600"></i> Parents / Legal Guardian Information
+        </div>
+        <span id="parentReqBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border <?= $isMinorInitial ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200' ?>">
+          <?= $isMinorInitial ? 'Required for Infants, Children & Minors (< 18 yrs)' : 'Standard FHSIS / Target Client List Record' ?>
+        </span>
+      </div>
+      <div id="parentRequirementNotice" class="mt-1.5 text-xs p-2.5 rounded-xl border <?= $isMinorInitial ? 'bg-amber-50/80 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200' ?>">
+        <i class="fas fa-circle-info mr-1 <?= $isMinorInitial ? 'text-amber-600' : 'text-slate-400' ?>"></i>
+        <span id="parentRequirementText">
+          <?= $isMinorInitial
+              ? 'Because this patient is a minor / pediatric client, an accompanying Parent or Legal Guardian (Mother, Father, or Guardian Name and Contact No.) must be recorded for immunization consent and appointment follow-ups.'
+              : 'Record the patient\'s Mother, Father, or Legal Guardian details. Automatically required when registering infants (0–11m), under-5 children, and minors (< 18y).' ?>
+        </span>
+      </div>
+    </div>
+
+    <div class="md:col-span-2">
+      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Link to Registered Mother in HealthLogs <span class="text-slate-400 font-normal">(Optional — Auto-fills Mother's Name &amp; Contact)</span></label>
+      <select id="motherPatientSelect" name="mother_patient_id" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
+        <option value="">-- Not Linked / Enter Mother's Name Manually Below --</option>
+        <?php foreach ($maternalOptions as $mOpt): ?>
+          <?php
+            $mFull = trim($mOpt['first_name'] . ' ' . ($mOpt['middle_name'] ? $mOpt['middle_name'] . ' ' : '') . $mOpt['last_name']);
+            $mDisplay = $mOpt['last_name'] . ', ' . $mOpt['first_name'] . ($mOpt['middle_name'] ? ' ' . $mOpt['middle_name'] : '') . ' (' . $mOpt['barangay'] . ($mOpt['contact_no'] ? ' • ' . $mOpt['contact_no'] : '') . ')';
+          ?>
+          <option value="<?= (int)$mOpt['id'] ?>"
+                  data-full-name="<?= h($mFull) ?>"
+                  data-contact="<?= h($mOpt['contact_no'] ?? '') ?>"
+                  data-barangay="<?= h($mOpt['barangay'] ?? '') ?>"
+                  <?= $currentMotherPatientId === (int)$mOpt['id'] ? 'selected' : '' ?>>
+            <?= h($mDisplay) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">
+        Mother's Full Name (Maiden / Married) <span class="parent-req-star text-rose-500 <?= $isMinorInitial ? '' : 'hidden' ?>">*</span>
+      </label>
+      <input id="motherNameInput" name="mother_name" placeholder="e.g. Maria Santos Dela Cruz" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500" value="<?= h(old('mother_name', $patient['mother_name'] ?? $prefillMotherFullName)) ?>" />
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">
+        Father's Full Name
+      </label>
+      <input id="fatherNameInput" name="father_name" placeholder="e.g. Juan Reyes Dela Cruz" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500" value="<?= h(old('father_name', $patient['father_name'] ?? '')) ?>" />
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">
+        Legal Guardian Name <span class="text-slate-400 font-normal">(If accompanied by non-parent)</span>
+      </label>
+      <input id="guardianNameInput" name="guardian_name" placeholder="e.g. Elena Santos (Grandmother / Aunt)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" value="<?= h(old('guardian_name', $patient['guardian_name'] ?? '')) ?>" />
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">
+        Parent / Guardian Contact No. <span class="parent-req-star text-rose-500 <?= $isMinorInitial ? '' : 'hidden' ?>">*</span>
+      </label>
+      <input id="parentContactInput" name="parent_contact_no" placeholder="09XXXXXXXXX (Used for Bakuna & Visit SMS)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500" value="<?= h(old('parent_contact_no', $patient['parent_contact_no'] ?? ($prefillMotherRow['contact_no'] ?? ''))) ?>" />
     </div>
 
     <!-- Health Insurance & Emergency Contact -->
@@ -212,8 +317,85 @@ $currentPhilhealthCat = old('philhealth_category', $patient['philhealth_category
   const agePreview = document.getElementById('calculatedAgePreview');
   const descDiv = document.getElementById('classificationDescription');
   const sexSelect = document.getElementById('patientSexSelect');
+  const motherPatientSelect = document.getElementById('motherPatientSelect');
+  const motherNameInput = document.getElementById('motherNameInput');
+  const parentContactInput = document.getElementById('parentContactInput');
+  const parentReqBadge = document.getElementById('parentReqBadge');
+  const parentRequirementNotice = document.getElementById('parentRequirementNotice');
+  const parentRequirementText = document.getElementById('parentRequirementText');
+  const parentReqStars = document.querySelectorAll('.parent-req-star');
 
   const classDescriptions = <?= json_encode(array_map(function($c) { return $c['description']; }, $classifications)) ?>;
+
+  function checkIsMinorOrPediatric() {
+    const cls = classSelect ? classSelect.value : '';
+    if (['infant', 'under_five', 'school_age', 'adolescent'].indexOf(cls) !== -1) {
+      return true;
+    }
+    if (birthInput && birthInput.value) {
+      const dob = new Date(birthInput.value);
+      const today = new Date();
+      if (!isNaN(dob.getTime())) {
+        let ageYears = today.getFullYear() - dob.getFullYear();
+        let m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+          ageYears--;
+        }
+        if (ageYears < 18) return true;
+      }
+    }
+    return false;
+  }
+
+  function updateParentRequirementUI() {
+    const isMinor = checkIsMinorOrPediatric();
+    parentReqStars.forEach(function(el) {
+      if (isMinor) {
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    });
+    if (parentReqBadge) {
+      parentReqBadge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ' +
+        (isMinor ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200');
+      parentReqBadge.textContent = isMinor
+        ? 'Required for Infants, Children & Minors (< 18 yrs)'
+        : 'Standard FHSIS / Target Client List Record';
+    }
+    if (parentRequirementNotice) {
+      parentRequirementNotice.className = 'mt-1.5 text-xs p-2.5 rounded-xl border ' +
+        (isMinor ? 'bg-amber-50/80 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200');
+    }
+    if (parentRequirementText) {
+      parentRequirementText.textContent = isMinor
+        ? 'Because this patient is a minor / pediatric client, an accompanying Parent or Legal Guardian (Mother, Father, or Guardian Name and Contact No.) must be recorded for immunization consent and appointment follow-ups.'
+        : 'Record the patient\'s Mother, Father, or Legal Guardian details. Automatically required when registering infants (0–11m), under-5 children, and minors (< 18y).';
+    }
+  }
+
+  if (motherPatientSelect) {
+    motherPatientSelect.addEventListener('change', function() {
+      const opt = this.options[this.selectedIndex];
+      if (!opt || !this.value) return;
+      const mName = opt.getAttribute('data-full-name') || '';
+      const mContact = opt.getAttribute('data-contact') || '';
+      if (mName && motherNameInput) {
+        motherNameInput.value = mName;
+      }
+      if (mContact && parentContactInput && !parentContactInput.value.trim()) {
+        parentContactInput.value = mContact;
+      }
+      const emName = document.querySelector('[name="emergency_contact_name"]');
+      const emPhone = document.querySelector('[name="emergency_contact_phone"]');
+      if (mName && emName && !emName.value.trim()) {
+        emName.value = mName + ' (Mother)';
+      }
+      if (mContact && emPhone && !emPhone.value.trim()) {
+        emPhone.value = mContact;
+      }
+    });
+  }
 
   if (classSelect && descDiv) {
     classSelect.addEventListener('change', function() {
@@ -221,6 +403,7 @@ $currentPhilhealthCat = old('philhealth_category', $patient['philhealth_category
       if (classDescriptions[val]) {
         descDiv.textContent = classDescriptions[val];
       }
+      updateParentRequirementUI();
     });
   }
 
@@ -271,6 +454,7 @@ $currentPhilhealthCat = old('philhealth_category', $patient['philhealth_category
           descDiv.textContent = classDescriptions[classSelect.value];
         }
       }
+      updateParentRequirementUI();
     });
   }
 })();

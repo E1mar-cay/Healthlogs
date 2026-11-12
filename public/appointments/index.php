@@ -16,9 +16,9 @@ $whereParts = [];
 $params = [];
 
 if ($q !== '') {
-    $whereParts[] = "(a.appointment_code LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ? OR a.reason LIKE ? OR a.assigned_personnel LIKE ?)";
+    $whereParts[] = "(a.appointment_code LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ? OR COALESCE(p.mother_name, '') LIKE ? OR COALESCE(p.father_name, '') LIKE ? OR a.reason LIKE ? OR a.assigned_personnel LIKE ?)";
     $like = '%' . $q . '%';
-    array_push($params, $like, $like, $like, $like, $like);
+    array_push($params, $like, $like, $like, $like, $like, $like, $like);
 }
 if ($categoryFilter !== '') {
     $whereParts[] = "hs.category = ?";
@@ -113,7 +113,8 @@ $services = $pdo->query("
 // If print mode requested
 if ($isPrintMode) {
     $printStmt = $pdo->prepare("
-        SELECT a.*, hs.service_name, hs.service_code, p.first_name, p.last_name, p.birth_date, p.sex, p.barangay, p.contact_no, p.classification
+        SELECT a.*, hs.service_name, hs.service_code, p.first_name, p.last_name, p.birth_date, p.sex, p.barangay, p.contact_no, p.classification,
+               p.mother_name, p.father_name, p.guardian_name, p.parent_contact_no
         FROM patient_appointments a
         JOIN health_services hs ON hs.id = a.service_id
         JOIN patients p ON p.id = a.patient_id
@@ -141,7 +142,8 @@ $paginator = paginate($totalAppointments, 20);
 
 $querySql = "
     SELECT a.*, hs.service_name, hs.service_code, hs.category AS service_category,
-           p.first_name, p.last_name, p.middle_name, p.birth_date, p.sex, p.barangay, p.contact_no, p.classification, p.is_pwd, p.is_4ps
+           p.first_name, p.last_name, p.middle_name, p.birth_date, p.sex, p.barangay, p.contact_no, p.classification, p.is_pwd, p.is_4ps,
+           p.mother_name, p.father_name, p.guardian_name, p.parent_contact_no
     FROM patient_appointments a
     JOIN health_services hs ON hs.id = a.service_id
     JOIN patients p ON p.id = a.patient_id
@@ -347,6 +349,27 @@ require __DIR__ . '/../partials/header.php';
                     <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">PWD</span>
                   <?php endif; ?>
                 </div>
+                <?php
+                  $aptParent = $apt['mother_name'] ?? '';
+                  $aptParentLabel = 'Mother';
+                  if ($aptParent === '' && !empty($apt['father_name'])) {
+                      $aptParent = $apt['father_name'];
+                      $aptParentLabel = 'Father';
+                  } elseif ($aptParent === '' && !empty($apt['guardian_name'])) {
+                      $aptParent = $apt['guardian_name'];
+                      $aptParentLabel = 'Guardian';
+                  }
+                  $aptParentPhone = $apt['parent_contact_no'] ?: ($apt['contact_no'] ?? '');
+                ?>
+                <?php if ($aptParent !== ''): ?>
+                  <div class="text-[11px] text-slate-600 mt-1">
+                    <i class="fas fa-user-shield text-[10px] text-teal-600 mr-0.5"></i>
+                    <span class="font-medium"><?= h($aptParentLabel) ?>:</span> <?= h($aptParent) ?>
+                    <?php if ($aptParentPhone !== ''): ?>
+                      <span class="text-slate-400">• <?= h($aptParentPhone) ?></span>
+                    <?php endif; ?>
+                  </div>
+                <?php endif; ?>
               </td>
 
               <!-- Service Required -->
