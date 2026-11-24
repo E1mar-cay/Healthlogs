@@ -1,10 +1,10 @@
-"""Flask API wrapper for HealthLogs ARIMA forecasting.
+"""Flask API wrapper for synthetic-demo ARIMA forecasting.
 
 Run:
   python forecast_api.py --host 127.0.0.1 --port 5005
 
 Request:
-  POST /forecast
+  POST /forecast (reads demo-prefixed rows from timeseries_daily only)
   {
     "series_key": "visits_total",
     "horizon": 30
@@ -17,7 +17,7 @@ from datetime import date
 from flask import Flask, jsonify, request
 import pandas as pd
 import pymysql
-from pmdarima import auto_arima
+from forecast_arima import fit_arima, rolling_backtest
 
 
 app = Flask(__name__)
@@ -35,6 +35,9 @@ def get_connection():
 
 
 def load_series(series_key):
+    if series_key not in {"visits_total", "medicine_total"}:
+        raise ValueError("Unsupported demo series_key")
+
     sql = """
         SELECT series_date, value
         FROM timeseries_daily
@@ -42,41 +45,25 @@ def load_series(series_key):
         ORDER BY series_date ASC
     """
     with get_connection() as conn, conn.cursor() as cur:
-        cur.execute(sql, (series_key,))
+        cur.execute(sql, ("demo_" + series_key,))
         rows = cur.fetchall()
     df = pd.DataFrame(rows)
     if df.empty:
         raise ValueError("No data for series_key")
     df["series_date"] = pd.to_datetime(df["series_date"])
     df.set_index("series_date", inplace=True)
-    return df["value"].astype(float)
-
-
-import numpy as np
-
-
-def compute_evaluation_metrics(actual, fitted):
-    actual = np.asarray(actual, dtype=float)
-    fitted = np.maximum(0.0, np.asarray(fitted, dtype=float))
-    errors = actual - fitted
-    mae = float(np.mean(np.abs(errors))) if len(actual) > 0 else 0.0
-    rmse = float(np.sqrt(np.mean(errors ** 2))) if len(actual) > 0 else 0.0
-    nz = actual > 0
-    mape = float(np.mean(np.abs(errors[nz] / actual[nz])) * 100.0) if np.any(nz) else (0.0 if np.all(fitted == 0) else 100.0)
-    rating = "High Accuracy" if mape < 10 else ("Good Fit" if mape < 20 else ("Reasonable" if mape < 50 else "High Variance"))
-    return {"mae": round(mae, 4), "rmse": round(rmse, 4), "mape": round(mape, 2), "accuracy_rating": rating}
+    series = df["value"].astype(float)
+    full_index = pd.date_range(start=series.index.min(), end=series.index.max(), freq="D")
+    series.attrs["missing_day_count"] = len(full_index.difference(series.index))
+    return series.reindex(full_index, fill_value=0.0)
 
 
 def forecast(series, horizon):
-    model = auto_arima(series, seasonal=False, error_action="ignore", suppress_warnings=True)
+    model = fit_arima(series.tail(min(len(series), 180)))
     preds = model.predict(n_periods=horizon)
     last_date = series.index.max().date()
     future_dates = pd.date_range(last_date, periods=horizon + 1, freq="D")[1:]
-    try:
-        in_sample = model.predict_in_sample()
-    except Exception:
-        in_sample = np.full(len(series), float(series.mean()))
-    metrics = compute_evaluation_metrics(series.values, in_sample)
+    metrics = rolling_backtest(series, horizon)
     return future_dates, preds, metrics
 
 
@@ -84,22 +71,35 @@ def forecast(series, horizon):
 def forecast_endpoint():
     payload = request.get_json(silent=True) or {}
     series_key = payload.get("series_key")
-    horizon = int(payload.get("horizon", 30))
+    try:
+        horizon = int(payload.get("horizon", 30))
+    except (TypeError, ValueError):
+        return jsonify({"error": "horizon must be a whole number"}), 400
 
     if not series_key:
         return jsonify({"error": "series_key is required"}), 400
+    if horizon < 1 or horizon > 90:
+        return jsonify({"error": "horizon must be between 1 and 90 days"}), 400
 
     try:
         series = load_series(series_key)
+        if len(series) < 14:
+            raise ValueError("Not enough history yet. At least 14 days of data are required.")
         dates, preds, metrics = forecast(series, horizon)
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        return jsonify({"error": str(exc)}), 400
 
     output = {
         "series_key": series_key,
+        "data_source": "demo",
+        "is_demo": True,
         "generated_on": date.today().isoformat(),
         "horizon": horizon,
         "metrics": metrics,
+        "data_quality": {
+            "imputed_zero_days": int(series.attrs.get("missing_day_count", 0)),
+            "missing_day_handling": "Missing dates are treated as zero activity; verify that no record means no activity.",
+        },
         "forecast": [
             {"date": d.date().isoformat(), "value": float(v)}
             for d, v in zip(dates, preds)

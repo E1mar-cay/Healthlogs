@@ -1,4 +1,4 @@
-<?php
+    <?php
 // api/index.php - Vercel Serverless Function Entry Point for HealthLogs
 
 // Start output buffering immediately so headers/sessions are never blocked by early output

@@ -17,14 +17,19 @@ $seriesUnits = [
 ];
 
 $seriesKey = $_POST['series_key'] ?? 'visits_total';
+$dataSource = $_POST['data_source'] ?? 'operational';
 $horizon = max(1, (int)($_POST['horizon'] ?? 30));
 
 $result = null;
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!array_key_exists($seriesKey, $seriesOptions) || !in_array($dataSource, ['operational', 'demo'], true) || $horizon > 90) {
+        $error = 'Choose a supported series and data source, and a forecast horizon from 1 to 90 days.';
+    } else {
     $startTime = microtime(true);
-    $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
+    $loggedSeriesKey = $dataSource === 'demo' ? 'demo_' . $seriesKey : $seriesKey;
+    $runId = ForecastLogger::startRun($loggedSeriesKey, $horizon, 'ARIMA');
 
     $data = null;
 
@@ -35,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cmd = PythonRunner::buildCommand($python, $script, [
             '--series-key' => $seriesKey,
             '--horizon' => (string)$horizon,
+            '--source' => $dataSource,
         ]);
 
         $output = @shell_exec($cmd);
@@ -49,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 2. Native Pure-PHP ARIMA & Statistical Engine (cloud serverless / no-python environment)
     if (!$data) {
         try {
-            $data = ArimaService::forecast($pdo, $seriesKey, $horizon);
+            $data = ArimaService::forecast($pdo, $seriesKey, $horizon, $dataSource);
         } catch (Throwable $engineEx) {
             $error = 'ARIMA forecast engine failed: ' . $engineEx->getMessage();
             ForecastLogger::logFailure($runId, $error, round(microtime(true) - $startTime, 3));
@@ -86,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $error = null;
     }
+    }
 }
 
 $summary = $result['summary'] ?? null;
@@ -94,8 +101,8 @@ $historyRows = $result['history'] ?? [];
 $metrics = $result['metrics'] ?? ($summary ? [
     'mae' => $summary['mae'] ?? null,
     'rmse' => $summary['rmse'] ?? null,
-    'mape' => $summary['mape'] ?? null,
-    'accuracy_rating' => $summary['accuracy_rating'] ?? null,
+    'evaluation_method' => 'unavailable',
+    'status' => 'not_evaluated',
 ] : null);
 $unitLabel = $seriesUnits[$seriesKey] ?? 'items';
 $forecastGenerated = $_SERVER['REQUEST_METHOD'] === 'POST' && $result !== null;
@@ -482,58 +489,101 @@ $seasonalTopMonths = [];
 $seasonalDatasets = [];
 $allDiseaseSet = [];
 $totalConditionCases = 0;
+$diseaseTrendMonths = [];
+$diseaseTrendLabels = [];
+$diseaseTrendSeries = [];
+$diseaseTrendColors = [];
+$topDiseaseNames = [];
+$diseaseTrendError = null;
+$trendToday = new DateTimeImmutable('today');
+$trendStart = $trendToday->modify('first day of this month')->modify('-11 months');
+$trendEndExclusive = $trendToday->modify('+1 day');
+$diseaseTrendPeriodLabel = $trendStart->format('M Y') . ' – ' . $trendToday->format('M Y');
+
+for ($month = $trendStart; $month <= $trendToday->modify('first day of this month'); $month = $month->modify('+1 month')) {
+    $diseaseTrendMonths[] = $month->format('Y-m');
+    $diseaseTrendLabels[] = $month->format('M Y');
+}
 
 try {
-    $monthLabels = [
-        1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr',
-        5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Aug',
-        9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec'
-    ];
+    $diagnosisStmt = $pdo->prepare(
+        'SELECT diagnosis_sources.ym,
+                diagnosis_sources.condition_name,
+                COUNT(DISTINCT diagnosis_sources.patient_id) AS patient_count
+         FROM (
+             SELECT DATE_FORMAT(diagnosed_on, \'%Y-%m\') AS ym,
+                    patient_id,
+                    CASE LOWER(TRIM(condition_name))
+                        WHEN \'hypertension\' THEN \'Hypertension\'
+                        WHEN \'diabetes\' THEN \'Diabetes Type 2\'
+                        WHEN \'diabetes type 2\' THEN \'Diabetes Type 2\'
+                        WHEN \'type 2 diabetes mellitus\' THEN \'Diabetes Type 2\'
+                        ELSE TRIM(condition_name)
+                    END AS condition_name
+             FROM patient_conditions
+             WHERE diagnosed_on >= ? AND diagnosed_on < ?
+             UNION ALL
+             SELECT DATE_FORMAT(date_diagnosed, \'%Y-%m\') AS ym,
+                    patient_id,
+                    CASE diagnosis_type
+                        WHEN \'hypertension\' THEN \'Hypertension\'
+                        WHEN \'diabetes\' THEN \'Diabetes Type 2\'
+                        WHEN \'cardiovascular\' THEN \'Cardiovascular Disease\'
+                        WHEN \'asthma_copd\' THEN \'Asthma/COPD\'
+                        WHEN \'chronic_kidney\' THEN \'Chronic Kidney Disease\'
+                        WHEN \'cancer\' THEN \'Cancer\'
+                        ELSE \'Other Chronic Condition\'
+                    END AS condition_name
+             FROM ncd_records
+             WHERE diagnosis_type <> \'hypertension_diabetes\'
+               AND date_diagnosed >= ? AND date_diagnosed < ?
+             UNION ALL
+             SELECT DATE_FORMAT(date_diagnosed, \'%Y-%m\') AS ym,
+                    patient_id,
+                    \'Hypertension\' AS condition_name
+             FROM ncd_records
+             WHERE diagnosis_type = \'hypertension_diabetes\'
+               AND date_diagnosed >= ? AND date_diagnosed < ?
+             UNION ALL
+             SELECT DATE_FORMAT(date_diagnosed, \'%Y-%m\') AS ym,
+                    patient_id,
+                    \'Diabetes Type 2\' AS condition_name
+             FROM ncd_records
+             WHERE diagnosis_type = \'hypertension_diabetes\'
+               AND date_diagnosed >= ? AND date_diagnosed < ?
+         ) AS diagnosis_sources
+         GROUP BY diagnosis_sources.ym, diagnosis_sources.condition_name
+         ORDER BY diagnosis_sources.ym ASC, diagnosis_sources.condition_name ASC'
+    );
+    $trendStartDate = $trendStart->format('Y-m-d');
+    $trendEndDate = $trendEndExclusive->format('Y-m-d');
+    $diagnosisStmt->execute([
+        $trendStartDate,
+        $trendEndDate,
+        $trendStartDate,
+        $trendEndDate,
+        $trendStartDate,
+        $trendEndDate,
+        $trendStartDate,
+        $trendEndDate,
+    ]);
+    $diagnosisRows = $diagnosisStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $diseaseBreakdownSql = "SELECT
-            MONTH(diagnosed_on) AS month_no,
-            condition_name,
-            COUNT(*) AS total_cases
-        FROM patient_conditions
-        WHERE diagnosed_on IS NOT NULL
-        GROUP BY MONTH(diagnosed_on), condition_name
-        ORDER BY MONTH(diagnosed_on) ASC, total_cases DESC";
-    $breakdownRows = $pdo->query($diseaseBreakdownSql)->fetchAll(PDO::FETCH_ASSOC);
-
-    $monthDiseaseMap = [];
-    foreach ($breakdownRows as $row) {
-        $m = (int)$row['month_no'];
-        $cond = $row['condition_name'];
-        $cnt = (int)$row['total_cases'];
-        $monthDiseaseMap[$m][$cond] = $cnt;
-        $allDiseaseSet[$cond] = ($allDiseaseSet[$cond] ?? 0) + $cnt;
+    $monthlyCounts = [];
+    $conditionTotals = [];
+    foreach ($diagnosisRows as $row) {
+        $name = $row['condition_name'];
+        $count = (int)$row['patient_count'];
+        $monthlyCounts[$row['ym']][$name] = $count;
+        $conditionTotals[$name] = ($conditionTotals[$name] ?? 0) + $count;
     }
-    arsort($allDiseaseSet);
+
+    arsort($conditionTotals);
+    $topDiseaseNames = array_slice(array_keys($conditionTotals), 0, 5);
+    $allDiseaseSet = array_intersect_key($conditionTotals, array_flip($topDiseaseNames));
     $totalConditionCases = array_sum($allDiseaseSet);
 
-    // Build complete 12 calendar months array (ensuring Jan-Dec are always represented)
-    for ($m = 1; $m <= 12; $m++) {
-        $diseasesInMonth = $monthDiseaseMap[$m] ?? [];
-        $totalMonthCases = array_sum($diseasesInMonth);
-        $diseaseParts = [];
-        foreach ($diseasesInMonth as $name => $cnt) {
-            $diseaseParts[] = "$name ($cnt)";
-        }
-        $seasonalDiseaseRows[] = [
-            'month_no' => $m,
-            'month_label' => $monthLabels[$m],
-            'total_cases' => $totalMonthCases,
-            'diseases' => $diseasesInMonth,
-            'disease_summary' => !empty($diseaseParts) ? implode(', ', $diseaseParts) : 'No cases recorded'
-        ];
-    }
-
-    $sortedSeason = $seasonalDiseaseRows;
-    usort($sortedSeason, fn($a, $b) => (int)$b['total_cases'] <=> (int)$a['total_cases']);
-    $seasonalTopMonths = array_filter(array_slice($sortedSeason, 0, 3), fn($r) => $r['total_cases'] > 0);
-
-    // Visual color palette for each disease category
-    $diseaseColors = [
+    $knownDiseaseColors = [
         'Arthritis' => '#0ea5a4',
         'Hypertension' => '#2563eb',
         'Migraine' => '#f59e0b',
@@ -541,78 +591,61 @@ try {
         'Allergic Rhinitis' => '#10b981',
         'Asthma' => '#ec4899',
         'Hypothyroidism' => '#6366f1',
+        'Asthma/COPD' => '#ec4899',
+        'Cardiovascular Disease' => '#f97316',
+        'Chronic Kidney Disease' => '#14b8a6',
+        'Cancer' => '#64748b',
     ];
-    $fallbackPalette = ['#0284c7', '#d97706', '#059669', '#7c3aed', '#db2777', '#475569'];
-    $colorIdx = 0;
-
-    foreach ($allDiseaseSet as $diseaseName => $overallCount) {
-        $color = $diseaseColors[$diseaseName] ?? ($fallbackPalette[$colorIdx++ % count($fallbackPalette)]);
-        $data = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $data[] = $monthDiseaseMap[$m][$diseaseName] ?? 0;
+    $fallbackPalette = ['#0284c7', '#d97706', '#059669', '#7c3aed', '#db2777'];
+    foreach ($topDiseaseNames as $index => $name) {
+        $diseaseTrendColors[$name] = $knownDiseaseColors[$name] ?? $fallbackPalette[$index % count($fallbackPalette)];
+        $diseaseTrendSeries[$name] = [];
+        foreach ($diseaseTrendMonths as $yearMonth) {
+            $diseaseTrendSeries[$name][] = $monthlyCounts[$yearMonth][$name] ?? 0;
         }
+    }
+
+    foreach ($diseaseTrendMonths as $index => $yearMonth) {
+        $diseasesInMonth = [];
+        foreach ($topDiseaseNames as $name) {
+            $count = $diseaseTrendSeries[$name][$index] ?? 0;
+            if ($count > 0) {
+                $diseasesInMonth[$name] = $count;
+            }
+        }
+        $totalMonthPatients = array_sum($diseasesInMonth);
+        $diseaseParts = [];
+        foreach ($diseasesInMonth as $name => $count) {
+            $diseaseParts[] = "$name ($count)";
+        }
+        $date = DateTimeImmutable::createFromFormat('!Y-m', $yearMonth);
+        $seasonalDiseaseRows[] = [
+            'month_no' => (int)$date->format('n'),
+            'month_label' => $diseaseTrendLabels[$index],
+            'total_cases' => $totalMonthPatients,
+            'diseases' => $diseasesInMonth,
+            'disease_summary' => $diseaseParts ? implode(', ', $diseaseParts) : 'No diagnoses recorded'
+        ];
+    }
+
+    $sortedSeason = $seasonalDiseaseRows;
+    usort($sortedSeason, fn($a, $b) => (int)$b['total_cases'] <=> (int)$a['total_cases']);
+    $seasonalTopMonths = array_filter(array_slice($sortedSeason, 0, 3), fn($row) => $row['total_cases'] > 0);
+
+    foreach ($topDiseaseNames as $name) {
         $seasonalDatasets[] = [
-            'label' => $diseaseName,
-            'data' => $data,
-            'backgroundColor' => $color,
-            'borderColor' => $color,
+            'label' => $name,
+            'data' => $diseaseTrendSeries[$name],
+            'backgroundColor' => $diseaseTrendColors[$name],
+            'borderColor' => $diseaseTrendColors[$name],
             'borderWidth' => 1,
             'borderRadius' => 3,
         ];
     }
-} catch (Throwable $e) {}
-
-$diseaseTrendMonths = [];
-$diseaseTrendSeries = [];
-$topDiseaseNames = [];
-try {
-    $topDiseaseSql = "SELECT condition_name, COUNT(*) AS total_cases
-        FROM patient_conditions
-        WHERE diagnosed_on IS NOT NULL
-        GROUP BY condition_name
-        ORDER BY total_cases DESC
-        LIMIT 5";
-    $topDiseases = $pdo->query($topDiseaseSql)->fetchAll(PDO::FETCH_ASSOC);
-    $topDiseaseNames = array_map(fn($d) => $d['condition_name'], $topDiseases);
-
-    if (!empty($topDiseaseNames)) {
-        // Anchor to the latest condition date in the database to ensure accurate historical trend
-        $refConditionDate = $pdo->query("SELECT COALESCE(MAX(DATE(diagnosed_on)), CURDATE()) FROM patient_conditions")->fetchColumn();
-        $trendSql = "SELECT
-                DATE_FORMAT(diagnosed_on, '%Y-%m') AS ym,
-                condition_name,
-                COUNT(*) AS total_cases
-            FROM patient_conditions
-            WHERE diagnosed_on >= DATE_SUB(?, INTERVAL 12 MONTH)
-              AND diagnosed_on IS NOT NULL
-              AND condition_name IN (" . implode(',', array_fill(0, count($topDiseaseNames), '?')) . ")
-            GROUP BY DATE_FORMAT(diagnosed_on, '%Y-%m'), condition_name
-            ORDER BY ym ASC";
-        $trendStmt = $pdo->prepare($trendSql);
-        $trendStmt->execute(array_merge([$refConditionDate], $topDiseaseNames));
-        $trendRows = $trendStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $monthMap = [];
-        foreach ($trendRows as $row) {
-            $monthMap[$row['ym']] = true;
-        }
-        $diseaseTrendMonths = array_keys($monthMap);
-        sort($diseaseTrendMonths);
-
-        foreach ($topDiseaseNames as $name) {
-            $diseaseTrendSeries[$name] = array_fill(0, count($diseaseTrendMonths), 0);
-        }
-
-        $monthIndex = array_flip($diseaseTrendMonths);
-        foreach ($trendRows as $row) {
-            $name = $row['condition_name'];
-            $ym = $row['ym'];
-            if (isset($diseaseTrendSeries[$name], $monthIndex[$ym])) {
-                $diseaseTrendSeries[$name][$monthIndex[$ym]] = (int)$row['total_cases'];
-            }
-        }
-    }
-} catch (Throwable $e) {}
+} catch (Throwable $e) {
+    error_log('Disease trend query failed: ' . $e->getMessage());
+    $diseaseTrendError = 'Disease trends could not be loaded. Please try again later.';
+}
 
 if ($summary) {
     $firstWeek = array_slice($forecastRows, 0, min(7, count($forecastRows)));
@@ -642,6 +675,9 @@ if ($summary) {
     </div>
   </div>
 <?php endif; ?>
+<div class="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900">
+  <strong>Forecasts are experimental.</strong> Do not use projections or suggested orders for operational decisions until they have been validated against complete, representative historical data. Synthetic demo data is isolated from operational records.
+</div>
 
 <!-- Printable Official Header (Visible only when full-page printing) -->
 <div class="hidden print:flex mb-6 border-b-2 border-slate-800 pb-4 items-center justify-between gap-4">
@@ -708,7 +744,7 @@ if ($summary) {
   </div>
 
   <!-- Medicine Summary Cards -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
     <div class="rounded-xl border border-rose-200 border-l-4 border-l-rose-500 bg-gradient-to-br from-rose-50/80 via-white to-rose-50/30 p-4 shadow-2xs">
       <div class="text-xs uppercase tracking-wider font-bold text-rose-700 flex items-center justify-between">
         <span>Critical Stockout Risk</span>
@@ -1015,7 +1051,7 @@ if ($summary) {
   </div>
 
   <form id="arimaForecastForm" class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4" method="post">
-    <div class="md:col-span-2">
+    <div>
       <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">What to forecast</label>
       <select name="series_key" class="mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
         <?php foreach ($seriesOptions as $key => $label): ?>
@@ -1027,7 +1063,17 @@ if ($summary) {
       <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Days to look ahead (Horizon)</label>
       <input name="horizon" value="<?= h($horizon) ?>" type="number" min="1" max="90" class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500" />
     </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Data source</label>
+      <select name="data_source" class="mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-teal-500">
+        <option value="operational" <?= $dataSource === 'operational' ? 'selected' : '' ?>>Operational tables (may include test data)</option>
+        <option value="demo" <?= $dataSource === 'demo' ? 'selected' : '' ?>>Synthetic demo data</option>
+      </select>
+    </div>
     <div class="md:col-span-3">
+      <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+        Forecasts are experimental until validated with representative, complete historical records. Demo data is stored separately and must not be used for operational decisions.
+      </p>
       <button class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow transition" type="submit">
         <i class="fas fa-calculator mr-1.5 text-xs"></i> Run ARIMA Model
       </button>
@@ -1061,14 +1107,6 @@ if ($summary) {
       <div class="text-2xl font-bold mt-2" id="snapshotTotal">--</div>
       <div class="text-xs text-slate-500 mt-1" id="snapshotHorizon">--</div>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div class="flex items-center justify-between">
-        <span class="text-xs uppercase tracking-widest text-slate-400">Model Fit (MAPE)</span>
-        <span id="snapshotRatingBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">Fit</span>
-      </div>
-      <div class="text-2xl font-bold mt-2 font-mono" id="snapshotMape">--</div>
-      <div class="text-xs text-slate-500 mt-1" id="snapshotMae">--</div>
-    </div>
   </div>
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
@@ -1092,23 +1130,29 @@ if ($summary) {
     <div>
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Seasonal Disease</div>
-          <div class="text-lg font-bold text-slate-900 mt-1">Month-Of-Year Case Pattern</div>
-          <p class="text-xs text-slate-500 mt-0.5">Aggregated historical diagnoses across all 12 calendar months (Total: <?= (int)$totalConditionCases ?> cases).</p>
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Recorded Diagnoses</div>
+          <div class="text-lg font-bold text-slate-900 mt-1">Recorded Diagnoses by Month</div>
+          <p class="text-xs text-slate-500 mt-0.5">Rolling 12 months (<?= h($diseaseTrendPeriodLabel) ?>); combines patient conditions and NCD registry diagnoses, counting each patient once per condition and month. Combined hypertension/diabetes NCD entries count under both conditions. Stacked total: <?= (int)$totalConditionCases ?> patient-condition entries across the top <?= count($topDiseaseNames) ?> conditions.</p>
         </div>
         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold self-start sm:self-auto">
           <i class="fas fa-layer-group text-[11px] text-teal-600"></i> Stacked by Disease
         </div>
       </div>
       <div class="mt-4 relative min-h-[240px]">
-        <canvas id="seasonalDiseaseChart" height="130"></canvas>
+        <?php if (!empty($diseaseTrendError)): ?>
+          <p class="text-sm text-rose-700"><?= h($diseaseTrendError) ?></p>
+        <?php elseif (empty($topDiseaseNames)): ?>
+          <p class="text-sm text-slate-500">No diagnoses were recorded during this 12-month period.</p>
+        <?php else: ?>
+          <canvas id="seasonalDiseaseChart" height="130"></canvas>
+        <?php endif; ?>
       </div>
     </div>
 
     <!-- Disease Breakdown Pills -->
     <?php if (!empty($allDiseaseSet)): ?>
       <div class="mt-5 pt-3.5 border-t border-slate-100">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Recorded Conditions in Health Center (<?= count($allDiseaseSet) ?> Diseases):</div>
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Top Recorded Conditions in Period (<?= count($allDiseaseSet) ?>):</div>
         <div class="flex flex-wrap gap-1.5">
           <?php 
           $badgePalette = [
@@ -1119,6 +1163,10 @@ if ($summary) {
             'Allergic Rhinitis' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-800', 'border' => 'border-emerald-200', 'dot' => '#10b981'],
             'Asthma' => ['bg' => 'bg-pink-50', 'text' => 'text-pink-800', 'border' => 'border-pink-200', 'dot' => '#ec4899'],
             'Hypothyroidism' => ['bg' => 'bg-indigo-50', 'text' => 'text-indigo-800', 'border' => 'border-indigo-200', 'dot' => '#6366f1'],
+            'Asthma/COPD' => ['bg' => 'bg-pink-50', 'text' => 'text-pink-800', 'border' => 'border-pink-200', 'dot' => '#ec4899'],
+            'Cardiovascular Disease' => ['bg' => 'bg-orange-50', 'text' => 'text-orange-800', 'border' => 'border-orange-200', 'dot' => '#f97316'],
+            'Chronic Kidney Disease' => ['bg' => 'bg-teal-50', 'text' => 'text-teal-800', 'border' => 'border-teal-200', 'dot' => '#14b8a6'],
+            'Cancer' => ['bg' => 'bg-slate-100', 'text' => 'text-slate-800', 'border' => 'border-slate-200', 'dot' => '#64748b'],
           ];
           foreach ($allDiseaseSet as $diseaseName => $count): 
             $style = $badgePalette[$diseaseName] ?? ['bg' => 'bg-slate-50', 'text' => 'text-slate-800', 'border' => 'border-slate-200', 'dot' => '#475569'];
@@ -1136,9 +1184,9 @@ if ($summary) {
 
   <div class="bg-white p-6 rounded-xl shadow border border-slate-100 flex flex-col justify-between">
     <div>
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Peak Months</div>
-      <div class="text-lg font-bold text-slate-900 mt-1">Highest Disease Seasons</div>
-      <p class="text-xs text-slate-500 mt-0.5">Top calendar periods with highest clinical diagnoses.</p>
+      <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Peak Recorded Periods</div>
+      <div class="text-lg font-bold text-slate-900 mt-1">Months with Most Recorded Diagnoses</div>
+      <p class="text-xs text-slate-500 mt-0.5">Top months in the same rolling 12-month period.</p>
 
       <div class="mt-4 space-y-3">
         <?php if (!empty($seasonalTopMonths)): ?>
@@ -1150,11 +1198,11 @@ if ($summary) {
                   <span class="font-bold text-slate-900 text-sm"><?= h($row['month_label']) ?></span>
                 </div>
                 <span class="font-bold text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                  <?= h((string)$row['total_cases']) ?> cases
+                  <?= h((string)$row['total_cases']) ?> patient-condition entries
                 </span>
               </div>
               <div class="mt-2.5 text-xs text-slate-600">
-                <span class="font-semibold text-slate-700">Diseases diagnosed:</span>
+                <span class="font-semibold text-slate-700">Distinct patients by condition:</span>
                 <div class="mt-1.5 flex flex-wrap gap-1">
                   <?php foreach ($row['diseases'] as $dName => $dCount): ?>
                     <span class="px-2 py-0.5 rounded bg-white border border-slate-200 text-[11px] text-slate-700 font-medium">
@@ -1173,14 +1221,20 @@ if ($summary) {
 
     <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500 leading-relaxed">
       <i class="fas fa-info-circle text-teal-600 mr-1"></i>
-      <strong>Data Note:</strong> The chart Y-axis stops at 5 because <strong>December (5 cases)</strong> is currently the highest monthly case count in the database.
+      <strong>Data Note:</strong> Both charts above combine patient conditions and NCD registry diagnoses over the same rolling 12-month window. Each condition count is distinct patients for that condition and month; stacked monthly totals can count a patient once per different condition, and combined hypertension/diabetes records count under both. These records do not represent verified prevalence.
     </div>
   </div>
 </div>
 
 <div class="mt-6 bg-white p-6 rounded-xl shadow border border-slate-100">
   <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Disease Case Trends</div>
-  <div class="text-lg font-bold text-slate-900 mt-1">Top Disease Trends (Last 12 Months)</div>
+  <div class="text-lg font-bold text-slate-900 mt-1">Top Recorded Diagnoses (<?= h($diseaseTrendPeriodLabel ?? 'Last 12 Months') ?>)</div>
+  <p class="text-xs text-slate-500 mt-1">Monthly count of distinct patients with a diagnosis recorded in that month. This reflects recorded diagnoses, not active disease prevalence.</p>
+  <?php if (!empty($diseaseTrendError)): ?>
+    <p class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><?= h($diseaseTrendError) ?></p>
+  <?php elseif (empty($topDiseaseNames)): ?>
+    <p class="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">No diagnoses were recorded during this period.</p>
+  <?php endif; ?>
   <canvas id="diseaseTrendChart" height="120" class="mt-4"></canvas>
 </div>
 
@@ -1229,24 +1283,25 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           <th class="py-3 px-4">Training Window</th>
           <th class="py-3 px-3">MAE</th>
           <th class="py-3 px-3">RMSE</th>
-          <th class="py-3 px-3">MAPE</th>
           <th class="py-3 px-4">Status</th>
           <th class="py-3 px-4 text-right">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100 text-slate-700" id="logTableBody">
         <tr id="noFilteredLogsRow" class="hidden">
-          <td colspan="10" class="py-8 px-4 text-center text-slate-400">
+          <td colspan="9" class="py-8 px-4 text-center text-slate-400">
             <i class="fas fa-filter mr-1.5 text-slate-300"></i> No logs match the selected filter.
           </td>
         </tr>
         <?php if (empty($recentRuns)): ?>
           <tr>
-            <td colspan="10" class="py-4 px-4 text-center text-slate-400">No forecasting logs recorded yet.</td>
+            <td colspan="9" class="py-4 px-4 text-center text-slate-400">No forecasting logs recorded yet.</td>
           </tr>
         <?php else: ?>
           <?php foreach ($recentRuns as $run): 
-            $seriesLabel = $seriesOptions[$run['series_key']] ?? $run['series_key'];
+            $isDemoRun = str_starts_with($run['series_key'], 'demo_');
+            $baseSeriesKey = $isDemoRun ? substr($run['series_key'], 5) : $run['series_key'];
+            $seriesLabel = ($seriesOptions[$baseSeriesKey] ?? $baseSeriesKey) . ($isDemoRun ? ' (Demo)' : '');
             $statusClass = $run['status'] === 'success' 
               ? 'bg-green-50 text-green-700 border border-green-200' 
               : 'bg-red-50 text-red-700 border border-red-200';
@@ -1288,19 +1343,6 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
               </td>
               <td class="py-3 px-3 font-mono text-xs text-slate-700">
                 <?= $run['rmse'] !== null ? h(number_format((float)$run['rmse'], 2)) : '<span class="text-slate-300">--</span>' ?>
-              </td>
-              <td class="py-3 px-3 text-xs font-medium">
-                <?php if ($run['mape'] !== null): ?>
-                  <?php
-                    $mVal = (float)$run['mape'];
-                    $mClass = $mVal < 20.0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : ($mVal < 50.0 ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-amber-700 bg-amber-50 border-amber-200');
-                  ?>
-                  <span class="px-2 py-0.5 rounded border text-[11px] font-semibold <?= $mClass ?>">
-                    <?= h(number_format($mVal, 1)) ?>%
-                  </span>
-                <?php else: ?>
-                  <span class="text-slate-300">--</span>
-                <?php endif; ?>
               </td>
               <td class="py-3 px-4">
                 <span class="px-2 py-0.5 rounded text-xs font-medium <?= $statusClass ?>">
@@ -1376,15 +1418,16 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           </div>
         </div>
 
-        <!-- Model Evaluation & Accuracy (MAE, RMSE, MAPE) -->
+        <!-- Historical metrics may come from older in-sample runs. -->
         <div class="border border-slate-200 rounded-xl p-5 bg-gradient-to-r from-slate-50 to-teal-50/20">
           <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
             <h4 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-              <i class="fas fa-chart-line text-teal-600"></i> Model Accuracy & Error Evaluation
+              <i class="fas fa-chart-line text-teal-600"></i> Recorded Error Metrics
             </h4>
-            <span id="modalAccuracyRating" class="px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">Statistical Fit</span>
+            <span id="modalAccuracyRating" class="px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">Historical record</span>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+          <p class="text-xs text-amber-800 mb-3">Older saved runs may report in-sample metrics and should not be interpreted as measured forecast accuracy.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
             <div class="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs">
               <div class="flex items-center justify-between">
                 <span class="text-xs uppercase tracking-wider text-slate-500 font-medium">MAE</span>
@@ -1400,14 +1443,6 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
               </div>
               <div class="text-xl font-bold text-slate-800 mt-1 font-mono" id="modalRmse">--</div>
               <div class="text-xs text-slate-500 mt-1">Penalizes large outlier spikes</div>
-            </div>
-            <div class="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs">
-              <div class="flex items-center justify-between">
-                <span class="text-xs uppercase tracking-wider text-slate-500 font-medium">MAPE</span>
-                <span class="text-[10px] text-slate-400 font-mono">Percentage Error</span>
-              </div>
-              <div class="text-xl font-bold text-slate-800 mt-1 font-mono" id="modalMape">--</div>
-              <div class="text-xs text-slate-500 mt-1">Relative percentage error</div>
             </div>
           </div>
         </div>
@@ -1501,6 +1536,11 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             Based on <?= h($summary['history_points']) ?> days of history from <?= h($summary['history_start']) ?> to <?= h($summary['history_end']) ?>, with the most recent <?= h($summary['training_points'] ?? $summary['history_points']) ?> days used for model fitting.
           <?php endif; ?>
         </div>
+        <div id="arimaDataSourceNotice" class="mt-3 text-xs font-semibold rounded-lg border px-3 py-2 <?= $dataSource === 'demo' ? 'text-amber-900 bg-amber-50 border-amber-200' : 'text-slate-700 bg-white border-slate-200' ?>">
+          <?= $dataSource === 'demo'
+              ? 'SYNTHETIC DEMO DATA — for demonstration only; not for operational decisions.'
+              : 'Source: operational tables, which may contain seeded or test records. Forecasts remain experimental until validated.' ?>
+        </div>
       </div>
       <div class="print:hidden">
         <button class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow transition" type="button" onclick="window.print()">
@@ -1533,29 +1573,43 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
     </div>
   </div>
 
-  <!-- Model Evaluation & Error Metrics (MAE, RMSE, MAPE) Section -->
+  <!-- Rolling, held-out backtest metrics -->
   <div class="mt-6 bg-white p-6 rounded-xl shadow border-l-4 border-teal-600 border border-slate-100" id="arimaMetricsCard">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-150">
       <div>
         <div class="flex items-center gap-2">
           <span class="text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded border border-teal-200">
-            <i class="fas fa-microchip mr-1"></i> Model Evaluation
+            <i class="fas fa-microchip mr-1"></i> Rolling Backtest
           </span>
-          <span class="text-xs text-slate-400">Quantitative Statistical Analysis</span>
+          <span class="text-xs text-slate-400">Held-out predictions vs weekly baseline</span>
         </div>
-        <h3 class="text-xl font-bold text-slate-900 mt-1">Forecast Error Metrics: MAE, RMSE &amp; MAPE</h3>
+        <h3 class="text-xl font-bold text-slate-900 mt-1">Out-of-Sample Error: MAE &amp; RMSE</h3>
         <p class="text-sm text-slate-500 mt-0.5" id="arimaTrainingCountMeta">
-          Model fit accuracy evaluated across <?= h($summary['training_points'] ?? 180) ?> daily data points in the training window.
+          <?php if ($metrics && ($metrics['status'] ?? '') === 'evaluated'): ?>
+            <?= (int)$metrics['folds'] ?> rolling test windows, <?= (int)$metrics['test_points'] ?> held-out days at <?= (int)$metrics['horizon'] ?>-day horizon.
+          <?php else: ?>
+            <?= h($metrics['message'] ?? 'Backtest unavailable; these forecasts are not accuracy-validated.') ?>
+          <?php endif; ?>
+          <?php if ($result && !empty($result['data_quality']['imputed_zero_days'])): ?>
+            <?= (int)$result['data_quality']['imputed_zero_days'] ?> missing dates were treated as zero; verify they represent no activity.
+          <?php endif; ?>
+          <span class="block">Missing dates are treated as zero activity; confirm this matches the clinic's recording practice.</span>
         </p>
       </div>
       <div class="flex items-center gap-3">
         <?php
-          $mapeVal = (float)($metrics['mape'] ?? 0);
-          $ratingText = $metrics['accuracy_rating'] ?? ($mapeVal < 10.0 ? 'High Accuracy' : ($mapeVal < 20.0 ? 'Good Fit' : ($mapeVal < 50.0 ? 'Reasonable' : 'High Variance')));
-          $badgeBg = $mapeVal < 20.0 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : ($mapeVal < 50.0 ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-amber-50 text-amber-800 border-amber-300');
+          $assessment = $metrics['assessment'] ?? '';
+          $ratingText = $assessment === 'better_than_baseline'
+              ? 'Better than baseline'
+              : ($assessment === 'not_better_than_baseline'
+                  ? 'Not better than baseline'
+                  : ($assessment === 'tie_with_baseline' ? 'Tied with baseline' : 'Not validated'));
+          $badgeBg = $assessment === 'better_than_baseline'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+              : ($assessment === 'not_better_than_baseline' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-slate-50 text-slate-700 border-slate-300');
         ?>
         <div class="text-left md:text-right">
-          <div class="text-xs text-slate-400 uppercase tracking-widest font-medium">Model Rating</div>
+          <div class="text-xs text-slate-400 uppercase tracking-widest font-medium">Baseline comparison</div>
           <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border mt-0.5 <?= $badgeBg ?>" id="arimaRatingBadge">
             <span class="h-2 w-2 rounded-full bg-current"></span>
             <span id="arimaRatingText"><?= h($ratingText) ?></span>
@@ -1572,11 +1626,11 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAE</span>
         </div>
         <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
-          <span id="arimaMaeVal"><?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?></span>
+          <span id="arimaMaeVal"><?= isset($metrics['mae']) ? h(number_format((float)$metrics['mae'], 2)) : '--' ?></span>
           <span class="text-sm font-normal text-slate-500 font-sans arima-unit-label"><?= h($unitLabel) ?></span>
         </div>
         <p class="text-xs text-slate-600 mt-2 leading-relaxed" id="arimaMaeDesc">
-          On average, daily predictions deviate from actual activity by &plusmn;<strong id="arimaMaeStrong"><?= h(number_format((float)($metrics['mae'] ?? 0), 2)) ?></strong> <span class="arima-unit-label"><?= h($unitLabel) ?></span>.
+          Mean absolute error on held-out days: <strong id="arimaMaeStrong"><?= isset($metrics['mae']) ? h(number_format((float)$metrics['mae'], 2)) : '--' ?></strong> <span class="arima-unit-label"><?= h($unitLabel) ?></span>.
         </p>
         <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
           <span>Formula: &Sigma;|y &minus; &ycirc;| / n</span>
@@ -1591,7 +1645,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">RMSE</span>
         </div>
         <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
-          <span id="arimaRmseVal"><?= h(number_format((float)($metrics['rmse'] ?? 0), 2)) ?></span>
+          <span id="arimaRmseVal"><?= isset($metrics['rmse']) ? h(number_format((float)$metrics['rmse'], 2)) : '--' ?></span>
           <span class="text-sm font-normal text-slate-500 font-sans arima-unit-label"><?= h($unitLabel) ?></span>
         </div>
         <p class="text-xs text-slate-600 mt-2 leading-relaxed">
@@ -1603,21 +1657,22 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
         </div>
       </div>
 
-      <!-- MAPE Card -->
+      <!-- Weekly baseline card -->
       <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 relative overflow-hidden group hover:border-teal-400 transition-all">
         <div class="flex items-center justify-between">
-          <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Mean Absolute % Error</span>
-          <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAPE</span>
+          <span class="text-xs uppercase font-bold tracking-wider text-slate-500">Weekly Baseline MAE</span>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs font-semibold">MAE</span>
         </div>
         <div class="text-3xl font-extrabold text-slate-900 mt-3 font-mono">
-          <span id="arimaMapeVal"><?= h(number_format((float)($metrics['mape'] ?? 0), 1)) ?></span><span class="text-xl font-bold text-slate-500 font-sans">%</span>
+          <span id="arimaBaselineMaeVal"><?= isset($metrics['baseline_mae']) ? h(number_format((float)$metrics['baseline_mae'], 2)) : '--' ?></span>
+          <span class="text-sm font-normal text-slate-500 font-sans arima-unit-label"><?= h($unitLabel) ?></span>
         </div>
-        <p class="text-xs text-slate-600 mt-2 leading-relaxed" id="arimaMapeDesc">
-          Relative percentage deviation across non-zero active days.
+        <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+          Same weekday as the previous week. Lower MAE is better; compare this with ARIMA's held-out MAE.
         </p>
         <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between font-mono">
-          <span>Formula: &Sigma;(|y &minus; &ycirc;| / y) / n</span>
-          <span class="text-teal-600 font-semibold">Scale-Independent</span>
+          <span id="arimaSkillMeta"><?= isset($metrics['mae_skill_percent']) ? h(number_format((float)$metrics['mae_skill_percent'], 1)) . '% lower MAE' : 'No backtest comparison' ?></span>
+          <span class="text-teal-600 font-semibold">Naive benchmark</span>
         </div>
       </div>
     </div>
@@ -1627,7 +1682,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
     <div class="xl:col-span-2 bg-white p-5 rounded-xl shadow border border-slate-100">
       <div class="flex items-center justify-between mb-3">
         <div class="text-sm font-semibold text-slate-800">Historical Telemetry &amp; ARIMA Forecast Range</div>
-        <span class="text-xs text-slate-400">95% Confidence Bounds</span>
+        <span class="text-xs text-slate-400">80% Prediction Intervals</span>
       </div>
       <div class="h-72">
         <canvas id="forecastChart"></canvas>
@@ -1733,7 +1788,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderWidth: 2
           },
           {
-            label: 'Lower Bound (95% CI)',
+            label: 'Lower Bound (80% PI)',
             data: lowerDataset,
             borderColor: 'rgba(14,165,164,0)',
             backgroundColor: 'rgba(14,165,164,0.12)',
@@ -1741,7 +1796,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             borderWidth: 0
           },
           {
-            label: 'Upper Bound (95% CI)',
+            label: 'Upper Bound (80% PI)',
             data: upperDataset,
             borderColor: 'rgba(14,165,164,0)',
             backgroundColor: 'rgba(14,165,164,0.12)',
@@ -1798,6 +1853,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
       const seriesKey = arimaForm.querySelector('select[name="series_key"]').value;
       const horizon = arimaForm.querySelector('input[name="horizon"]').value || '30';
+      const dataSource = arimaForm.querySelector('select[name="data_source"]').value;
       const unit = snapshotUnitMap[seriesKey] || 'items';
       const label = snapshotSeriesLabelMap[seriesKey] || seriesKey;
 
@@ -1810,7 +1866,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
                 <i class="fas fa-brain fa-spin text-2xl"></i>
               </div>
               <p class="font-bold text-slate-800 text-base">Fitting auto-ARIMA for ${label}</p>
-              <p class="text-xs text-slate-400 mt-1">Analyzing historical daily telemetry &amp; calculating 95% confidence bounds across ${horizon} days...</p>
+              <p class="text-xs text-slate-400 mt-1">Running rolling held-out backtests and calculating 80% prediction intervals across ${horizon} days...</p>
             </div>
           `,
           allowOutsideClick: false,
@@ -1824,7 +1880,8 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
       const body = new URLSearchParams({
         series_key: seriesKey,
-        horizon: horizon
+        horizon: horizon,
+        data_source: dataSource
       });
 
       fetch('/HealthLogs/public/forecast_run.php', {
@@ -1850,6 +1907,11 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           // 1. Update text & summary values
           document.getElementById('arimaIntroText').textContent = summary.intro || '';
           document.getElementById('arimaHistoryMeta').textContent = `Based on ${summary.history_points || history.length} days of history from ${summary.history_start || '--'} to ${summary.history_end || '--'}, with the most recent ${summary.training_points || history.length} days used for model fitting.`;
+          const sourceNotice = document.getElementById('arimaDataSourceNotice');
+          sourceNotice.textContent = data.is_demo
+            ? 'SYNTHETIC DEMO DATA — for demonstration only; not for operational decisions.'
+            : 'Source: operational tables, which may contain seeded or test records. Forecasts remain experimental until validated.';
+          sourceNotice.className = `mt-3 text-xs font-semibold rounded-lg border px-3 py-2 ${data.is_demo ? 'text-amber-900 bg-amber-50 border-amber-200' : 'text-slate-700 bg-white border-slate-200'}`;
 
           document.getElementById('arimaAvgPerDay').textContent = Number(summary.forecast_average || 0).toFixed(1);
           document.getElementById('arimaUnitExpected').textContent = `${unit} expected each day`;
@@ -1861,15 +1923,28 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
           // 2. Update error metrics
           document.querySelectorAll('.arima-unit-label').forEach(el => el.textContent = unit);
-          document.getElementById('arimaMaeVal').textContent = metrics.mae !== undefined ? Number(metrics.mae).toFixed(2) : '--';
-          document.getElementById('arimaMaeStrong').textContent = metrics.mae !== undefined ? Number(metrics.mae).toFixed(2) : '--';
-          document.getElementById('arimaRmseVal').textContent = metrics.rmse !== undefined ? Number(metrics.rmse).toFixed(2) : '--';
-          document.getElementById('arimaMapeVal').textContent = metrics.mape !== undefined ? Number(metrics.mape).toFixed(1) : '--';
+          const maeValue = metrics.mae !== undefined && metrics.mae !== null ? Number(metrics.mae).toFixed(2) : '--';
+          document.getElementById('arimaMaeVal').textContent = maeValue;
+          document.getElementById('arimaMaeStrong').textContent = maeValue;
+          document.getElementById('arimaRmseVal').textContent = metrics.rmse !== undefined && metrics.rmse !== null ? Number(metrics.rmse).toFixed(2) : '--';
+          document.getElementById('arimaBaselineMaeVal').textContent = metrics.baseline_mae !== undefined && metrics.baseline_mae !== null ? Number(metrics.baseline_mae).toFixed(2) : '--';
+          document.getElementById('arimaSkillMeta').textContent = metrics.mae_skill_percent !== undefined && metrics.mae_skill_percent !== null ? `${Number(metrics.mae_skill_percent).toFixed(1)}% lower MAE` : 'No backtest comparison';
+          const evaluated = metrics.status === 'evaluated';
+          document.getElementById('arimaTrainingCountMeta').textContent = evaluated
+            ? `${metrics.folds} rolling test windows, ${metrics.test_points} held-out days at ${metrics.horizon}-day horizon.${data.data_quality && data.data_quality.imputed_zero_days ? ` ${data.data_quality.imputed_zero_days} missing dates were treated as zero; verify they represent no activity.` : ''}`
+            : (metrics.message || 'Backtest unavailable; these forecasts are not accuracy-validated.');
+          if (data.is_demo) {
+            document.getElementById('arimaTrainingCountMeta').textContent = `DEMO DATA — not for operational decisions. ${document.getElementById('arimaTrainingCountMeta').textContent}`;
+          }
 
-          const mapeNum = Number(metrics.mape || 0);
-          const rating = metrics.accuracy_rating || (mapeNum < 10 ? 'High Accuracy' : (mapeNum < 20 ? 'Good Fit' : (mapeNum < 50 ? 'Reasonable' : 'High Variance')));
+          const assessment = metrics.assessment || '';
+          const rating = assessment === 'better_than_baseline'
+            ? 'Better than baseline'
+            : (assessment === 'not_better_than_baseline'
+              ? 'Not better than baseline'
+              : (assessment === 'tie_with_baseline' ? 'Tied with baseline' : 'Not validated'));
           document.getElementById('arimaRatingText').textContent = rating;
-          document.getElementById('arimaRatingBadge').className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border mt-0.5 ${mapeNum < 20 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : (mapeNum < 50 ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-amber-50 text-amber-800 border-amber-300')}`;
+          document.getElementById('arimaRatingBadge').className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border mt-0.5 ${assessment === 'better_than_baseline' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : (assessment === 'not_better_than_baseline' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-slate-50 text-slate-700 border-slate-300')}`;
 
           // 3. Update planning notes & averages
           const firstWeek = forecast.slice(0, Math.min(7, forecast.length));
@@ -1907,7 +1982,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             <li class="border-b border-slate-100 pb-2.5">Series selected: ${label}.</li>
             <li class="border-b border-slate-100 pb-2.5">Planning horizon: ${horizon} days.</li>
             <li class="border-b border-slate-100 pb-2.5">Fitted Model: <strong>ARIMA${summary.model || '(auto)'}</strong>.</li>
-            <li>Use this statistical projection for staffing, clinical inventory preparation, and scheduling.</li>
+            <li>Forecasts are experimental; validate against representative records before operational use.</li>
           `;
 
           // 6. Reveal section and update chart
@@ -1953,6 +2028,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
   const snapshotUnitMap = <?= json_encode($seriesUnits) ?>;
   const snapshotSeriesInput = document.querySelector('select[name="series_key"]');
   const snapshotHorizonInput = document.querySelector('input[name="horizon"]');
+  const snapshotSourceInput = document.querySelector('select[name="data_source"]');
   const snapshotIntroEl = document.getElementById('snapshotIntro');
   const snapshotMetaEl = document.getElementById('snapshotMeta');
   const snapshotAverageEl = document.getElementById('snapshotAverage');
@@ -1961,9 +2037,6 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
   const snapshotPeakDateEl = document.getElementById('snapshotPeakDate');
   const snapshotTotalEl = document.getElementById('snapshotTotal');
   const snapshotHorizonEl = document.getElementById('snapshotHorizon');
-  const snapshotMapeEl = document.getElementById('snapshotMape');
-  const snapshotMaeEl = document.getElementById('snapshotMae');
-  const snapshotRatingBadgeEl = document.getElementById('snapshotRatingBadge');
   const snapshotDaysEl = document.getElementById('snapshotDays');
   const snapshotSummaryEl = document.getElementById('snapshotSummary');
 
@@ -1975,44 +2048,24 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
     snapshotPeakDateEl.textContent = '--';
     snapshotTotalEl.textContent = '--';
     snapshotHorizonEl.textContent = '--';
-    if (snapshotMapeEl) snapshotMapeEl.textContent = '--';
-    if (snapshotMaeEl) snapshotMaeEl.textContent = '--';
-    if (snapshotRatingBadgeEl) {
-      snapshotRatingBadgeEl.textContent = 'Fit';
-      snapshotRatingBadgeEl.className = 'text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200';
-    }
     snapshotDaysEl.innerHTML = '';
     snapshotSummaryEl.innerHTML = '<li>Forecast snapshot is not available right now.</li>';
   }
 
   function renderSnapshot(data, seriesKey, horizon) {
     const summary = data.summary || {};
-    const metrics = data.metrics || summary;
     const rows = (data.forecast || []).slice(0, 6);
     const unit = snapshotUnitMap[seriesKey] || 'items';
     const label = snapshotSeriesLabelMap[seriesKey] || seriesKey;
 
     snapshotIntroEl.textContent = summary.intro || 'Quick forecast ready.';
-    snapshotMetaEl.textContent = `${label} for the next ${horizon} days`;
+    snapshotMetaEl.textContent = `${label} for the next ${horizon} days${data.data_source === 'demo' ? ' · SYNTHETIC DEMO' : ' · Operational tables (may include test data)'}`;
     snapshotAverageEl.textContent = Number(summary.forecast_average || 0).toFixed(1);
     snapshotUnitEl.textContent = `${unit} expected each day`;
     snapshotPeakEl.textContent = Number(summary.peak_value || 0).toFixed(1);
     snapshotPeakDateEl.textContent = summary.peak_date || '--';
     snapshotTotalEl.textContent = Number(summary.expected_total || 0).toFixed(1);
     snapshotHorizonEl.textContent = `Across ${horizon} days`;
-
-    if (snapshotMapeEl) {
-      snapshotMapeEl.textContent = (metrics.mape !== undefined && metrics.mape !== null) ? `${Number(metrics.mape).toFixed(1)}%` : '--';
-    }
-    if (snapshotMaeEl) {
-      snapshotMaeEl.textContent = (metrics.mae !== undefined && metrics.mae !== null) ? `MAE: ±${Number(metrics.mae).toFixed(1)} ${unit}` : '--';
-    }
-    if (snapshotRatingBadgeEl && metrics.mape !== undefined && metrics.mape !== null) {
-      const m = Number(metrics.mape);
-      const rating = metrics.accuracy_rating || (m < 10 ? 'High Accuracy' : (m < 20 ? 'Good Fit' : (m < 50 ? 'Reasonable' : 'High Variance')));
-      snapshotRatingBadgeEl.textContent = rating;
-      snapshotRatingBadgeEl.className = `text-[10px] font-bold px-2 py-0.5 rounded border ${m < 20 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (m < 50 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200')}`;
-    }
 
     snapshotDaysEl.innerHTML = rows.map((row) => `
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -2025,16 +2078,18 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
     snapshotSummaryEl.innerHTML = [
       `Forecast generated on ${data.generated_on || '--'}.`,
-      `Series selected: ${label}.`,
+      `Series selected: ${label}${data.data_source === 'demo' ? ' (synthetic demo)' : ''}.`,
       `Planning horizon: ${horizon} days.`,
-      'Use this snapshot for quick planning before running the full forecast report.'
+      'This quick projection has no held-out accuracy evaluation and is for demonstration only.',
+      'Missing dates are treated as zero activity; confirm this matches recordkeeping.'
     ].map((line) => `<li class="border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">${line}</li>`).join('');
   }
 
   function loadSnapshot() {
     const seriesKey = snapshotSeriesInput.value;
     const horizon = snapshotHorizonInput.value || '30';
-    const body = new URLSearchParams({ series_key: seriesKey, horizon, fast: '1' });
+    const dataSource = snapshotSourceInput.value;
+    const body = new URLSearchParams({ series_key: seriesKey, horizon, data_source: dataSource, fast: '1' });
 
     fetch('/HealthLogs/public/forecast_run.php', {
       method: 'POST',
@@ -2055,6 +2110,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
   snapshotSeriesInput.addEventListener('change', loadSnapshot);
   snapshotHorizonInput.addEventListener('change', loadSnapshot);
+  snapshotSourceInput.addEventListener('change', loadSnapshot);
   loadSnapshot();
 </script>
 
@@ -2063,7 +2119,9 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
   const seasonalDatasets = <?= json_encode($seasonalDatasets) ?>;
   const monthlyTotals = <?= json_encode(array_combine(array_column($seasonalDiseaseRows, 'month_label'), array_column($seasonalDiseaseRows, 'total_cases'))) ?>;
   const diseaseTrendMonths = <?= json_encode($diseaseTrendMonths) ?>;
+  const diseaseTrendLabels = <?= json_encode($diseaseTrendLabels) ?>;
   const diseaseTrendSeries = <?= json_encode($diseaseTrendSeries) ?>;
+  const diseaseTrendColors = <?= json_encode($diseaseTrendColors) ?>;
 
   if (seasonalLabels.length && seasonalDatasets.length) {
     const maxVal = Math.max(...Object.values(monthlyTotals), 5);
@@ -2095,12 +2153,12 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
               title: function(tooltipItems) {
                 const month = tooltipItems[0].label;
                 const total = monthlyTotals[month] || 0;
-                return `${month} • ${total} Total Case${total === 1 ? '' : 's'}`;
+                return `${month} • ${total} patient-condition entr${total === 1 ? 'y' : 'ies'}`;
               },
               label: function(context) {
                 const val = context.raw || 0;
                 if (val <= 0) return null;
-                return ` ${context.dataset.label}: ${val} case${val === 1 ? '' : 's'}`;
+                return ` ${context.dataset.label}: ${val} patient${val === 1 ? '' : 's'}`;
               }
             }
           }
@@ -2120,7 +2178,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             },
             title: {
               display: true,
-              text: 'Number of Cases',
+              text: 'Distinct patients per condition (stacked)',
               font: { size: 11 }
             }
           }
@@ -2131,24 +2189,32 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
 
   const trendDiseaseNames = Object.keys(diseaseTrendSeries || {});
   if (diseaseTrendMonths.length && trendDiseaseNames.length) {
-    const palette = ['#0ea5a4', '#2563eb', '#9333ea', '#f97316', '#16a34a'];
     const datasets = trendDiseaseNames.map((name, idx) => ({
       label: name,
       data: diseaseTrendSeries[name],
-      borderColor: palette[idx % palette.length],
-      backgroundColor: palette[idx % palette.length],
-      tension: 0.25,
-      pointRadius: 2,
+      borderColor: diseaseTrendColors[name],
+      backgroundColor: diseaseTrendColors[name],
+      tension: 0,
+      pointRadius: 3,
       borderWidth: 2
     }));
 
     new Chart(document.getElementById('diseaseTrendChart'), {
       type: 'line',
-      data: { labels: diseaseTrendMonths, datasets },
+      data: { labels: diseaseTrendLabels, datasets },
       options: {
         responsive: true,
         plugins: { legend: { position: 'bottom' } },
-        scales: { y: { beginAtZero: true } }
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 },
+            title: {
+              display: true,
+              text: 'Distinct patients with a recorded diagnosis'
+            }
+          }
+        }
       }
     });
   }
@@ -2576,7 +2642,8 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           if (typeof Swal !== 'undefined') Swal.close();
           
           // Populate run info
-          const seriesName = data.run.series_key === 'visits_total' ? 'Patient Visits' : 'Medicine Demand';
+          const baseSeriesKey = data.run.series_key.replace(/^demo_/, '');
+          const seriesName = baseSeriesKey === 'visits_total' ? 'Patient Visits' : 'Medicine Demand';
           document.getElementById('modalTitle').textContent = `Forecast Details - ${seriesName}`;
           document.getElementById('modalSubtitle').textContent = `Run ID: #${data.run.id} | Generated on ${data.run.created_at}`;
           document.getElementById('modalModelType').textContent = data.run.model_type === 'ARIMA' ? 'ARIMA (Auto-fit)' : 'Fast Average';
@@ -2587,28 +2654,18 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
           // Populate accuracy & error metrics
           const maeVal = data.run.mae || (data.parameters && data.parameters.mae);
           const rmseVal = data.run.rmse || (data.parameters && data.parameters.rmse);
-          const mapeVal = data.run.mape || (data.parameters && data.parameters.mape);
-          const metricUnit = data.run.series_key === 'visits_total' ? 'visits' : 'units';
+          const metricUnit = baseSeriesKey === 'visits_total' ? 'visits' : 'units';
           
           const modalMaeEl = document.getElementById('modalMae');
           const modalRmseEl = document.getElementById('modalRmse');
-          const modalMapeEl = document.getElementById('modalMape');
           const modalRatingEl = document.getElementById('modalAccuracyRating');
           
           if (modalMaeEl) modalMaeEl.textContent = (maeVal !== null && maeVal !== undefined) ? `${Number(maeVal).toFixed(2)} ${metricUnit}` : 'N/A';
           if (modalRmseEl) modalRmseEl.textContent = (rmseVal !== null && rmseVal !== undefined) ? `${Number(rmseVal).toFixed(2)} ${metricUnit}` : 'N/A';
-          if (modalMapeEl) modalMapeEl.textContent = (mapeVal !== null && mapeVal !== undefined) ? `${Number(mapeVal).toFixed(1)}%` : 'N/A';
           
           if (modalRatingEl) {
-            if (mapeVal !== null && mapeVal !== undefined) {
-              const m = Number(mapeVal);
-              const rating = m < 10 ? 'High Accuracy' : (m < 20 ? 'Good Fit' : (m < 50 ? 'Reasonable' : 'High Variance'));
-              modalRatingEl.textContent = rating;
-              modalRatingEl.className = `px-2.5 py-0.5 rounded text-xs font-semibold border ${m < 20 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (m < 50 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200')}`;
-            } else {
-              modalRatingEl.textContent = 'Statistical Fit';
-              modalRatingEl.className = 'px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200';
-            }
+            modalRatingEl.textContent = 'Historical record';
+            modalRatingEl.className = 'px-2.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200';
           }
           
           // Calculate insights
@@ -2640,7 +2697,7 @@ $failedRunsCount = count(array_filter($recentRuns, fn($r) => $r['status'] === 'f
             const avg = total / data.results.length;
             const avgLower = lowerSum / data.results.length;
             const avgUpper = upperSum / data.results.length;
-            const unit = data.run.series_key === 'visits_total' ? 'visits' : 'units';
+            const unit = baseSeriesKey === 'visits_total' ? 'visits' : 'units';
             
             document.getElementById('modalInsightAvg').textContent = `${avg.toFixed(1)} ${unit} / day`;
             document.getElementById('modalInsightTotal').textContent = `${total.toFixed(0)} ${unit}`;

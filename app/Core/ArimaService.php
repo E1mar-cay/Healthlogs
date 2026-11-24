@@ -6,9 +6,22 @@ class ArimaService
      * Load daily historical series for a given series key, de-duplicated across program tables
      * and trimmed of any trailing unseeded sparse gaps.
      */
-    public static function loadSeries(PDO $pdo, string $seriesKey, int $days = 180): array
+    public static function loadSeries(PDO $pdo, string $seriesKey, int $days = 180, string $source = 'operational'): array
     {
-        if ($seriesKey === 'visits_total') {
+        if ($source === 'demo') {
+            if (!in_array($seriesKey, ['visits_total', 'medicine_total'], true)) {
+                throw new InvalidArgumentException('Demo forecasts are available only for visits and medicine demand.');
+            }
+            $demoSeriesKey = 'demo_' . $seriesKey;
+            $sql = "SELECT series_date AS day_key, value
+                    FROM timeseries_daily
+                    WHERE series_key = ?
+                      AND series_date >= DATE_SUB((SELECT COALESCE(MAX(series_date), CURDATE()) FROM timeseries_daily WHERE series_key = ?), INTERVAL ? DAY)
+                    ORDER BY day_key ASC";
+            $params = [$demoSeriesKey, $demoSeriesKey, $days];
+        } elseif ($source !== 'operational') {
+            throw new InvalidArgumentException('Unsupported forecast data source.');
+        } elseif ($seriesKey === 'visits_total') {
             $sql = "SELECT DATE(v_date) AS day_key, COUNT(*) AS value
                     FROM (
                         SELECT visit_datetime AS v_date FROM visits WHERE visit_type = 'general'
@@ -48,7 +61,8 @@ class ArimaService
                     FROM medicine_transactions
                     WHERE transaction_type = 'dispensed'
                       AND medicine_id = ?
-                      AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed' AND medicine_id = ?), INTERVAL ? DAY)
+                      AND transaction_datetime < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                      AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed' AND medicine_id = ? AND transaction_datetime < DATE_ADD(CURDATE(), INTERVAL 1 DAY)), INTERVAL ? DAY)
                     GROUP BY DATE(transaction_datetime)
                     ORDER BY day_key ASC";
             $params = [$medId, $medId, $days];
@@ -56,7 +70,8 @@ class ArimaService
             $sql = "SELECT DATE(transaction_datetime) AS day_key, COALESCE(SUM(ABS(quantity)), 0) AS value
                     FROM medicine_transactions
                     WHERE transaction_type = 'dispensed'
-                      AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed'), INTERVAL ? DAY)
+                      AND transaction_datetime < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                      AND transaction_datetime >= DATE_SUB((SELECT COALESCE(MAX(DATE(transaction_datetime)), CURDATE()) FROM medicine_transactions WHERE transaction_type = 'dispensed' AND transaction_datetime < DATE_ADD(CURDATE(), INTERVAL 1 DAY)), INTERVAL ? DAY)
                     GROUP BY DATE(transaction_datetime)
                     ORDER BY day_key ASC";
             $params = [$days];
@@ -73,17 +88,6 @@ class ArimaService
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Fallback to timeseries_daily if transactional tables are empty
-        if (empty($rows) && ($seriesKey === 'visits_total' || $seriesKey === 'medicine_total')) {
-            $sql = "SELECT series_date AS day_key, value
-                    FROM timeseries_daily
-                    WHERE series_key = ?
-                    ORDER BY day_key ASC";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$seriesKey]);
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-
         if (empty($rows)) {
             return [];
         }
@@ -96,9 +100,13 @@ class ArimaService
         $start = new DateTime(array_key_first($valuesByDate));
         $end = new DateTime(array_key_last($valuesByDate));
         $filled = [];
+        $missingDays = 0;
 
         while ($start <= $end) {
             $day = $start->format('Y-m-d');
+            if (!array_key_exists($day, $valuesByDate)) {
+                $missingDays++;
+            }
             $filled[] = [
                 'date' => $day,
                 'value' => $valuesByDate[$day] ?? 0.0,
@@ -106,7 +114,13 @@ class ArimaService
             $start->modify('+1 day');
         }
 
-        return self::trimTrailingSparseGap($filled);
+        $filled = self::trimTrailingSparseGap($filled);
+        foreach ($filled as &$row) {
+            $row['imputed_zero_days'] = $missingDays;
+        }
+        unset($row);
+
+        return $filled;
     }
 
     /**
@@ -153,9 +167,9 @@ class ArimaService
     /**
      * Fit statistical ARIMA(p,d,q) with seasonal components in pure PHP.
      */
-    public static function forecast(PDO $pdo, string $seriesKey, int $horizon): array
+    public static function forecast(PDO $pdo, string $seriesKey, int $horizon, string $source = 'operational'): array
     {
-        $history = self::loadSeries($pdo, $seriesKey, 180);
+        $history = self::loadSeries($pdo, $seriesKey, 180, $source);
 
         if (count($history) < 14) {
             throw new RuntimeException('Not enough history data yet. At least 14 days of data are required.');
@@ -194,12 +208,8 @@ class ArimaService
         }
         $phi = ($denom > 1e-6) ? max(-0.85, min(0.85, $num / $denom)) : 0.2;
 
-        // In-sample fitted values and errors
-        $fitted = [];
-        $absErrors = [];
+        // Residual scale is used only to size the forecast interval, not to claim accuracy.
         $sqErrors = [];
-        $pctErrors = [];
-        $mapeFloor = max(1.0, $overallMean * 0.25);
 
         for ($i = 0; $i < $n; $i++) {
             $w = (int)(new DateTime($history[$i]['date']))->format('w');
@@ -213,27 +223,24 @@ class ArimaService
                 $yHat = max(0, $values[$i - 1] + $predictedDiff + (0.3 * $seasonalComponent));
             }
 
-            $fitted[] = $yHat;
             $err = $values[$i] - $yHat;
-            $absErrors[] = abs($err);
             $sqErrors[] = $err * $err;
-            if ($values[$i] > 0) {
-                $pctErrors[] = (abs($err) / max($values[$i], $mapeFloor)) * 100.0;
-            }
         }
 
-        $mae = $n > 0 ? (array_sum($absErrors) / $n) : 0.0;
         $rmse = $n > 0 ? sqrt(array_sum($sqErrors) / $n) : 1.0;
-        $mape = !empty($pctErrors) ? (array_sum($pctErrors) / count($pctErrors)) : 15.0;
-
-        $accuracyRating = ($mape < 10.0) ? 'High Accuracy' : (($mape < 20.0) ? 'Good Fit' : (($mape < 50.0) ? 'Reasonable' : 'High Variance'));
 
         $metrics = [
-            'mae' => round($mae, 4),
-            'rmse' => round($rmse, 4),
-            'mape' => round($mape, 2),
-            'accuracy_rating' => $accuracyRating,
-            'sample_size' => $n,
+            'evaluation_method' => 'unavailable',
+            'status' => 'not_evaluated',
+            'message' => 'Held-out rolling backtesting requires the Python forecasting engine.',
+            'mae' => null,
+            'rmse' => null,
+            'baseline_mae' => null,
+            'baseline_rmse' => null,
+            'mae_skill_percent' => null,
+            'folds' => 0,
+            'test_points' => 0,
+            'horizon' => $horizon,
         ];
 
         // Generate forecasts for the next $horizon days
@@ -327,10 +334,10 @@ class ArimaService
             'history_end' => end($history)['date'],
             'model' => $modelOrder,
             'seasonal_model' => $seasonalOrder,
-            'mae' => $metrics['mae'],
-            'rmse' => $metrics['rmse'],
-            'mape' => $metrics['mape'],
-            'accuracy_rating' => $metrics['accuracy_rating'],
+            'mae' => null,
+            'rmse' => null,
+            'mape' => null,
+            'accuracy_rating' => 'Not validated',
         ];
 
         $diagnostics = [
@@ -340,16 +347,21 @@ class ArimaService
             'bic' => round($n * log(max(0.001, $rmse ** 2)) + log($n) * 3, 2),
             'mae' => $metrics['mae'],
             'rmse' => $metrics['rmse'],
-            'mape' => $metrics['mape'],
         ];
 
         return [
             'series_key' => $seriesKey,
+            'data_source' => $source,
+            'is_demo' => $source === 'demo',
             'generated_on' => date('Y-m-d'),
             'horizon' => $horizon,
             'history' => array_slice($history, -60),
             'forecast' => $forecast,
             'metrics' => $metrics,
+            'data_quality' => [
+                'imputed_zero_days' => (int)($history[0]['imputed_zero_days'] ?? 0),
+                'missing_day_handling' => 'Missing dates are treated as zero activity; verify that no record means no activity.',
+            ],
             'summary' => $summary,
             'diagnostics' => $diagnostics,
         ];

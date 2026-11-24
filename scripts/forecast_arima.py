@@ -23,50 +23,6 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="statsmodels")
 warnings.filterwarnings("ignore", message="No supported index is available")
 
 
-def compute_evaluation_metrics(actual, fitted):
-    """Compute MAE, RMSE, and damped MAPE error evaluation metrics."""
-    actual = np.asarray(actual, dtype=float)
-    fitted = np.asarray(fitted, dtype=float)
-
-    # Clip fitted values at zero since negative visits or items do not exist
-    fitted = np.maximum(0.0, fitted)
-
-    errors = actual - fitted
-    abs_errors = np.abs(errors)
-    squared_errors = errors ** 2
-
-    n = len(actual)
-    mae = float(np.mean(abs_errors)) if n > 0 else 0.0
-    rmse = float(np.sqrt(np.mean(squared_errors))) if n > 0 else 0.0
-
-    # Damped MAPE: prevent single 1-visit outlier days from inflating MAPE by 2000%+
-    non_zero = actual > 0
-    if np.any(non_zero):
-        mean_val = float(np.mean(actual[non_zero]))
-        denom_floor = max(1.0, mean_val * 0.25)
-        denom = np.maximum(actual[non_zero], denom_floor)
-        mape = float(np.mean(abs_errors[non_zero] / denom) * 100.0)
-    else:
-        mape = 0.0 if np.all(fitted == 0) else 100.0
-
-    if mape < 10.0:
-        accuracy_rating = "High Accuracy"
-    elif mape < 20.0:
-        accuracy_rating = "Good Fit"
-    elif mape < 50.0:
-        accuracy_rating = "Reasonable"
-    else:
-        accuracy_rating = "High Variance"
-
-    return {
-        "mae": round(mae, 4),
-        "rmse": round(rmse, 4),
-        "mape": round(mape, 2),
-        "accuracy_rating": accuracy_rating,
-        "sample_size": int(n),
-    }
-
-
 def get_connection():
     return pymysql.connect(
         host="127.0.0.1",
@@ -109,8 +65,18 @@ def trim_trailing_sparse_gap(series: pd.Series) -> pd.Series:
     return series
 
 
-def load_series(series_key):
-    if series_key == "visits_total":
+def load_series(series_key, source="operational"):
+    if source == "demo":
+        if series_key not in {"visits_total", "medicine_total"}:
+            raise ValueError("Demo forecasts are available only for visits and medicine demand.")
+        sql = """
+            SELECT series_date, value
+            FROM timeseries_daily
+            WHERE series_key = %s
+            ORDER BY series_date ASC
+        """
+        params = ("demo_" + series_key,)
+    elif series_key == "visits_total":
         sql = """
             SELECT DATE(v_date) AS series_date, COUNT(*) AS value
             FROM (
@@ -136,6 +102,7 @@ def load_series(series_key):
             SELECT DATE(transaction_datetime) AS series_date, COALESCE(SUM(ABS(quantity)), 0) AS value
             FROM medicine_transactions
             WHERE transaction_type = 'dispensed'
+              AND transaction_datetime < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
             GROUP BY DATE(transaction_datetime)
             ORDER BY series_date ASC
         """
@@ -161,18 +128,20 @@ def load_series(series_key):
     df.set_index("series_date", inplace=True)
     series = df["value"].astype(float).sort_index()
 
-    # Missing days mean no recorded activity, so treat them as zero.
+    # Keep track of absent dates because a missing record is not proof of zero activity.
     full_index = pd.date_range(start=series.index.min(), end=series.index.max(), freq="D")
+    missing_days = len(full_index.difference(series.index))
     series = series.reindex(full_index, fill_value=0.0)
     series.index.name = "series_date"
+    series.attrs["missing_day_count"] = missing_days
+    series.attrs["source"] = source
 
     return trim_trailing_sparse_gap(series)
 
 
-def forecast(series, horizon):
-    training_series = series.tail(min(len(series), 180))
+def fit_arima(training_series):
     seasonal = len(training_series) >= 56
-    model = auto_arima(
+    return auto_arima(
         training_series,
         seasonal=seasonal,
         m=7 if seasonal else 1,
@@ -189,6 +158,95 @@ def forecast(series, horizon):
         with_intercept=True,
     )
 
+
+def compute_error_metrics(actual, predicted):
+    actual = np.asarray(actual, dtype=float)
+    predicted = np.maximum(0.0, np.asarray(predicted, dtype=float))
+    errors = actual - predicted
+    return {
+        "mae": float(np.mean(np.abs(errors))),
+        "rmse": float(np.sqrt(np.mean(errors ** 2))),
+    }
+
+
+def rolling_backtest(series, horizon):
+    """Evaluate equal-horizon rolling holdouts against a same-weekday baseline."""
+    history = series.tail(min(len(series), 180))
+    minimum_training_points = 28
+    fold_count = min(3, (len(history) - minimum_training_points) // horizon)
+    if fold_count < 1:
+        return {
+            "evaluation_method": "rolling_origin",
+            "status": "insufficient_history",
+            "message": (
+                f"At least {minimum_training_points + horizon} daily points are needed "
+                "to evaluate this forecast horizon."
+            ),
+            "folds": 0,
+            "test_points": 0,
+            "horizon": horizon,
+            "mae": None,
+            "rmse": None,
+            "baseline_mae": None,
+            "baseline_rmse": None,
+            "mae_skill_percent": None,
+        }
+
+    first_origin = len(history) - fold_count * horizon
+    actual_values = []
+    arima_values = []
+    baseline_values = []
+
+    for fold in range(fold_count):
+        origin = first_origin + fold * horizon
+        training = history.iloc[:origin].tail(180)
+        actual = history.iloc[origin:origin + horizon].to_numpy(dtype=float)
+
+        model = fit_arima(training)
+        arima_prediction = np.maximum(0.0, model.predict(n_periods=horizon))
+        weekly_pattern = training.iloc[-7:].to_numpy(dtype=float)
+        baseline_prediction = np.resize(weekly_pattern, horizon)
+
+        actual_values.extend(actual)
+        arima_values.extend(arima_prediction)
+        baseline_values.extend(baseline_prediction)
+
+    arima_metrics = compute_error_metrics(actual_values, arima_values)
+    baseline_metrics = compute_error_metrics(actual_values, baseline_values)
+    baseline_mae = baseline_metrics["mae"]
+    skill = (
+        ((baseline_mae - arima_metrics["mae"]) / baseline_mae) * 100.0
+        if baseline_mae > 0
+        else None
+    )
+
+    return {
+        "evaluation_method": "rolling_origin",
+        "status": "evaluated",
+        "folds": fold_count,
+        "test_points": len(actual_values),
+        "horizon": horizon,
+        "mae": round(arima_metrics["mae"], 4),
+        "rmse": round(arima_metrics["rmse"], 4),
+        "baseline_name": "same weekday last week",
+        "baseline_mae": round(baseline_metrics["mae"], 4),
+        "baseline_rmse": round(baseline_metrics["rmse"], 4),
+        "mae_skill_percent": round(skill, 2) if skill is not None else None,
+        "assessment": (
+            "better_than_baseline"
+            if arima_metrics["mae"] < baseline_mae
+            else (
+                "tie_with_baseline"
+                if arima_metrics["mae"] == baseline_mae
+                else "not_better_than_baseline"
+            )
+        ),
+    }
+
+
+def forecast(series, horizon):
+    training_series = series.tail(min(len(series), 180))
+    model = fit_arima(training_series)
     preds, conf_int = model.predict(n_periods=horizon, return_conf_int=True, alpha=0.2)
     preds = [max(0.0, float(v)) for v in preds]
     conf_int = [[max(0.0, float(low)), max(0.0, float(high))] for low, high in conf_int]
@@ -196,16 +254,7 @@ def forecast(series, horizon):
     last_date = max(training_series.index.max(), pd.Timestamp(date.today()))
     future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=horizon, freq="D")
 
-    # Compute in-sample predictions and evaluation metrics (MAE, RMSE, MAPE)
-    try:
-        in_sample_preds = model.predict_in_sample()
-    except Exception:
-        try:
-            in_sample_preds = training_series.values - model.arima_res_.resid
-        except Exception:
-            in_sample_preds = np.full(len(training_series), float(training_series.mean()))
-
-    metrics = compute_evaluation_metrics(training_series.values, in_sample_preds)
+    metrics = rolling_backtest(series, horizon)
 
     return model, future_dates, preds, conf_int, len(training_series), metrics
 
@@ -288,12 +337,15 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument("--series-key", required=True)
         parser.add_argument("--horizon", type=int, default=30)
+        parser.add_argument("--source", choices=("operational", "demo"), default="operational")
         args = parser.parse_args()
 
         if args.horizon < 1:
             raise ValueError("Please choose at least 1 day for the forecast.")
+        if args.series_key not in {"visits_total", "medicine_total"}:
+            raise ValueError("Unsupported forecast series.")
 
-        series = load_series(args.series_key)
+        series = load_series(args.series_key, args.source)
         if len(series) < 14:
             raise ValueError("Not enough history yet. At least 14 days of data are required.")
 
@@ -325,11 +377,17 @@ def main():
 
         output = {
             "series_key": args.series_key,
+            "data_source": args.source,
+            "is_demo": args.source == "demo",
             "generated_on": date.today().isoformat(),
             "horizon": args.horizon,
             "history": summary["history"],
             "forecast": summary["forecast_rows"],
             "metrics": metrics,
+            "data_quality": {
+                "imputed_zero_days": int(series.attrs.get("missing_day_count", 0)),
+                "missing_day_handling": "Missing dates are treated as zero activity; verify that no record means no activity.",
+            },
             "summary": {
                 "intro": summary["intro"],
                 "metric_label": summary["metric_label"],
@@ -348,8 +406,6 @@ def main():
                 "seasonal_model": summary["seasonal_model"],
                 "mae": metrics["mae"],
                 "rmse": metrics["rmse"],
-                "mape": metrics["mape"],
-                "accuracy_rating": metrics["accuracy_rating"],
             },
             "diagnostics": {
                 "aic": aic,
@@ -358,8 +414,10 @@ def main():
                 "sigma2": sigma2,
                 "mae": metrics["mae"],
                 "rmse": metrics["rmse"],
-                "mape": metrics["mape"],
-                "accuracy_rating": metrics["accuracy_rating"],
+                "baseline_mae": metrics["baseline_mae"],
+                "baseline_rmse": metrics["baseline_rmse"],
+                "mae_skill_percent": metrics["mae_skill_percent"],
+                "assessment": metrics.get("assessment"),
                 "params": params
             }
         }

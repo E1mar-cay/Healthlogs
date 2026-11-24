@@ -11,17 +11,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 ob_start();
 
-function load_daily_series(PDO $pdo, string $seriesKey, int $days = 180): array
+function load_daily_series(PDO $pdo, string $seriesKey, int $days = 180, string $source = 'operational'): array
 {
-    return ArimaService::loadSeries($pdo, $seriesKey, $days);
+    return ArimaService::loadSeries($pdo, $seriesKey, $days, $source);
 }
 
 /**
  * Exponentially-Weighted Seasonal + Damped Trend Snapshot (Holt-Winters Fast Approximation).
  * Uses recency-weighted day-of-week seasonality, damped trend progression across the horizon,
- * horizon-widening statistical confidence bounds, and damped MAPE evaluation.
+ * horizon-widening statistical confidence bounds. Snapshot projections are not backtested.
  */
-function build_fast_forecast(array $history, string $seriesKey, int $horizon): array
+function build_fast_forecast(array $history, string $seriesKey, int $horizon, string $source): array
 {
     if (count($history) < 14) {
         throw new RuntimeException('Not enough history yet. At least 14 days of data are required.');
@@ -78,11 +78,8 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
     $dailySlope = max(-$maxDailySlope, min($maxDailySlope, $rawDailySlope));
     $dampingPhi = 0.95;
 
-    // 2. Compute in-sample fitted values and error metrics (MAE, RMSE, damped MAPE)
-    $absErrors = [];
+    // Residual scale is used only for the snapshot interval, not as an accuracy score.
     $squaredErrors = [];
-    $pctErrors = [];
-    $mapeFloor = max(1.0, $overallAverage * 0.25);
 
     foreach ($recentHistory as $idx => $row) {
         $w = (int)(new DateTime($row['date']))->format('w');
@@ -94,17 +91,10 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
         $fitted = max(0.0, $localLevel * $seasonalFactors[$w]);
         $actual = (float)$row['value'];
         $err = $actual - $fitted;
-        $absErrors[] = abs($err);
         $squaredErrors[] = $err * $err;
-        if ($actual > 0) {
-            $pctErrors[] = (abs($err) / max($actual, $mapeFloor)) * 100.0;
-        }
     }
 
-    $mae = $n > 0 ? array_sum($absErrors) / $n : 0.0;
     $rmse = $n > 0 ? sqrt(array_sum($squaredErrors) / $n) : 1.0;
-    $mape = !empty($pctErrors) ? array_sum($pctErrors) / count($pctErrors) : 0.0;
-    $accuracyRating = $mape < 10.0 ? 'High Accuracy' : ($mape < 20.0 ? 'Good Fit' : ($mape < 50.0 ? 'Reasonable' : 'High Variance'));
 
     // 3. Project forward $horizon days from today (or latest history date if in future)
     $todayDt = new DateTime(date('Y-m-d'));
@@ -167,11 +157,17 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
     $peakDate = $forecast[$peakIndex]['date'];
 
     $metrics = [
-        'mae' => round($mae, 4),
-        'rmse' => round($rmse, 4),
-        'mape' => round($mape, 2),
-        'accuracy_rating' => $accuracyRating,
-        'sample_size' => $n,
+        'evaluation_method' => 'unavailable',
+        'status' => 'not_evaluated',
+        'message' => 'The quick projection is not backtested.',
+        'mae' => null,
+        'rmse' => null,
+        'baseline_mae' => null,
+        'baseline_rmse' => null,
+        'mae_skill_percent' => null,
+        'folds' => 0,
+        'test_points' => 0,
+        'horizon' => $horizon,
     ];
 
     return [
@@ -197,15 +193,22 @@ function build_fast_forecast(array $history, string $seriesKey, int $horizon): a
             'history_end' => end($history)['date'],
             'model' => 'Holt-Winters Seasonal',
             'seasonal_model' => '7-day weighted pattern',
-            'mae' => $metrics['mae'],
-            'rmse' => $metrics['rmse'],
-            'mape' => $metrics['mape'],
-            'accuracy_rating' => $metrics['accuracy_rating'],
+            'mae' => null,
+            'rmse' => null,
+            'mape' => null,
+            'accuracy_rating' => 'Not validated',
+        ],
+        'data_source' => $source,
+        'is_demo' => $source === 'demo',
+        'data_quality' => [
+            'imputed_zero_days' => (int)($history[0]['imputed_zero_days'] ?? 0),
+            'missing_day_handling' => 'Missing dates are treated as zero activity; verify that no record means no activity.',
         ],
     ];
 }
 
 $seriesKey = $_POST['series_key'] ?? 'visits_total';
+$dataSource = $_POST['data_source'] ?? 'operational';
 $horizon = max(1, (int)($_POST['horizon'] ?? 30));
 $fast = ($_POST['fast'] ?? '') === '1';
 
@@ -216,15 +219,23 @@ if (ob_get_length()) {
 header('Content-Type: application/json');
 
 try {
+    if (!in_array($dataSource, ['operational', 'demo'], true)) {
+        throw new InvalidArgumentException('Unsupported forecast data source.');
+    }
+    if ($horizon > 90) {
+        throw new InvalidArgumentException('Forecast horizon must be between 1 and 90 days.');
+    }
+
     if ($fast) {
-        $history = load_daily_series($pdo, $seriesKey, 180);
-        $result = build_fast_forecast($history, $seriesKey, $horizon);
+        $history = load_daily_series($pdo, $seriesKey, 180, $dataSource);
+        $result = build_fast_forecast($history, $seriesKey, $horizon, $dataSource);
         echo json_encode($result);
         exit;
     }
 
     $startTime = microtime(true);
-    $runId = ForecastLogger::startRun($seriesKey, $horizon, 'ARIMA');
+    $loggedSeriesKey = $dataSource === 'demo' ? 'demo_' . $seriesKey : $seriesKey;
+    $runId = ForecastLogger::startRun($loggedSeriesKey, $horizon, 'ARIMA');
 
     $data = null;
 
@@ -235,6 +246,7 @@ try {
         $cmd = PythonRunner::buildCommand($python, $script, [
             '--series-key' => $seriesKey,
             '--horizon' => (string)$horizon,
+            '--source' => $dataSource,
         ]);
 
         $output = @shell_exec($cmd);
@@ -248,7 +260,7 @@ try {
 
     // 2. Native Pure-PHP ARIMA & Statistical Engine (cloud serverless / no-python environment)
     if (!$data) {
-        $data = ArimaService::forecast($pdo, $seriesKey, $horizon);
+        $data = ArimaService::forecast($pdo, $seriesKey, $horizon, $dataSource);
     }
 
     $executionTime = round(microtime(true) - $startTime, 3);

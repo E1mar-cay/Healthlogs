@@ -6,6 +6,33 @@ This directory contains seeder scripts to populate the HealthLogs database with 
 
 ## Available Seeders
 
+### `seed_forecast_data.php`
+**Generates:** Deterministic daily synthetic data for forecasting demonstrations
+
+**Data Created:**
+- Daily `demo_visits_total` and `demo_medicine_total` values from January 1, 2023 through today
+- A gradual trend, annual seasonality, lower weekend activity, and repeatable daily variation
+- One row per series per date in `timeseries_daily`
+
+**Run separately** when you need forecasting demo data:
+
+```bash
+php seed_forecast_data.php
+```
+
+The seeder is safe to re-run: it updates existing values for these demo-only series
+and dates. It does not create or overwrite patient, visit, or inventory records and
+is intentionally not run by the master seeder, which builds time series from
+operational data.
+
+The Forecasting page keeps demo forecasts opt-in and labels their saved runs as
+`(Demo)`. Operational forecasts read visit and medicine transaction tables directly;
+those tables may also contain seeded test records in a development database.
+ARIMA error metrics use rolling, held-out windows and are compared with a same-weekday
+last-week baseline. If there is not enough history for the selected horizon, metrics
+are reported as unavailable. Missing dates are still interpreted as zero activity,
+so confirm that this matches the clinic's recording practice before relying on results.
+
 ### 1. `seed_patients.php`
 **Generates:** Patient records with demographics, allergies, and conditions
 
